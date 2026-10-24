@@ -1,0 +1,60 @@
+[
+    { "name": "live works without database", "method": "GET", "path": "/health/live", "status": 200 },
+    {
+        "name": "readiness reports unavailable database",
+        "method": "GET",
+        "path": "/health/ready",
+        "status": 503,
+        "code": "UNAVAILABLE"
+    },
+    { "name": "CSRF issuance does not require database", "method": "GET", "path": "/api/v1/auth/csrf", "status": 200 },
+    {
+        "name": "CSRF rejection precedes database access",
+        "method": "POST",
+        "path": "/api/v1/auth/login",
+        "body": { "email": "user1@meal-planner.test", "password": "1" },
+        "status": 403,
+        "code": "FORBIDDEN"
+    },
+    {
+        "name": "strict DTO rejection precedes database access",
+        "method": "POST",
+        "path": "/api/v1/auth/login",
+        "csrf": true,
+        "body": { "email": "user1@meal-planner.test", "password": "1", "extra": true },
+        "status": 400,
+        "code": "INVALID_REQUEST"
+    },
+    {
+        "name": "valid login reaches unavailable database",
+        "method": "POST",
+        "path": "/api/v1/auth/login",
+        "csrf": true,
+        "body": { "email": "user1@meal-planner.test", "password": "1" },
+        "status": 503,
+        "code": "UNAVAILABLE"
+    },
+    {
+        "name": "me reaches unavailable database",
+        "method": "GET",
+        "path": "/api/v1/auth/me",
+        "status": 503,
+        "code": "UNAVAILABLE"
+    },
+    {
+        "name": "invalid staff context is rejected",
+        "method": "POST",
+        "path": "/api/v1/staff/auth/login",
+        "csrf": true,
+        "body": { "email": "admin@meal-planner.test", "password": "1", "context": "user" },
+        "status": 400,
+        "code": "INVALID_REQUEST"
+    },
+    {
+        "name": "logout still needs CSRF",
+        "method": "POST",
+        "path": "/api/v1/auth/logout",
+        "status": 403,
+        "code": "FORBIDDEN"
+    }
+]

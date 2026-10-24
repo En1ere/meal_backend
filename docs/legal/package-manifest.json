@@ -1,0 +1,73 @@
+{
+    "schemaVersion": 1,
+    "packageStatus": "draft_blocked",
+    "publicationEligible": false,
+    "documents": [
+        {
+            "documentId": "user-agreement-public-offer",
+            "file": "01-user-agreement-public-offer.md",
+            "status": "draft_blocked",
+            "publicationEligible": false
+        },
+        {
+            "documentId": "personal-data-policy",
+            "file": "02-personal-data-policy.md",
+            "status": "draft_blocked",
+            "publicationEligible": false
+        },
+        {
+            "documentId": "general-personal-data-consent",
+            "file": "03-general-pd-consent.md",
+            "status": "draft_blocked",
+            "publicationEligible": false
+        },
+        {
+            "documentId": "special-category-consent",
+            "file": "04-special-category-consent.md",
+            "status": "draft_blocked",
+            "publicationEligible": false
+        },
+        {
+            "documentId": "dissemination-consent",
+            "file": "05-dissemination-consent.md",
+            "status": "draft_blocked",
+            "publicationEligible": false
+        },
+        {
+            "documentId": "ai-processing-consent",
+            "file": "06-ai-processing-consent.md",
+            "status": "draft_blocked",
+            "publicationEligible": false
+        },
+        {
+            "documentId": "marketing-consent",
+            "file": "07-marketing-consent.md",
+            "status": "draft_blocked",
+            "publicationEligible": false
+        },
+        {
+            "documentId": "cookie-and-local-storage-notice",
+            "file": "08-cookie-notice.md",
+            "status": "draft_blocked",
+            "publicationEligible": false
+        },
+        {
+            "documentId": "community-content-rules",
+            "file": "09-community-content-rules.md",
+            "status": "draft_blocked",
+            "publicationEligible": false
+        },
+        {
+            "documentId": "subscription-payment-refund-rules",
+            "file": "10-subscription-payment-refund-rules.md",
+            "status": "draft_blocked",
+            "publicationEligible": false
+        },
+        {
+            "documentId": "child-profile-representative-consent",
+            "file": "11-child-profile-representative-consent.md",
+            "status": "draft_blocked",
+            "publicationEligible": false
+        }
+    ]
+}

@@ -1,0 +1,150 @@
+{
+    "schema": "meal",
+    "database": "meal_planner_postgres",
+    "postgresMajor": 18,
+    "domainTables": 204,
+    "totalTables": 209,
+    "foreignKeys": 482,
+    "migrations": [
+        {
+            "version": 1,
+            "file": "001_initial.sql",
+            "sha256": "a11b85882bc9a1c1c01dfd34125a19e99aa319283a5104772fb28877bfb72ace"
+        },
+        {
+            "version": 2,
+            "file": "002_auth_context.sql",
+            "sha256": "7ad956f334140e3d71aa7908bf51040c99aa563f8580761d556f13def447a982"
+        },
+        {
+            "version": 3,
+            "file": "003_account_lifecycle.sql",
+            "sha256": "b9e2559c4b4e0c65c51c0ea4df32c5dfe1b4076721ba93515167143de348fce4"
+        },
+        {
+            "version": 4,
+            "file": "004_admin_observability.sql",
+            "sha256": "209dcf4bfbc58722afab8133db93e5ee978d4ef7ac0078def034e1208f1c6c42"
+        },
+        {
+            "version": 5,
+            "file": "005_admin_session_reentry.sql",
+            "sha256": "a16a76d97db04c8acfa146cdf76dffb28c4bb47940ff8200a78b15d929cbd1f6"
+        },
+        {
+            "version": 6,
+            "file": "006_inventory.sql",
+            "sha256": "d8e1156d42f2d36ec233e98fdad03b7eed8a7460eac6ed884caace0a31b7d2a7"
+        },
+        {
+            "version": 7,
+            "file": "007_recipe_catalog.sql",
+            "sha256": "a1a77937c09ce1df9e75b3ae5478a3f1e8450507d5ee825b00d7da584eb2a1bc"
+        },
+        {
+            "version": 8,
+            "file": "008_recipe_workflows.sql",
+            "sha256": "66f01de1ab337d5dbb1331d15d25d0304f3cb1c466c1917463ae0e29d0a59dad"
+        },
+        {
+            "version": 9,
+            "file": "009_preserves.sql",
+            "sha256": "578bf6cc25fad65a6e5398c43ecee57063e83b53f9a5cff6e8c3c7c4d43c6857"
+        },
+        {
+            "version": 10,
+            "file": "010_shopping_receipts.sql",
+            "sha256": "69c5fe4a2d3682bbe3aabe2a4ed0f00bb73b24d641c7ac1ad29a6d1246a9b971"
+        },
+        {
+            "version": 11,
+            "file": "011_ai_execution_rule.sql",
+            "sha256": "ef8c16df48544d7f1afa10f96c55a9f7329ef865f43dad1003cbeaa28c713ac4"
+        },
+        {
+            "version": 12,
+            "file": "012_admin_free_operations.sql",
+            "sha256": "4948acb626438619519812bb35998ebe026a64ae48949f708e292be884f9dca3"
+        },
+        {
+            "version": 13,
+            "file": "013_admin_free_governance.sql",
+            "sha256": "7462d36159b9b2abb3e94799e83488c32a4483645f33918fa4822763e9ba2278"
+        },
+        {
+            "version": 14,
+            "file": "014_family_chat_mentions.sql",
+            "sha256": "eef73de3ca5125edb482a71d84d53d16ac0295f64e19e11b3b89c5c12ef8ea4b"
+        },
+        {
+            "version": 15,
+            "file": "015_ai_monthly_quota_invariants.sql",
+            "sha256": "d3f494147eebcf4b761f27bf3ca8ea4c7f20b40034767aa3846918a5cfcac533"
+        },
+        {
+            "version": 16,
+            "file": "016_recommendations.sql",
+            "sha256": "bbb536fe49c9347771b8e112d3fd2d24b34b33367e2eeacc5901dd13d85bcd69"
+        },
+        {
+            "version": 17,
+            "file": "017_allergen_intelligence.sql",
+            "sha256": "bec107eba7ae3a5623d9b3060402775ca999de1e328f42fa58c9ea13f11bd21d"
+        },
+        {
+            "version": 18,
+            "file": "018_news_publication.sql",
+            "sha256": "7946eca4b22e2d85d5c42a3a1f61782bc255e993fec678a08b2c2faba4cd1bdb"
+        },
+        {
+            "version": 19,
+            "file": "019_content_releases.sql",
+            "sha256": "fb939af97bb6f587652a59befd3670c0909a47a909999e8e882f598beae943b1"
+        },
+        {
+            "version": 20,
+            "file": "020_privacy_lifecycle.sql",
+            "sha256": "826df11f85351610a2c3b01cf880eefc8d1aea5d2807cc0325d9544438c458dc"
+        },
+        {
+            "version": 21,
+            "file": "021_content_release_registry.sql",
+            "sha256": "bfc7ab93f72fee0423a8fb53cd7d9dca043bd7b56747631bc734f292a9822d7e"
+        },
+        {
+            "version": 22,
+            "file": "022_scheduled_sanction_effects.sql",
+            "sha256": "ab28f60fe1b091084d4675ea4b612310da7a970777008d769061a49ca97c16d3"
+        },
+        {
+            "version": 23,
+            "file": "023_ai_orchestration_rule.sql",
+            "sha256": "3df63a1b26ee6e0cd82891b194126657352115433b586f60cc417cdcd399452b"
+        },
+        {
+            "version": 24,
+            "file": "024_worker_leases.sql",
+            "sha256": "79ad85344c1a3c64e094480fa9b18808b86b6a81f2407501acf7d9d6647f04d2"
+        },
+        {
+            "version": 25,
+            "file": "025_legal_consents.sql",
+            "sha256": "affa9367e5dfc01bb770fa26c566b74e23df0b3384ead43eeaca3c2e36b6fe3e"
+        },
+        {
+            "version": 26,
+            "file": "026_payment_application.sql",
+            "sha256": "de83159bc7a05e18c99ae6322ba3c79590bda7ce1fb16587ef68f5ca6ac57b22"
+        },
+        {
+            "version": 27,
+            "file": "027_account_deletion_guards.sql",
+            "sha256": "531888ce7fa7938982a62f02583d6456b330ae809c0f531b0e12c76eddcf5f1f"
+        },
+        {
+            "version": 28,
+            "file": "028_query_optimization_indexes.sql",
+            "sha256": "4ca1c7bc05500038eee7d08a9a405eafd67e0f3c9046338e2b687a7c4b610ea6"
+        }
+    ]
+}
