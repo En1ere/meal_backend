@@ -30,7 +30,7 @@ npm run openapi
 
 Node.js 24 (см. `.node-version`), npm 11. Установите зависимости `npm ci`, скопируйте `.env.example` в `.env`, задайте независимые `SECURITY_KEY` и `MFA_ENCRYPTION_KEY` (по 32 случайных байта base64) и `DATABASE_URL` роли `meal_app`. Затем `npm run build` и `npm start`. API: `http://localhost:3001/api/v1`, liveness: `/health/live`, readiness: `/health/ready`. Без БД процесс запускается, readiness возвращает 503.
 
-Frontend живёт в отдельном `meal_frontend`; оба приложения обращаются через свой `/api` proxy к `BACKEND_ORIGIN=http://127.0.0.1:3001`. По умолчанию разрешены origins `http://localhost:3000` и `http://localhost:3002`. Миграции и seed при старте API не выполняются. Платежи, почта, AI и прочие внешние провайдеры остаются fail closed.
+Frontend живёт в отдельном `meal_frontend`; оба приложения обращаются через свой `/api` proxy к `BACKEND_ORIGIN=http://127.0.0.1:3001`. По умолчанию разрешены origins `http://localhost:3000` и `http://localhost:3002`. Миграции и seed при старте API не выполняются. После чистых миграций владелец явно применяет `database/reference-data.sql`: только 7 единиц измерения и 3 тарифных продукта, без аккаунтов и подписок. Платежи, почта, AI и прочие внешние провайдеры остаются fail closed.
 
 `npm run legal:readiness -- --evidence <file> --release <file>` принимает отдельный JSON с версиями `root`, `front`, `admin` проверяемого frontend release, поскольку соседний репозиторий не является локальной зависимостью backend. Версии backend/OpenAPI читаются локально. Без доказательств юридический выпуск остаётся заблокированным.
 
