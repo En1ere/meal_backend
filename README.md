@@ -28,10 +28,22 @@ npm run openapi
 
 ## Самостоятельный репозиторий
 
-Node.js 24 (см. `.node-version`), npm 11. Установите зависимости `npm ci`, скопируйте `.env.example` в `.env`, задайте независимые `SECURITY_KEY` и `MFA_ENCRYPTION_KEY` (по 32 случайных байта base64) и `DATABASE_URL` роли `meal_app`. Затем `npm run build` и `npm start`. API: `http://localhost:3001/api/v1`, liveness: `/health/live`, readiness: `/health/ready`. Без БД процесс запускается, readiness возвращает 503.
+Node.js 24 (см. `.node-version`), npm 11. Установите зависимости `npm ci`, скопируйте `.env.example` в `.env`, задайте независимые `SECURITY_KEY` и `MFA_ENCRYPTION_KEY` (по 32 случайных байта base64) и `DATABASE_URL` роли `meal_app`. Затем `npm run build` и `npm start`. API: `http://127.0.0.1:3001/api/v1`, liveness: `/health/live`, readiness: `/health/ready`. Без БД процесс запускается, readiness возвращает 503.
 
-Frontend живёт в отдельном `meal_frontend`; оба приложения обращаются через свой `/api` proxy к `BACKEND_ORIGIN=http://127.0.0.1:3001`. По умолчанию разрешены origins `http://localhost:3000` и `http://localhost:3002`. Миграции и seed при старте API не выполняются. После чистых миграций владелец явно применяет `database/reference-data.sql`: только 7 единиц измерения и 3 тарифных продукта, без аккаунтов и подписок. Платежи, почта, AI и прочие внешние провайдеры остаются fail closed.
+Клиент живёт в независимом `meal_frontend`, админка — в независимом `meal_admin`; оба приложения обращаются через свой `/api` proxy к `BACKEND_ORIGIN=http://127.0.0.1:3001`. По умолчанию разрешены origins `http://localhost:3000` и `http://localhost:3002`. Миграции и seed при старте API не выполняются. После чистых миграций владелец явно применяет `database/reference-data.sql`: только 7 единиц измерения и 3 тарифных продукта, без аккаунтов и подписок. Платежи, почта, AI и прочие внешние провайдеры остаются fail closed.
 
-`npm run legal:readiness -- --evidence <file> --release <file>` принимает отдельный JSON с версиями `root`, `front`, `admin` проверяемого frontend release, поскольку соседний репозиторий не является локальной зависимостью backend. Версии backend/OpenAPI читаются локально. Без доказательств юридический выпуск остаётся заблокированным.
+`npm run legal:readiness -- --evidence <file> --release <file>` принимает отдельный JSON с версиями `root`, `front`, `admin` проверяемых frontend/admin releases, поскольку соседний репозиторий не является локальной зависимостью backend. Версии backend/OpenAPI читаются локально. Без доказательств юридический выпуск остаётся заблокированным.
 
 Изолированный PostgreSQL acceptance: `npm run test:postgres:isolated -- -PgBin <PostgreSQL18-bin> -Iterations 1`. Временная БД и отчёты размещаются только в `D:\AITemp\meal-backend-postgres-acceptance`; тест не подключается к серверной БД.
+
+## Три независимых приложения
+
+| Репозиторий     | Локальный адрес         | Назначение                                |
+| --------------- | ----------------------- | ----------------------------------------- |
+| `meal_backend`  | `http://127.0.0.1:3001` | NestJS API и подключение PostgreSQL       |
+| `meal_frontend` | `http://localhost:3000` | Next.js клиент с собственным `/api` proxy |
+| `meal_admin`    | `http://localhost:3002` | Vite админка с собственным `/api` proxy   |
+
+В backend задаются `FRONTEND_ORIGIN=http://localhost:3000` и `ADMIN_FRONTEND_ORIGIN=http://localhost:3002`. В каждом frontend отдельно задаётся `BACKEND_ORIGIN=http://127.0.0.1:3001`; для админки включается `VITE_API_MODE=real`. Origins должны совпадать с адресами браузера, включая имя host и порт. HTTP-контракты не меняются при выделении админки; перенос cookies/CSRF между клиентом и admin namespace не допускается.
+
+Для локальной работы с существующей тестовой БД сначала откройте отдельный SSH tunnel `ssh -N -L 15432:127.0.0.1:5432 alex@91.201.42.153`. Затем в backend выполните `npm ci`, `npm run build`, `npm start` с локальным ignored `.env` и проверьте `/health/ready` (200 означает готовность БД). Клиент и админку запускайте независимо по их README. Остановка туннеля делает БД недоступной локальному API; повторное применение миграций или reference data для обычного запуска не нужно. База не публикует порт в интернет.
