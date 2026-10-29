@@ -3,6 +3,7 @@ set -eu
 
 DEPLOY_ROOT=${DEPLOY_ROOT:-/srv/meal/deployment}
 COMPOSE_FILE=${COMPOSE_FILE:-$DEPLOY_ROOT/compose.production.yml}
+ACCOUNT_MAIL_COMPOSE_FILE=${ACCOUNT_MAIL_COMPOSE_FILE:-$DEPLOY_ROOT/compose.account-mail.yml}
 DEPLOY_ENV_FILE=${DEPLOY_ENV_FILE:-/etc/meal-planner/deploy.env}
 DEPLOY_LOCK_FILE=${DEPLOY_LOCK_FILE:-/run/lock/meal-planner-deploy.lock}
 STATE_ROOT=${STATE_ROOT:-/var/lib/meal-planner/deployments}
@@ -47,7 +48,16 @@ validate_images() {
 }
 
 compose() {
-    docker compose -f "$COMPOSE_FILE" "$@"
+    if [ "${ACCOUNT_MAIL_ENABLED:-false}" = true ]; then
+        require_file "$ACCOUNT_MAIL_COMPOSE_FILE"
+        docker compose -f "$COMPOSE_FILE" -f "$ACCOUNT_MAIL_COMPOSE_FILE" --profile mail "$@"
+    else
+        docker compose -f "$COMPOSE_FILE" "$@"
+    fi
+}
+
+account_mail_enabled() {
+    [ "${ACCOUNT_MAIL_ENABLED:-false}" = true ]
 }
 
 persist_images() {

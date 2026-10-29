@@ -1,8 +1,9 @@
--- Apply separately after reviewed restore + migrations 1-23. No owner/superuser privileges.
+-- Apply separately after reviewed restore + migrations 1-31. No owner/superuser privileges.
 BEGIN ISOLATION LEVEL SERIALIZABLE;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='30s';
 GRANT USAGE ON SCHEMA meal TO meal_app;
+GRANT USAGE ON SCHEMA meal TO meal_mail_worker;
 GRANT SELECT,INSERT ON meal.admin_session_unlocks TO meal_app;
 GRANT SELECT ON meal.schema_migrations,meal.environment,meal.users,meal.password_credentials,
  meal.user_settings,meal.sessions,meal.auth_challenges,meal.mfa_factors,meal.mfa_recovery_codes,
@@ -289,4 +290,14 @@ GRANT UPDATE(granted,balance_projection,reserved_projection,version) ON meal.ai_
 GRANT SELECT,INSERT ON meal.acceptance_test_runs,meal.acceptance_test_results,meal.acceptance_test_events TO meal_app;
 GRANT UPDATE(source_checksum,status,comment,checked_by,checked_at,updated_at,version)
  ON meal.acceptance_test_results TO meal_app;
+-- v31 transactional account mail. The HTTP role can only enqueue in the token transaction.
+GRANT INSERT ON meal.account_mail_deliveries TO meal_app;
+-- The worker role cannot read password/MFA/session material or mutate account tokens.
+GRANT SELECT(id,token_ciphertext,cipher_key_version,expires_at,used_at,revoked_at)
+ ON meal.account_tokens TO meal_mail_worker;
+GRANT SELECT ON meal.account_mail_deliveries TO meal_mail_worker;
+GRANT UPDATE(status,attempts,available_at,lease_owner,lease_token,lease_until,provider_reference,
+ last_error_code,accepted_at,completed_at,updated_at,version)
+ ON meal.account_mail_deliveries TO meal_mail_worker;
+GRANT INSERT ON meal.account_mail_attempts TO meal_mail_worker;
 COMMIT;

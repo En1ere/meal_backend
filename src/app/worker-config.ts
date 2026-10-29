@@ -34,6 +34,8 @@ export function readWorkerApplicationConfig(env: NodeJS.ProcessEnv): AppConfig {
         COOKING_LIFECYCLE_ENABLED: false,
         LOG_LEVEL: 'warn',
         APP_VERSION: env.APP_VERSION,
+        ACCOUNT_MAIL_ENABLED: false,
+        ACCOUNT_MAIL_TOKEN_KEY: undefined,
         AUTH_RATE_LIMIT: 10,
         PIN_TRUST_DAYS: 30,
         REGISTRATION_RISK_ENABLED: false,

@@ -8,9 +8,9 @@ import {
 const manifest = {
     database: 'meal_planner_postgres',
     postgresMajor: 18,
-    schemaVersion: 30,
-    totalTables: 212,
-    foreignKeys: 488,
+    schemaVersion: 31,
+    totalTables: 214,
+    foreignKeys: 492,
 };
 
 void test('operational readiness exposes implemented lease and telemetry as capabilities', () => {

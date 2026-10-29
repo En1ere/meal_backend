@@ -110,6 +110,10 @@ void test('component deployment isolates UI rollout from database migration', as
     assert.match(deploy, /if \[ "\$component" = backend \]; then/);
     assert.match(deploy, /compose pull backend worker/);
     assert.match(deploy, /compose up -d --no-deps backend worker/);
+    assert.match(deploy, /create role meal_mail_worker nologin noinherit/);
+    assert.match(deploy, /account_mail_enabled/);
+    assert.match(deploy, /mail-worker/);
+    assert.match(deploy, /schema_version=31/);
     assert.match(deploy, /persist_images/);
     assert.match(deploy, /compose up -d --no-deps "\$component"/);
     assert.match(deploy, /ALLOW_BACKEND_AUTO_ROLLBACK/);
@@ -155,8 +159,9 @@ void test('component deployment isolates UI rollout from database migration', as
     const proxySmoke = await text('deploy/proxy-smoke.sh');
     assert.match(proxySmoke, /X-Forwarded-For/);
     assert.match(proxySmoke, /Runtime proxy source verified by admin guard/);
-    assert.match(bootstrap, /30\/212\/488\/18/);
+    assert.match(bootstrap, /31\/214\/492\/18/);
     assert.match(bootstrap, /meal_runtime/);
+    assert.doesNotMatch(bootstrap, /grant meal_mail_worker to meal_runtime/);
     assert.match(bootstrap, /chown postgres:postgres "\$restore_path"/);
     assert.match(bootstrap, /chmod 0600 "\$restore_path"/);
     assert.match(bootstrap, /--username "\$\{POSTGRES_USER:-meal_owner\}" --no-owner/);
@@ -167,4 +172,13 @@ void test('component deployment isolates UI rollout from database migration', as
     assert.match(systemd, /Requires=docker\.service/);
     assert.match(systemd, /ExecStart=\/bin\/sh \/srv\/meal\/deployment\/stack\.sh up/);
     assert.match(systemd, /ExecStop=\/bin\/sh \/srv\/meal\/deployment\/stack\.sh stop/);
+    const common = await text('deploy/common.sh');
+    assert.match(common, /compose\.account-mail\.yml/);
+    assert.match(common, /ACCOUNT_MAIL_ENABLED:-false/);
+    const provisionMail = await text('deploy/provision-account-mail-runtime.sh');
+    assert.match(provisionMail, /create role meal_mail_runtime login noinherit/);
+    assert.match(provisionMail, /revoke meal_app from meal_mail_runtime/);
+    assert.match(provisionMail, /grant meal_mail_worker to meal_mail_runtime with inherit false, set true/);
+    assert.match(provisionMail, /mail-worker-database-url/);
+    assert.match(verify, /wait_healthy mail-worker/);
 });

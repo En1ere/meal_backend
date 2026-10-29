@@ -106,6 +106,9 @@ try {
         await client.query(
             `CREATE ROLE meal_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD '${password}'`,
         );
+        await client.query(
+            'CREATE ROLE meal_mail_worker NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS',
+        );
         await client.query('GRANT CONNECT ON DATABASE meal_planner_postgres TO meal_app');
         await client.query('GRANT USAGE ON SCHEMA meal TO meal_app');
         // Same reviewed grants as the Linux handoff; omit transaction wrappers inside this transaction.

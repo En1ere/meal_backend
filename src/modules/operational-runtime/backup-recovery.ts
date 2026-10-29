@@ -1,7 +1,7 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import { z } from 'zod';
 
-export const BACKUP_RECOVERY_CONTRACT_VERSION = 5 as const;
+export const BACKUP_RECOVERY_CONTRACT_VERSION = 6 as const;
 const checksumSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const opaqueLocatorSchema = z
     .string()
@@ -39,7 +39,7 @@ export const recoverySetSchema = z
         state: z.literal('ready'),
         database: z.literal('meal_planner_postgres'),
         postgresMajor: z.literal(18),
-        schemaVersion: z.literal(30),
+        schemaVersion: z.literal(31),
         migrationManifestChecksum: checksumSchema,
         snapshotAt: z.iso.datetime(),
         secrets: z.literal('excluded'),
@@ -78,8 +78,8 @@ export const restoreDrillEvidenceSchema = z
         gates: z.strictObject({
             artifactHashes: z.boolean(),
             schemaVersion: z.boolean(),
-            tableCount212: z.boolean(),
-            foreignKeyCount488: z.boolean(),
+            tableCount214: z.boolean(),
+            foreignKeyCount492: z.boolean(),
             applicationRole: z.boolean(),
             domainSmoke: z.boolean(),
             mediaCoverage: z.boolean(),

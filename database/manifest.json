@@ -2,9 +2,9 @@
     "schema": "meal",
     "database": "meal_planner_postgres",
     "postgresMajor": 18,
-    "domainTables": 207,
-    "totalTables": 212,
-    "foreignKeys": 488,
+    "domainTables": 209,
+    "totalTables": 214,
+    "foreignKeys": 492,
     "migrations": [
         {
             "version": 1,
@@ -155,6 +155,11 @@
             "version": 30,
             "file": "030_admin_acceptance_testing.sql",
             "sha256": "b55bb47bea5489cc7619e77d3e2b2f7ca68be7305f4b46b3cadfc3ab772db203"
+        },
+        {
+            "version": 31,
+            "file": "031_account_mail_delivery.sql",
+            "sha256": "76bd6f1f0e55465f2c55690126a3ec138daca5c4dd49240f7d63f2064226e5d7"
         }
     ]
 }

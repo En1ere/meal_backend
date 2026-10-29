@@ -1,6 +1,6 @@
 -- Canonical reference data extracted from the former development seed.
 -- No accounts, subscriptions, prices, demo catalog or provider configuration.
--- Apply explicitly as database owner after migrations 001-029; never run on startup.
+-- Apply explicitly as database owner after migrations 001-031; never run on startup.
 BEGIN ISOLATION LEVEL SERIALIZABLE;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='30s';
@@ -8,7 +8,7 @@ SELECT pg_advisory_xact_lock(73821641);
 DO $guard$ BEGIN
  IF current_database() <> 'meal_planner_postgres'
  OR NOT EXISTS(SELECT 1 FROM meal.environment WHERE name IN ('test','development'))
- OR (SELECT count(*) FROM meal.schema_migrations) <> 30
+ OR (SELECT count(*) FROM meal.schema_migrations) <> 31
  THEN RAISE EXCEPTION 'Reference-data target or migration history mismatch'; END IF;
 END $guard$;
 

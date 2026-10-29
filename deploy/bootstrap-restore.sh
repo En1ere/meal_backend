@@ -62,6 +62,8 @@ select 'create role meal_app nologin noinherit nosuperuser nocreatedb nocreatero
 where not exists(select 1 from pg_roles where rolname='meal_app') \gexec
 select 'create role meal_runtime login inherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls'
 where not exists(select 1 from pg_roles where rolname='meal_runtime') \gexec
+select 'create role meal_mail_worker nologin noinherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls'
+where not exists(select 1 from pg_roles where rolname='meal_mail_worker') \gexec
 alter role meal_app nologin noinherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls;
 alter role meal_runtime login inherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls password :'runtime_password';
 grant meal_app to meal_runtime with inherit true, set true;
@@ -89,13 +91,15 @@ select
  (select count(*) from information_schema.tables where table_schema='meal' and table_type='BASE TABLE'),
  (select count(*) from pg_constraint c join pg_namespace n on n.oid=c.connamespace where n.nspname='meal' and c.contype='f'),
  current_setting('server_version_num')::int/10000;")
-[ "$facts" = "30/212/488/18" ] || { echo "Restored database invariant mismatch" >&2; exit 65; }
+[ "$facts" = "31/214/492/18" ] || { echo "Restored database invariant mismatch" >&2; exit 65; }
 role_facts=$(compose exec -T postgres psql --username "${POSTGRES_USER:-meal_owner}" \
     --dbname meal_planner_postgres --no-password --tuples-only --no-align --field-separator / --command "
-select app.rolcanlogin,app.rolinherit,runtime.rolcanlogin,runtime.rolinherit,
- exists(select 1 from pg_auth_members m where m.roleid=app.oid and m.member=runtime.oid and m.inherit_option and m.set_option)
-from pg_roles app cross join pg_roles runtime where app.rolname='meal_app' and runtime.rolname='meal_runtime';")
-[ "$role_facts" = "f/f/t/t/t" ] || { echo "Runtime role chain mismatch" >&2; exit 65; }
+select app.rolcanlogin,app.rolinherit,mail.rolcanlogin,mail.rolinherit,runtime.rolcanlogin,runtime.rolinherit,
+ exists(select 1 from pg_auth_members m where m.roleid=app.oid and m.member=runtime.oid and m.inherit_option and m.set_option),
+ not exists(select 1 from pg_auth_members m where m.roleid=mail.oid and m.member=runtime.oid)
+from pg_roles app cross join pg_roles mail cross join pg_roles runtime
+where app.rolname='meal_app' and mail.rolname='meal_mail_worker' and runtime.rolname='meal_runtime';")
+[ "$role_facts" = "f/f/f/f/t/t/t/t" ] || { echo "Runtime role chain mismatch" >&2; exit 65; }
 
 # Validate the actual secret URI, including `options=-c role=meal_app`, without exposing it.
 if ! compose run --rm --no-deps backend node --input-type=module --eval '

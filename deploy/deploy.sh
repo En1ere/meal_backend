@@ -38,19 +38,35 @@ if [ "$component" = backend ]; then
     }
 fi
 compose config --quiet
-if [ "$component" = backend ]; then compose pull backend worker; else compose pull "$component"; fi
+if [ "$component" = backend ]; then
+    if account_mail_enabled; then compose pull backend worker mail-worker; else compose pull backend worker; fi
+else
+    compose pull "$component"
+fi
 if [ "$component" = backend ]; then
     # Only backend releases own schema changes. UI-only releases never touch PostgreSQL.
     MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/backup.sh" >"$state_dir/backup.path"
-    compose stop backend worker
+    if account_mail_enabled; then compose stop backend worker mail-worker; else compose stop backend worker; fi
     compose --profile tools run --rm migrate
+    # Cluster roles are not transactional schema objects. Create the NOLOGIN
+    # grant role idempotently before application-grants.sql references it.
+    compose exec -T postgres psql --username "${POSTGRES_USER:-meal_owner}" \
+        --dbname meal_planner_postgres --no-password --set ON_ERROR_STOP=1 <<'SQL'
+select 'create role meal_mail_worker nologin noinherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls'
+where not exists(select 1 from pg_roles where rolname='meal_mail_worker') \gexec
+alter role meal_mail_worker nologin noinherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls;
+SQL
     compose --profile tools run --rm --no-deps --entrypoint cat migrate database/application-grants.sql \
         | compose exec -T postgres psql --username "${POSTGRES_USER:-meal_owner}" \
             --dbname meal_planner_postgres --no-password --set ON_ERROR_STOP=1
     MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/proxy-smoke.sh" >"$state_dir/proxy-smoke.txt"
 fi
 
-if [ "$component" = backend ]; then compose up -d --no-deps backend worker; else compose up -d --no-deps "$component"; fi
+if [ "$component" = backend ]; then
+    if account_mail_enabled; then compose up -d --no-deps backend worker mail-worker; else compose up -d --no-deps backend worker; fi
+else
+    compose up -d --no-deps "$component"
+fi
 if ! MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/verify.sh" --component "$component"; then
     printf '%s\n' failed >"$state_dir/status"
     if [ "$component" = backend ] && {
@@ -59,15 +75,20 @@ if ! MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/verify.sh" --component "$component"; then
         [ "$(stat -c %u "${BACKEND_ROLLBACK_EVIDENCE_FILE:-/nonexistent}" 2>/dev/null || echo invalid)" != 0 ] ||
         ! grep -Fqx "previous_image=$previous_image" "$BACKEND_ROLLBACK_EVIDENCE_FILE" ||
         ! grep -Fqx "candidate_image=$candidate_image" "$BACKEND_ROLLBACK_EVIDENCE_FILE" ||
-        ! grep -Fqx 'schema_version=29' "$BACKEND_ROLLBACK_EVIDENCE_FILE";
+        ! grep -Fqx 'schema_version=31' "$BACKEND_ROLLBACK_EVIDENCE_FILE";
     }; then
         echo "Backend verification failed after migration; fail-closed until compatibility evidence authorizes application rollback" >&2
         exit 1
     fi
     set_component_image "$component" "$previous_image"
     if [ "$component" = backend ]; then
-        compose pull backend worker
-        compose up -d --no-deps backend worker
+        if account_mail_enabled; then
+            compose pull backend worker mail-worker
+            compose up -d --no-deps backend worker mail-worker
+        else
+            compose pull backend worker
+            compose up -d --no-deps backend worker
+        fi
     else
         compose pull "$component"
         compose up -d --no-deps "$component"

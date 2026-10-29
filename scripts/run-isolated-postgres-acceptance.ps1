@@ -121,7 +121,7 @@ try {
             & (Join-Path $PgBin 'psql.exe') '-w' '-v' 'ON_ERROR_STOP=1' '-c' $billingFixtures | Out-Null
             if ($LASTEXITCODE -ne 0) { throw "Iteration ${iteration}: billing fixture creation failed." }
 
-            $createRole = "CREATE ROLE meal_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD '$appPassword'; GRANT CONNECT ON DATABASE meal_planner_postgres TO meal_app; GRANT USAGE ON SCHEMA meal TO meal_app;"
+            $createRole = "CREATE ROLE meal_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD '$appPassword'; CREATE ROLE meal_mail_worker NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; GRANT CONNECT ON DATABASE meal_planner_postgres TO meal_app; GRANT USAGE ON SCHEMA meal TO meal_app;"
             & (Join-Path $PgBin 'psql.exe') '-w' '-v' 'ON_ERROR_STOP=1' '-c' $createRole | Out-Null
             if ($LASTEXITCODE -ne 0) { throw "Iteration ${iteration}: application role creation failed." }
             & (Join-Path $PgBin 'psql.exe') '-w' '-v' 'ON_ERROR_STOP=1' '-f' (Join-Path $backRoot 'database\application-grants.sql') | Out-Null
@@ -142,6 +142,8 @@ try {
                 )
                 throw "Iteration ${iteration}: live acceptance failed. See $failureRoot\stdout.failed.log"
             }
+            & node scripts/test-account-mail-postgres.mjs
+            if ($LASTEXITCODE -ne 0) { throw "Iteration ${iteration}: account-mail live acceptance failed." }
             $evidenceLines = @($acceptanceOutput | ForEach-Object { [string]$_ } | Where-Object { $_.StartsWith('ACCEPTANCE_EVIDENCE ') })
             if ($evidenceLines.Count -ne 1) { throw "Iteration ${iteration}: expected exactly one ACCEPTANCE_EVIDENCE line." }
             $workflowEvidence = $evidenceLines[0].Substring('ACCEPTANCE_EVIDENCE '.Length) | ConvertFrom-Json

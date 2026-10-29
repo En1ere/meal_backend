@@ -1,4 +1,4 @@
-// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029/030 overlays.
+// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029/030/031 overlays.
 import type { ColumnType, Generated } from 'kysely';
 type Timestamp = ColumnType<Date, Date | string, Date | string>;
 type Int64 = ColumnType<string, string | number | bigint, string | number | bigint>;
@@ -6,6 +6,39 @@ type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string
 type OptionalInsert<T> =
     T extends ColumnType<infer S, infer I, infer U> ? ColumnType<S, I | undefined, U> : Generated<T>;
 export interface DatabaseSchema {
+    account_mail_deliveries: {
+        id: string;
+        account_token_id: string;
+        user_id: string;
+        recipient: string;
+        kind: 'verify' | 'reset' | 'email-confirm' | 'email-cancel';
+        change_id: string | null;
+        status: 'queued' | 'processing' | 'accepted' | 'retry_scheduled' | 'unknown' | 'failed' | 'skipped';
+        attempts: OptionalInsert<number>;
+        available_at: OptionalInsert<Timestamp>;
+        lease_owner: string | null;
+        lease_token: string | null;
+        lease_until: Timestamp | null;
+        message_id: string;
+        provider_reference: string | null;
+        last_error_code: string | null;
+        accepted_at: Timestamp | null;
+        completed_at: Timestamp | null;
+        created_at: OptionalInsert<Timestamp>;
+        updated_at: OptionalInsert<Timestamp>;
+        version: OptionalInsert<Int64>;
+    };
+    account_mail_attempts: {
+        id: string;
+        delivery_id: string;
+        attempt_no: number;
+        outcome: 'accepted' | 'retry_scheduled' | 'unknown' | 'failed' | 'skipped';
+        message_id: string;
+        error_code: string | null;
+        started_at: Timestamp;
+        finished_at: Timestamp;
+        created_at: OptionalInsert<Timestamp>;
+    };
     acceptance_test_runs: {
         id: string;
         catalog_version: string;

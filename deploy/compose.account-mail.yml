@@ -1,0 +1,61 @@
+services:
+    backend:
+        environment:
+            ACCOUNT_MAIL_ENABLED: 'true'
+            ACCOUNT_MAIL_TOKEN_KEY_FILE: /run/secrets/account_mail_token_key
+        secrets: [account_mail_token_key]
+
+    mail-worker:
+        image: ${BACKEND_IMAGE:?immutable backend digest reference is required}
+        profiles: [mail]
+        init: true
+        user: node
+        read_only: true
+        cap_drop: [ALL]
+        security_opt: [no-new-privileges:true]
+        pids_limit: 64
+        restart: unless-stopped
+        group_add: ['${MEAL_SECRETS_GID:-29001}']
+        environment:
+            NODE_ENV: production
+            DATABASE_URL_FILE: /run/secrets/mail_worker_database_url
+            ACCOUNT_MAIL_TOKEN_KEY_FILE: /run/secrets/account_mail_token_key
+            SMTP_PASSWORD_FILE: /run/secrets/smtp_password
+            SMTP_HOST: ${SMTP_HOST:?SMTP host is required}
+            SMTP_PORT: ${SMTP_PORT:-465}
+            SMTP_SECURE: ${SMTP_SECURE:-true}
+            SMTP_REQUIRE_TLS: 'true'
+            SMTP_USERNAME: ${SMTP_USERNAME:?SMTP username is required}
+            SMTP_FROM: ${SMTP_FROM:?SMTP from address is required}
+            SMTP_REPLY_TO: ${SMTP_REPLY_TO:-}
+            FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?frontend HTTPS origin is required}
+            MAIL_WORKER_OWNER_ID: ${MAIL_WORKER_OWNER_ID:-mail-primary}
+            MAIL_WORKER_BATCH_SIZE: ${MAIL_WORKER_BATCH_SIZE:-10}
+            MAIL_WORKER_POLL_MS: ${MAIL_WORKER_POLL_MS:-2000}
+            MAIL_WORKER_LEASE_SECONDS: ${MAIL_WORKER_LEASE_SECONDS:-120}
+            SMTP_CONNECTION_TIMEOUT_MS: ${SMTP_CONNECTION_TIMEOUT_MS:-10000}
+            SMTP_SOCKET_TIMEOUT_MS: ${SMTP_SOCKET_TIMEOUT_MS:-15000}
+        secrets: [mail_worker_database_url, account_mail_token_key, smtp_password]
+        tmpfs:
+            - '/tmp:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=0700,size=16m'
+            - '/run/meal-mail-worker:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=0700,size=2m'
+        depends_on:
+            postgres:
+                condition: service_healthy
+        healthcheck:
+            test: [CMD, node, scripts/check-account-mail-worker-health.mjs]
+            interval: 15s
+            timeout: 3s
+            retries: 4
+            start_period: 20s
+        stop_grace_period: 30s
+        networks: [meal-db, meal-egress]
+        command: [node, scripts/run-account-mail-worker.mjs]
+
+secrets:
+    account_mail_token_key:
+        file: ${ACCOUNT_MAIL_TOKEN_KEY_FILE:-/etc/meal-planner/secrets/account-mail-token-key}
+    mail_worker_database_url:
+        file: ${MAIL_WORKER_DATABASE_URL_FILE:-/etc/meal-planner/secrets/mail-worker-database-url}
+    smtp_password:
+        file: ${SMTP_PASSWORD_FILE:-/etc/meal-planner/secrets/smtp-password}

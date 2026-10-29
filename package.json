@@ -1,6 +1,6 @@
 {
     "name": "meal-planner-back",
-    "version": "0.0.150",
+    "version": "0.0.151",
     "private": true,
     "type": "module",
     "engines": {
@@ -48,6 +48,7 @@
         "@nestjs/swagger": "12.0.2",
         "fastify": "5.12.7",
         "kysely": "0.29.6",
+        "nodemailer": "10.3.0",
         "otplib": "13.5.0",
         "pg": "8.23.0",
         "reflect-metadata": "0.2.2",

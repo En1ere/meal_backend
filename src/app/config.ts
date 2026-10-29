@@ -47,6 +47,14 @@ export const configSchema = z.object({
         .string()
         .regex(/^[A-Za-z0-9+/]{43}=$/)
         .optional(),
+    ACCOUNT_MAIL_ENABLED: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
+    ACCOUNT_MAIL_TOKEN_KEY: z
+        .string()
+        .regex(/^[A-Za-z0-9+/]{43}=$/)
+        .optional(),
     AUTH_RATE_LIMIT: z.coerce.number().int().min(1).max(100).default(10),
     PIN_TRUST_DAYS: z.coerce.number().int().min(1).max(365).default(30),
     REGISTRATION_RISK_ENABLED: z
@@ -97,6 +105,7 @@ const secretFiles = {
     DATABASE_URL: 'DATABASE_URL_FILE',
     SECURITY_KEY: 'SECURITY_KEY_FILE',
     MFA_ENCRYPTION_KEY: 'MFA_ENCRYPTION_KEY_FILE',
+    ACCOUNT_MAIL_TOKEN_KEY: 'ACCOUNT_MAIL_TOKEN_KEY_FILE',
 } as const;
 
 function withSecretFiles(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
@@ -151,6 +160,8 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
     ) {
         throw new Error('Production requires HTTPS frontend origin, DATABASE_URL and authentication keys');
     }
+    if (config.NODE_ENV === 'production' && config.ACCOUNT_MAIL_ENABLED && !config.ACCOUNT_MAIL_TOKEN_KEY)
+        throw new Error('Enabled account mail requires ACCOUNT_MAIL_TOKEN_KEY');
     if (config.DATABASE_URL) {
         let connection: URL;
         try {

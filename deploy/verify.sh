@@ -46,12 +46,14 @@ wait_healthy() {
 case "$component" in
     backend)
         require_running postgres; require_running backend; wait_healthy worker
+        if account_mail_enabled; then wait_healthy mail-worker; fi
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready ;;
     frontend) require_running frontend; wait_http frontend http://127.0.0.1:3000/healthz ;;
     admin) require_running admin; wait_http admin http://127.0.0.1:3002/healthz ;;
     all)
         require_running postgres; require_running backend; wait_healthy worker; require_running frontend; require_running admin
+        if account_mail_enabled; then wait_healthy mail-worker; fi
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready
         wait_http frontend http://127.0.0.1:3000/healthz
@@ -70,7 +72,9 @@ if [ "$component" = backend ] || [ "$component" = all ]; then
         echo "Host observability directory metadata is unsafe; bootstrap it before rollout" >&2
         exit 77
     }
-    for application_service in backend worker frontend admin postgres; do
+    application_services='backend worker frontend admin postgres'
+    if account_mail_enabled; then application_services="$application_services mail-worker"; fi
+    for application_service in $application_services; do
         application_id=$(compose ps -q "$application_service")
         [ -z "$application_id" ] && continue
         application_mounts=$(docker inspect --format '{{range .Mounts}}{{println .Source .Destination .RW}}{{end}}' "$application_id")

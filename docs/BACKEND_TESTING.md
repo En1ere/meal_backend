@@ -272,3 +272,15 @@
 - Latency/concurrency/heap guard, SQL optimization pack и длительный resource soak не показывают линейного роста памяти, handles, listeners, pool waiters или PostgreSQL sessions.
 - Production blockers из `npm run ops:readiness`, `ops:topology` и `legal:readiness` закрыты или явно приняты владельцем до запуска.
 - Тестовые данные удалены, база возвращена к baseline.
+
+# Транзакционная почта аккаунта (checkpoint 5)
+
+Транзакционная account-mail подсистема дополнительно проверяется `scripts/test-account-mail-postgres.mjs` внутри каждого isolated PostgreSQL 18 acceptance iteration: тест выполняет atomic enqueue под `meal_app`, claim/terminal finish под `meal_mail_worker`, append-only attempt и отрицательные privilege-проверки credential/session таблиц, затем полностью откатывает fixtures.
+
+1. При отключённом `ACCOUNT_MAIL_ENABLED` production запросы, создающие account token, отвечают `503` и не сохраняют token/outbox частично.
+2. При включённом режиме одна commit-транзакция создаёт token `cipher_key_version=2` и ровно одну delivery; rollback удаляет оба.
+3. Два worker параллельно обрабатывают batch: каждый delivery имеет одного владельца/lease token и одну запись attempt на номер попытки.
+4. Used/revoked/expired token не расшифровывается и заканчивается `skipped`; raw token отсутствует в delivery, attempt и логах.
+5. SMTP acceptance сохраняет `accepted`; 450 планирует backoff, 550 даёт `failed`, timeout после неопределённой acceptance даёт terminal `unknown` без автоматической повторной отправки.
+6. Перезапуск после send до DB commit заканчивает истёкший lease как `unknown`. Одинаковый delivery всегда использует одинаковый Message-ID.
+7. Проверить четыре ссылки и subject в Mailpit/local sink, HTML/text parts и только HTTPS public origin.

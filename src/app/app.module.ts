@@ -58,7 +58,11 @@ import { AdminFreeAiController } from '../modules/admin-free-ai/admin-free-ai.ht
 import { AdminFreeAiService } from '../modules/admin-free-ai/admin-free-ai.service.js';
 import { RecipesService } from '../modules/recipes/recipes.service.js';
 import { AccountService } from '../modules/account/account.service.js';
-import { ACCOUNT_MAIL_OUTBOX, DisabledAccountMailOutbox } from '../modules/account/account-mail.outbox.js';
+import {
+    ACCOUNT_MAIL_OUTBOX,
+    DisabledAccountMailOutbox,
+    PostgresAccountMailOutbox,
+} from '../modules/account/account-mail.outbox.js';
 import { RegistrationRiskPolicy, registrationRiskConfig } from '../modules/account/registration-risk.policy.js';
 import { InventoryController } from '../modules/inventory/inventory.http.js';
 import { InventoryService } from '../modules/inventory/inventory.service.js';
@@ -288,9 +292,18 @@ export class AppModule {
                 DisabledEmailDeliveryProvider,
                 DisabledWebPushDeliveryProvider,
                 DisabledAccountMailOutbox,
+                PostgresAccountMailOutbox,
                 { provide: EMAIL_DELIVERY_PROVIDER, useExisting: DisabledEmailDeliveryProvider },
                 { provide: WEB_PUSH_DELIVERY_PROVIDER, useExisting: DisabledWebPushDeliveryProvider },
-                { provide: ACCOUNT_MAIL_OUTBOX, useExisting: DisabledAccountMailOutbox },
+                {
+                    provide: ACCOUNT_MAIL_OUTBOX,
+                    inject: [APP_CONFIG, DisabledAccountMailOutbox, PostgresAccountMailOutbox],
+                    useFactory: (
+                        config: AppConfig,
+                        disabled: DisabledAccountMailOutbox,
+                        postgres: PostgresAccountMailOutbox,
+                    ) => (config.ACCOUNT_MAIL_ENABLED ? postgres : disabled),
+                },
                 DisabledOcrProvider,
                 { provide: OCR_PROVIDER, useExisting: DisabledOcrProvider },
                 DisabledSecretProvider,

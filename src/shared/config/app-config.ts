@@ -15,6 +15,8 @@ export interface AppConfig {
     APP_VERSION?: string | undefined;
     SECURITY_KEY?: string | undefined;
     MFA_ENCRYPTION_KEY?: string | undefined;
+    ACCOUNT_MAIL_ENABLED: boolean;
+    ACCOUNT_MAIL_TOKEN_KEY?: string | undefined;
     AUTH_RATE_LIMIT: number;
     PIN_TRUST_DAYS: number;
     REGISTRATION_RISK_ENABLED: boolean;

@@ -1,6 +1,7 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { z } from 'zod';
 import type { AccountTx } from './account-state.js';
+import { sql } from 'kysely';
 
 export const ACCOUNT_MAIL_OUTBOX = Symbol('ACCOUNT_MAIL_OUTBOX');
 
@@ -48,5 +49,21 @@ export class DisabledAccountMailOutbox implements AccountMailOutbox {
         void tx;
         void message;
         return Promise.reject(new ServiceUnavailableException('Account mail outbox is not configured'));
+    }
+}
+
+@Injectable()
+export class PostgresAccountMailOutbox implements AccountMailOutbox {
+    status() {
+        return { configured: true, provider: 'postgres' } as const;
+    }
+
+    async enqueue(tx: AccountTx, input: AccountMailMessage): Promise<void> {
+        const message = accountMailMessageSchema.parse(input);
+        const messageId = `<${message.eventId}@transactional.meal-planner.invalid>`;
+        await sql`insert into meal.account_mail_deliveries
+          (id,account_token_id,user_id,recipient,kind,change_id,status,message_id)
+          values(${message.eventId}::uuid,${message.accountTokenId}::uuid,${message.userId}::uuid,
+            ${message.recipient},${message.kind},${message.changeId}::uuid,'queued',${messageId})`.execute(tx);
     }
 }

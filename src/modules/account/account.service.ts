@@ -48,6 +48,7 @@ type MailToken = {
     expires_at: Date;
     used_at: Date | null;
     revoked_at: Date | null;
+    cipher_key_version: number;
 };
 type Proof = { method: 'totp' | 'recovery'; code: string };
 @Injectable()
@@ -167,12 +168,15 @@ export class AccountService {
         const id = randomUUID(),
             token = newToken(),
             expires = new Date(Date.now() + minutes * 60000);
-        await sql`insert into meal.account_tokens(id,user_id,kind,token_hash,token_ciphertext,email_target,change_id,expires_at)
-          values(${id}::uuid,${userId}::uuid,${kind},${tokenHash(token)},${encryptSecret(token, this.config.MFA_ENCRYPTION_KEY!, id)},${email},${changeId}::uuid,${expires})`.execute(
+        const productionMail = this.config.NODE_ENV === 'production';
+        if (productionMail) this.requireMailOutbox();
+        const tokenKey = productionMail ? this.config.ACCOUNT_MAIL_TOKEN_KEY : this.config.MFA_ENCRYPTION_KEY;
+        if (!tokenKey) throw new ServiceUnavailableException('Account mail token key is not configured');
+        await sql`insert into meal.account_tokens(id,user_id,kind,token_hash,token_ciphertext,email_target,change_id,expires_at,cipher_key_version)
+          values(${id}::uuid,${userId}::uuid,${kind},${tokenHash(token)},${encryptSecret(token, tokenKey, id)},${email},${changeId}::uuid,${expires},${productionMail ? 2 : 1})`.execute(
             tx,
         );
-        if (this.config.NODE_ENV === 'production') {
-            this.requireMailOutbox();
+        if (productionMail) {
             await this.accountMailOutbox!.enqueue(
                 tx,
                 accountMailMessageSchema.parse({
@@ -815,7 +819,13 @@ export class AccountService {
             messages: rows.rows.map((row) => ({
                 id: row.id,
                 kind: row.kind,
-                token: decryptSecret(row.token_ciphertext, this.config.MFA_ENCRYPTION_KEY!, row.id),
+                token: decryptSecret(
+                    row.token_ciphertext,
+                    row.cipher_key_version === 2
+                        ? (this.config.ACCOUNT_MAIL_TOKEN_KEY ?? '')
+                        : this.config.MFA_ENCRYPTION_KEY!,
+                    row.id,
+                ),
                 createdAt: row.created_at.toISOString(),
                 expiresAt: row.expires_at.toISOString(),
             })),

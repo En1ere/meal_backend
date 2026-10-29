@@ -362867,7 +362867,7 @@
   },
   "info": {
     "title": "Meal Planner API",
-    "description": "Backend-owned auth/account/privacy/legal-consent/export/profile/admin/inventory/products/recipes/preserves/shopping/receipts/meal-plan/support/AI and simulated paid Plus/Pro lifecycle including promotion, renewal, downgrade and family combination; private diary, finance, nutrition analytics and Pro export contract; database schema v30; external providers and approved legal evidence pending",
+    "description": "Backend-owned auth/account/privacy/legal-consent/export/profile/admin/inventory/products/recipes/preserves/shopping/receipts/meal-plan/support/AI and simulated paid Plus/Pro lifecycle including promotion, renewal, downgrade and family combination; private diary, finance, nutrition analytics and Pro export contract; database schema v31; external providers and approved legal evidence pending",
     "version": "0.0.61",
     "contact": {}
   },
