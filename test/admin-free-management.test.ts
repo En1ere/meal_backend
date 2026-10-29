@@ -9,7 +9,10 @@ import {
 } from '../src/modules/admin-notifications/notification-center.contracts.js';
 import { defaultAdminNotificationSettings } from '../src/modules/admin-notifications/notification-center.service.js';
 import { operationAvailability } from '../src/modules/admin-operations/operations.service.js';
-import { compareContentCards } from '../src/modules/admin-content/admin-content.service.js';
+import {
+    compareContentCards,
+    notDuplicateDecisionApplies,
+} from '../src/modules/admin-content/admin-content.service.js';
 import { governanceCommandSchema } from '../src/modules/admin-governance/admin-governance.contracts.js';
 import { supportManageSchema } from '../src/modules/admin-support/admin-support.contracts.js';
 
@@ -112,6 +115,27 @@ await test('catalog comparison binds versions, resolves every selected conflict 
                 choices: { name: 'left', composition: 'left' },
             },
         ).blockedReason,
+    );
+});
+
+await test('not-duplicate decision binds an unordered product pair to exact versions', () => {
+    const left = { id: randomUUID(), version: 3 };
+    const right = { id: randomUUID(), version: 7 };
+    const direct = {
+        source_product_id: left.id,
+        target_product_id: right.id,
+        preview: { leftVersion: left.version, rightVersion: right.version },
+    };
+    assert.equal(notDuplicateDecisionApplies(direct, left, right), true);
+    assert.equal(notDuplicateDecisionApplies(direct, { ...left, version: 4 }, right), false);
+    assert.equal(notDuplicateDecisionApplies(direct, right, left), true);
+    assert.equal(
+        notDuplicateDecisionApplies(
+            { ...direct, source_product_id: randomUUID(), target_product_id: randomUUID() },
+            left,
+            right,
+        ),
+        false,
     );
 });
 

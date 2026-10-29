@@ -17,6 +17,7 @@ import type { DatabaseService } from '../src/infrastructure/database/database.se
 import type { RecipePolicyService } from '../src/modules/recipe-policy/recipe-policy.service.js';
 import type { EntitlementsService } from '../src/modules/entitlements/entitlements.service.js';
 import { RecipeWorkspaceService } from '../src/modules/recipe-workspace/recipe-workspace.service.js';
+import { RecipeLifecycleService } from '../src/modules/recipe-lifecycle/recipe-lifecycle.service.js';
 import {
     workspaceDocumentSchema,
     workspaceRatingSchema,
@@ -41,6 +42,7 @@ function harness(
         hierarchy?: boolean;
         family?: boolean;
         authorId?: string;
+        published?: boolean;
     } = {},
 ) {
     const queries: CompiledQuery[] = [];
@@ -65,6 +67,14 @@ function harness(
                                 response_snapshot: options.prior.result,
                             },
                         ];
+                    else if (s.includes('from meal.recipe_revisions rr join meal.recipes r'))
+                        rows = [{ recipeId: id, authorId: options.authorId ?? user }];
+                    else if (/^select id,author_id as "authorId"\s+from meal\.recipes/u.test(s))
+                        rows = [{ id, authorId: options.authorId ?? user }];
+                    else if (/^select (?:id,)?revision_id/u.test(s) && s.includes('from meal.recipe_publications'))
+                        rows = options.published
+                            ? [{ id: key, revisionId: revision, publishedAt: new Date('2026-10-28T00:00:00.000Z') }]
+                            : [];
                     else if (s.includes('from meal.recipes r'))
                         rows = options.missing
                             ? []
@@ -116,7 +126,14 @@ function harness(
                     else if (s.includes('from meal.cooking_attempts')) rows = options.cooked ? [{ id: key }] : [];
                     else if (s.includes('from meal.recipe_ratings'))
                         rows = options.rated ? [{ id: key, value: 5 }] : [];
-                    else if (s.includes('from meal.moderation_cases')) rows = options.pending ? [{ id }] : [];
+                    else if (s.includes('from meal.moderation_cases mc'))
+                        rows = options.pending
+                            ? [{ id, revisionId: revision, status: 'pending', publicReason: null }]
+                            : options.published
+                              ? [{ id: key, revisionId: revision, status: 'published', publicReason: null }]
+                              : [];
+                    else if (s.includes('from meal.moderation_cases'))
+                        rows = options.pending ? [{ id }] : options.published ? [{ id: key, status: 'published' }] : [];
                     else if (s.includes('from meal.data_scopes') && options.noScope) rows = [];
                     else if (
                         s.includes('from meal.units') ||
@@ -163,7 +180,13 @@ function harness(
         },
     } as never;
     return {
-        service: new RecipeWorkspaceService(database, policy, entitlements, legalConsents),
+        service: new RecipeWorkspaceService(
+            database,
+            policy,
+            entitlements,
+            legalConsents,
+            new RecipeLifecycleService(),
+        ),
         db,
         queries,
         allowances,
@@ -227,7 +250,10 @@ void test('save creates immutable revision and child rows instead of changing pu
             false,
         );
         assert.equal(
-            h.queries.some((q) => q.sql.includes('recipe_publications')),
+            h.queries.some(
+                (q) =>
+                    (q.sql.startsWith('insert') || q.sql.startsWith('update')) && q.sql.includes('recipe_publications'),
+            ),
             false,
         );
     } finally {
@@ -304,7 +330,7 @@ void test('rating requires confirmed cooking owned by actor and rejects second f
     }
 });
 void test('critical report consumes report allowance, hides content and does not expose reporter publicly', async () => {
-    const h = harness();
+    const h = harness({ published: true });
     try {
         await h.service.report(user, id, {
             idempotencyKey: key,
@@ -313,7 +339,27 @@ void test('critical report consumes report allowance, hides content and does not
             commentId: null,
         });
         assert.deepEqual(h.allowances, ['report']);
-        assert.ok(h.queries.some((q) => q.sql.includes("set status='hidden'")));
+        assert.ok(h.queries.some((q) => q.sql.startsWith('update meal.recipe_publications')));
+        assert.ok(h.queries.some((q) => q.sql.startsWith('update meal.moderation_cases')));
+    } finally {
+        await h.db.destroy();
+    }
+});
+void test('critical report globally hides a family draft without requiring a publication', async () => {
+    const h = harness({ family: true });
+    try {
+        await h.service.report(user, id, {
+            idempotencyKey: key,
+            reason: 'dangerous',
+            comment: null,
+            commentId: null,
+        });
+        assert.deepEqual(h.allowances, ['report']);
+        assert.equal(
+            h.queries.some((q) => q.sql.startsWith('update meal.recipe_publications')),
+            false,
+        );
+        assert.ok(h.queries.some((q) => q.sql.startsWith('update meal.recipes set status=')));
     } finally {
         await h.db.destroy();
     }
@@ -355,7 +401,7 @@ void test('nutrition recalculates exact compatible quantities and never presents
 });
 void test('archive ends active publications; restore does not silently republish', async () => {
     for (const action of ['archive', 'restore'] as const) {
-        const h = harness();
+        const h = harness({ published: action === 'archive' });
         try {
             await h.service.command(user, id, action, { expectedVersion: 1, idempotencyKey: key });
             assert.equal(

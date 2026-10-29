@@ -1,5 +1,43 @@
 # Backend version-list
 
+0.0.132 - 10.28.2026 | 17:51 - Добавлена production Docker/Compose и GitHub Actions инфраструктура общего стека с immutable digest images, явными migration/backup/verify/rollback gates и hardening; Docker secrets поддержаны через безопасные `_FILE` переменные. Recovery contract синхронизирован со schema v29 / 483 FK, runtime-role документирован как `meal_runtime` login с effective `role=meal_app`, а runbook переведён с legacy systemd/symlink smoke на фактический Compose health/rollback/observation и фиксирует текущий legacy health-route blocker.
+
+0.0.131 - 28.10.2026 | 13:12 - Docs-only repository revision синхронизирует live admin `0.0.117` и immutable release `20261028-0757`: root/deep-link отвечают `200`, password → mandatory MFA и `coffee-light` / `nature-dark` smoke прошли без runtime errors. Deployed backend остаётся `0.0.128` / schema v29; runtime-код и публичные контракты не менялись.
+
+0.0.130 - 28.10.2026 | 12:38 - Docs-only repository revision синхронизирует live frontend root/app `0.0.28`/`0.0.137` и immutable release после исправления независимого запуска online session при недоступном offline Service Worker. Зафиксирован read-only desktop/mobile acceptance 24/24 без mutation requests и runtime errors; deployed backend остаётся `0.0.128`, runtime-код и публичные контракты не менялись.
+
+0.0.129 - 28.10.2026 | 12:25 - Docs-only repository revision фиксирует фактический rollout backend 0.0.128, clients-first порядок, schema v29/checksum, свежий pre-migration backup, health/invariant smoke и runtime APP_VERSION; исполняемый release и публичные контракты не менялись.
+
+0.0.128 - 28.10.2026 | 11:35 - Все admin recipe moderation mutations закрыты server-side critical-confirmation gate до idempotency replay; fresh-PG acceptance проверяет missing/stale unlock proof, отсутствующее/истёкшее critical window и успешный valid replay.
+
+0.0.127 - 28.10.2026 | 11:05 - Admin content получил независимые revision-aware оси review/publication с безопасным publicReason; добавлены contract/unit и fresh-PostgreSQL endpoint-проверки сценария active r1 + rejected r2.
+
+0.0.126 - 28.10.2026 | 10:44 - Добавлен отдельный fresh-PostgreSQL acceptance для revision-aware recipe lifecycle: reject с сохранением старой публикации, replacement, оси review/publication, stale/downgrade/concurrent publish, безопасный publicReason, rollback с active-sibling guard, critical global hide и archive/restore без републикации.
+
+0.0.125 - 28.10.2026 | 23:10 - Recipe moderation переведена на revision-aware lifecycle: moderator approve→publish, admin approve сразу публикует, replace/ reject/hide/unpublish/archive/critical-report сохраняют единый publication/case/reputation инвариант. Migration 029 добавляет recipe_id, compatibility backfill/trigger, composite FK и уникальность active publication/case; workspace DTO получает безопасные review/publication без внутренних заметок. Добавлены fresh и v28→v29 PostgreSQL acceptance, rollback несовместимых дублей, OpenAPI/docs/testing baseline v29.
+
+0.0.124 - 27.10.2026 | 18:41 - Deployment/runbook приведён к фактическому тестовому стенду: зафиксированы immutable releases, canonical live/ready endpoints, schema v28, UFW, swap и проверенная chain runtime-ролей; добавлены воспроизводимые build/deploy/smoke/rollback/cleanup шаги без секретов. Удалены невыполнимые после разделения репозиториев команды production-readiness; runtime API, схема и данные не менялись.
+
+0.0.123 - 27.10.2026 | 17:45 - Account-deletion revoked-role acceptance переиспользует отдельного резервного test-admin из content-domain fixture и выполняет revoke/restore/cleanup только в SERIALIZABLE транзакциях. Проверка соблюдает DB write-policy и инвариант последнего администратора; runtime API и схема не менялись.
+
+0.0.122 - 27.10.2026 | 17:35 - Fresh PostgreSQL 18 acceptance исправляет тип контрольной выборки account-deletion review: UUID request id явно приводится к text перед сравнением с idempotency_records.target_binding. Endpoint/runtime API, схема и данные не изменились.
+
+0.0.121 - 27.10.2026 | 17:24 - Fresh PostgreSQL 18 acceptance изолирует конкурентный account-deletion review/replay/conflict на отдельном тестовом remote address, чтобы общий Fastify rate-limit не маскировал ожидаемый idempotency conflict ответом 429. Runtime API, лимиты и схема не изменились.
+
+0.0.120 - 27.10.2026 | 17:13 - Fresh PostgreSQL 18 acceptance учитывает уникальность staff-role на пользователя: временная резервная admin-role назначается отдельному test-user, а не действующему moderator. После проверки роль отзывается; runtime API и схема не изменились.
+
+0.0.119 - 27.10.2026 | 17:04 - Fresh PostgreSQL 18 acceptance revocation-case теперь временно назначает резервного администратора и после восстановления основной роли отзывает его: проверка fresh admin-role больше не нарушает production-инвариант запрета удаления последнего активного администратора. Runtime API и схема не изменились.
+
+0.0.118 - 27.10.2026 | 16:53 - Fresh PostgreSQL 18 acceptance выявил и закрыл least-privilege дефект content-workflow: роль meal_app теперь может читать только необходимое поле catalog_merges.preview для проверки version-bound not-duplicate решения. Добавлен source-regression; wire API, схема и миграции не изменились.
+
+0.0.117 - 27.10.2026 | 16:29 - Catalog content-workflow закрывает stale merge и authorization TOCTOU без изменения wire API: обе карточки блокируются в стабильном порядке и повторно сверяются внутри serializable effect-транзакции, previewKey пересчитывается по актуальным данным, updates связаны с версиями, route target обязан входить в пару, а admin-role проверяется до replay/effect. Решение not-duplicate блокирует точную неупорядоченную пару версий до значимого изменения; acceptance покрывает stale/path/revoked-role/concurrent replay и единственность effect/audit/idempotency.
+
+0.0.116 - 27.10.2026 | 15:49 - Для административного review удаления аккаунта добавлен обязательный UUID idempotencyKey и транзакционный actor-bound replay через meal.idempotency_records. Точный, в том числе конкурентный, повтор возвращает сохранённую deletion projection строго целевого request без второго review-step/audit даже при наличии более нового запроса пользователя; повтор ключа с другим payload отвечает 409. До replay/effect транзакционно перепроверяется актуальная admin-role, закрывая revoke TOCTOU. Повтор пользовательского deletion request при существующем `blocked` возвращает его projection без конфликтующей вставки. Сохранён осознанный повтор review с новым ключом и актуальной версией; OpenAPI и PostgreSQL acceptance обновлены.
+
+0.0.115 - 27.10.2026 | 11:05 - Развёрнут тестовый production-стенд с systemd/Nginx/TLS/firewall, loopback API/PostgreSQL и отдельными frontend/admin origins; добавлен эксплуатационный runbook. Исправлена диагностика HTTP 500: серверный журнал теперь сохраняет безопасные технические поля исключения, не раскрывая их клиенту. Smoke подтвердил frontend login, admin password+MFA, dashboard и health; runtime роли БД задан `search_path=meal,public`.
+
+0.0.114 - 26.10.2026 | 15:05 - Production-приёмка: PostgreSQL 18.6 acceptance исправлен для корректной последовательности доменов, разрешённого временного root и идемпотентного переиспользования обязательных единиц `pcs`/`g` на уже инициализированной базе; WAN/SSH-диагностика отделена от обязательных локальных latency/burst/heap gates; добавлены подробные руководства ручной проверки БД и backend/API, включая SQL/heap/pool/resource soak.
+
 0.0.113 - 24.10.2026 | 19:29 - Инструкции запуска обновлены для трёх независимых проектов meal_backend, meal_frontend и meal_admin; сохранены API, origins и существующая baseline БД.
 
 0.0.112 - 24.10.2026 | 19:16 - Добавлены только канонические справочники: 7 единиц измерения и 3 тарифных продукта, без demoaccounts и подписок. Явное транзакционное применение с проверкой конфликтов; повторное применение сохраняет IDs.

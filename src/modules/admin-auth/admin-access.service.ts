@@ -70,6 +70,17 @@ export class AdminAccessService {
         if (!result.rows.length) throw new AdminConfirmationRequiredException();
     }
 
+    async assertAdminRole(tx: Tx, actor: Principal) {
+        const role = await tx
+            .selectFrom('staff_role_assignments')
+            .select('id')
+            .where('user_id', '=', actor.id)
+            .where('role', '=', 'admin')
+            .where('revoked_at', 'is', null)
+            .executeTakeFirst();
+        if (!role) throw new ForbiddenException();
+    }
+
     async assertCapability(
         db: Tx | NonNullable<DatabaseService['db']>,
         actor: Principal,

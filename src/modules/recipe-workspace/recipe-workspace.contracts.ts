@@ -68,13 +68,20 @@ export const workspaceQuerySchema = z
     })
     .strict();
 export const workspaceDetailQuerySchema = z.object({ scope: workspaceScopeSchema.default('private') }).strict();
+export const recipeReviewStatusSchema = z.enum(['draft', 'pending', 'rejected', 'published', 'hidden', 'unpublished']);
 export const workspaceRecipeSchema = z.object({
     nutrition: workspaceNutritionSchema,
     id: uuid,
     revisionId: uuid,
     version: z.number().int().positive(),
     revision: z.number().int().positive(),
-    status: z.string(),
+    status: recipeReviewStatusSchema,
+    review: z.strictObject({
+        revisionId: uuid,
+        status: recipeReviewStatusSchema,
+        publicReason: z.string().nullable(),
+    }),
+    publication: z.strictObject({ revisionId: uuid, publishedAt: z.iso.datetime() }).nullable(),
     archived: z.boolean(),
     baseRecipeId: uuid.nullable(),
     availabilityScope: workspaceScopeSchema,

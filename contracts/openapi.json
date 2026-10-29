@@ -4381,7 +4381,67 @@
                                 "maximum": 9007199254740991
                               },
                               "status": {
-                                "type": "string"
+                                "type": "string",
+                                "enum": [
+                                  "draft",
+                                  "pending",
+                                  "rejected",
+                                  "published",
+                                  "hidden",
+                                  "unpublished"
+                                ]
+                              },
+                              "review": {
+                                "type": "object",
+                                "properties": {
+                                  "revisionId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "draft",
+                                      "pending",
+                                      "rejected",
+                                      "published",
+                                      "hidden",
+                                      "unpublished"
+                                    ]
+                                  },
+                                  "publicReason": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "revisionId",
+                                  "status",
+                                  "publicReason"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "publication": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "revisionId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "publishedAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                  }
+                                },
+                                "required": [
+                                  "revisionId",
+                                  "publishedAt"
+                                ],
+                                "additionalProperties": false
                               },
                               "archived": {
                                 "type": "boolean"
@@ -4566,6 +4626,8 @@
                               "version",
                               "revision",
                               "status",
+                              "review",
+                              "publication",
                               "archived",
                               "baseRecipeId",
                               "availabilityScope",
@@ -5652,7 +5714,67 @@
                               "maximum": 9007199254740991
                             },
                             "status": {
-                              "type": "string"
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "pending",
+                                "rejected",
+                                "published",
+                                "hidden",
+                                "unpublished"
+                              ]
+                            },
+                            "review": {
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "draft",
+                                    "pending",
+                                    "rejected",
+                                    "published",
+                                    "hidden",
+                                    "unpublished"
+                                  ]
+                                },
+                                "publicReason": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "status",
+                                "publicReason"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "publication": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "publishedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "publishedAt"
+                              ],
+                              "additionalProperties": false
                             },
                             "archived": {
                               "type": "boolean"
@@ -5837,6 +5959,8 @@
                             "version",
                             "revision",
                             "status",
+                            "review",
+                            "publication",
                             "archived",
                             "baseRecipeId",
                             "availabilityScope",
@@ -6758,7 +6882,67 @@
                               "maximum": 9007199254740991
                             },
                             "status": {
-                              "type": "string"
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "pending",
+                                "rejected",
+                                "published",
+                                "hidden",
+                                "unpublished"
+                              ]
+                            },
+                            "review": {
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "draft",
+                                    "pending",
+                                    "rejected",
+                                    "published",
+                                    "hidden",
+                                    "unpublished"
+                                  ]
+                                },
+                                "publicReason": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "status",
+                                "publicReason"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "publication": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "publishedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "publishedAt"
+                              ],
+                              "additionalProperties": false
                             },
                             "archived": {
                               "type": "boolean"
@@ -6943,6 +7127,8 @@
                             "version",
                             "revision",
                             "status",
+                            "review",
+                            "publication",
                             "archived",
                             "baseRecipeId",
                             "availabilityScope",
@@ -8018,7 +8204,67 @@
                               "maximum": 9007199254740991
                             },
                             "status": {
-                              "type": "string"
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "pending",
+                                "rejected",
+                                "published",
+                                "hidden",
+                                "unpublished"
+                              ]
+                            },
+                            "review": {
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "draft",
+                                    "pending",
+                                    "rejected",
+                                    "published",
+                                    "hidden",
+                                    "unpublished"
+                                  ]
+                                },
+                                "publicReason": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "status",
+                                "publicReason"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "publication": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "publishedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "publishedAt"
+                              ],
+                              "additionalProperties": false
                             },
                             "archived": {
                               "type": "boolean"
@@ -8203,6 +8449,8 @@
                             "version",
                             "revision",
                             "status",
+                            "review",
+                            "publication",
                             "archived",
                             "baseRecipeId",
                             "availabilityScope",
@@ -9148,7 +9396,67 @@
                               "maximum": 9007199254740991
                             },
                             "status": {
-                              "type": "string"
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "pending",
+                                "rejected",
+                                "published",
+                                "hidden",
+                                "unpublished"
+                              ]
+                            },
+                            "review": {
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "draft",
+                                    "pending",
+                                    "rejected",
+                                    "published",
+                                    "hidden",
+                                    "unpublished"
+                                  ]
+                                },
+                                "publicReason": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "status",
+                                "publicReason"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "publication": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "publishedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "publishedAt"
+                              ],
+                              "additionalProperties": false
                             },
                             "archived": {
                               "type": "boolean"
@@ -9333,6 +9641,8 @@
                             "version",
                             "revision",
                             "status",
+                            "review",
+                            "publication",
                             "archived",
                             "baseRecipeId",
                             "availabilityScope",
@@ -10278,7 +10588,67 @@
                               "maximum": 9007199254740991
                             },
                             "status": {
-                              "type": "string"
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "pending",
+                                "rejected",
+                                "published",
+                                "hidden",
+                                "unpublished"
+                              ]
+                            },
+                            "review": {
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "draft",
+                                    "pending",
+                                    "rejected",
+                                    "published",
+                                    "hidden",
+                                    "unpublished"
+                                  ]
+                                },
+                                "publicReason": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "status",
+                                "publicReason"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "publication": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "publishedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "publishedAt"
+                              ],
+                              "additionalProperties": false
                             },
                             "archived": {
                               "type": "boolean"
@@ -10463,6 +10833,8 @@
                             "version",
                             "revision",
                             "status",
+                            "review",
+                            "publication",
                             "archived",
                             "baseRecipeId",
                             "availabilityScope",
@@ -11408,7 +11780,67 @@
                               "maximum": 9007199254740991
                             },
                             "status": {
-                              "type": "string"
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "pending",
+                                "rejected",
+                                "published",
+                                "hidden",
+                                "unpublished"
+                              ]
+                            },
+                            "review": {
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "draft",
+                                    "pending",
+                                    "rejected",
+                                    "published",
+                                    "hidden",
+                                    "unpublished"
+                                  ]
+                                },
+                                "publicReason": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "status",
+                                "publicReason"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "publication": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "publishedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "publishedAt"
+                              ],
+                              "additionalProperties": false
                             },
                             "archived": {
                               "type": "boolean"
@@ -11593,6 +12025,8 @@
                             "version",
                             "revision",
                             "status",
+                            "review",
+                            "publication",
                             "archived",
                             "baseRecipeId",
                             "availabilityScope",
@@ -12538,7 +12972,67 @@
                               "maximum": 9007199254740991
                             },
                             "status": {
-                              "type": "string"
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "pending",
+                                "rejected",
+                                "published",
+                                "hidden",
+                                "unpublished"
+                              ]
+                            },
+                            "review": {
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "draft",
+                                    "pending",
+                                    "rejected",
+                                    "published",
+                                    "hidden",
+                                    "unpublished"
+                                  ]
+                                },
+                                "publicReason": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "status",
+                                "publicReason"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "publication": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "publishedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "publishedAt"
+                              ],
+                              "additionalProperties": false
                             },
                             "archived": {
                               "type": "boolean"
@@ -12723,6 +13217,8 @@
                             "version",
                             "revision",
                             "status",
+                            "review",
+                            "publication",
                             "archived",
                             "baseRecipeId",
                             "availabilityScope",
@@ -13661,7 +14157,67 @@
                               "maximum": 9007199254740991
                             },
                             "status": {
-                              "type": "string"
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "pending",
+                                "rejected",
+                                "published",
+                                "hidden",
+                                "unpublished"
+                              ]
+                            },
+                            "review": {
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "draft",
+                                    "pending",
+                                    "rejected",
+                                    "published",
+                                    "hidden",
+                                    "unpublished"
+                                  ]
+                                },
+                                "publicReason": {
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "status",
+                                "publicReason"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "publication": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "revisionId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "publishedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "revisionId",
+                                "publishedAt"
+                              ],
+                              "additionalProperties": false
                             },
                             "archived": {
                               "type": "boolean"
@@ -13846,6 +14402,8 @@
                             "version",
                             "revision",
                             "status",
+                            "review",
+                            "publication",
                             "archived",
                             "baseRecipeId",
                             "availabilityScope",
@@ -249288,12 +249846,18 @@
                     "type": "string",
                     "minLength": 10,
                     "maxLength": 1000
+                  },
+                  "idempotencyKey": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   }
                 },
                 "required": [
                   "decision",
                   "expectedVersion",
-                  "reason"
+                  "reason",
+                  "idempotencyKey"
                 ],
                 "additionalProperties": false
               }
@@ -287665,6 +288229,111 @@
                           ],
                           "additionalProperties": false
                         },
+                        "review": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "status": {
+                              "type": "string"
+                            },
+                            "publicReason": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "revision": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "fields": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "version",
+                                "fields"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "revisionId",
+                            "status",
+                            "publicReason",
+                            "revision"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "publication": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "publishedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "revision": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "fields": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "version",
+                                "fields"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "revisionId",
+                            "publishedAt",
+                            "revision"
+                          ],
+                          "additionalProperties": false
+                        },
                         "status": {
                           "type": "string"
                         },
@@ -287934,6 +288603,8 @@
                         "version",
                         "current",
                         "pending",
+                        "review",
+                        "publication",
                         "status",
                         "history",
                         "cards",
@@ -288779,6 +289450,12 @@
                     "type": "string",
                     "maxLength": 2000
                   },
+                  "publicReason": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 500
+                  },
                   "idempotencyKey": {
                     "type": "string",
                     "format": "uuid",
@@ -288882,6 +289559,111 @@
                             "id",
                             "version",
                             "fields"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "review": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "status": {
+                              "type": "string"
+                            },
+                            "publicReason": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "revision": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "fields": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "version",
+                                "fields"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "revisionId",
+                            "status",
+                            "publicReason",
+                            "revision"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "publication": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "publishedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "revision": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "fields": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "version",
+                                "fields"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "revisionId",
+                            "publishedAt",
+                            "revision"
                           ],
                           "additionalProperties": false
                         },
@@ -289154,6 +289936,8 @@
                         "version",
                         "current",
                         "pending",
+                        "review",
+                        "publication",
                         "status",
                         "history",
                         "cards",
@@ -290120,6 +290904,111 @@
                           ],
                           "additionalProperties": false
                         },
+                        "review": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "status": {
+                              "type": "string"
+                            },
+                            "publicReason": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "revision": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "fields": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "version",
+                                "fields"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "revisionId",
+                            "status",
+                            "publicReason",
+                            "revision"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "publication": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "publishedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "revision": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "fields": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "version",
+                                "fields"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "revisionId",
+                            "publishedAt",
+                            "revision"
+                          ],
+                          "additionalProperties": false
+                        },
                         "status": {
                           "type": "string"
                         },
@@ -290389,6 +291278,8 @@
                         "version",
                         "current",
                         "pending",
+                        "review",
+                        "publication",
                         "status",
                         "history",
                         "cards",
@@ -291372,6 +292263,111 @@
                           ],
                           "additionalProperties": false
                         },
+                        "review": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "status": {
+                              "type": "string"
+                            },
+                            "publicReason": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "revision": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "fields": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "version",
+                                "fields"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "revisionId",
+                            "status",
+                            "publicReason",
+                            "revision"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "publication": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "publishedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "revision": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "fields": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "version",
+                                "fields"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "revisionId",
+                            "publishedAt",
+                            "revision"
+                          ],
+                          "additionalProperties": false
+                        },
                         "status": {
                           "type": "string"
                         },
@@ -291641,6 +292637,8 @@
                         "version",
                         "current",
                         "pending",
+                        "review",
+                        "publication",
                         "status",
                         "history",
                         "cards",
@@ -292602,6 +293600,111 @@
                           ],
                           "additionalProperties": false
                         },
+                        "review": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "status": {
+                              "type": "string"
+                            },
+                            "publicReason": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "revision": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "fields": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "version",
+                                "fields"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "revisionId",
+                            "status",
+                            "publicReason",
+                            "revision"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "publication": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "publishedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "revision": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "fields": {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "version",
+                                "fields"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "revisionId",
+                            "publishedAt",
+                            "revision"
+                          ],
+                          "additionalProperties": false
+                        },
                         "status": {
                           "type": "string"
                         },
@@ -292871,6 +293974,8 @@
                         "version",
                         "current",
                         "pending",
+                        "review",
+                        "publication",
                         "status",
                         "history",
                         "cards",
@@ -304662,6 +305767,12 @@
                     "type": "string",
                     "minLength": 3,
                     "maxLength": 1000
+                  },
+                  "publicReason": {
+                    "nullable": true,
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 500
                   },
                   "version": {
                     "type": "integer",
@@ -357202,7 +358313,7 @@
   },
   "info": {
     "title": "Meal Planner API",
-    "description": "Backend-owned auth/account/privacy/legal-consent/export/profile/admin/inventory/products/recipes/preserves/shopping/receipts/meal-plan/support/AI and simulated paid Plus/Pro lifecycle including promotion, renewal, downgrade and family combination; private diary, finance, nutrition analytics and Pro export contract; prepared database v25; external providers and approved legal evidence pending",
+    "description": "Backend-owned auth/account/privacy/legal-consent/export/profile/admin/inventory/products/recipes/preserves/shopping/receipts/meal-plan/support/AI and simulated paid Plus/Pro lifecycle including promotion, renewal, downgrade and family combination; private diary, finance, nutrition analytics and Pro export contract; database schema v29; external providers and approved legal evidence pending",
     "version": "0.0.60",
     "contact": {}
   },

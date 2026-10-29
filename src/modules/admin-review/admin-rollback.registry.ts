@@ -27,7 +27,7 @@ const snapshotSchema = z.discriminatedUnion('adapter', [
         targetId: uuid,
         expectedVersion: z.number().int().positive(),
         before: z.strictObject({ status: z.literal('published') }),
-        after: z.strictObject({ status: z.enum(['hide', 'unpublish']) }),
+        after: z.strictObject({ status: z.enum(['hidden', 'unpublished']) }),
         publication: z.strictObject({
             id: uuid,
             expectedVersion: z.number().int().positive(),
@@ -119,9 +119,12 @@ export class AdminRollbackRegistry {
             const publication = await sql<{
                 version: number;
                 unpublishedAt: Date | null;
-            }>`select version::int,unpublished_at as "unpublishedAt" from meal.recipe_publications where id=${snapshot.publication.id}::uuid`.execute(
-                db,
-            );
+                recipeId: string;
+                activeSibling: boolean;
+            }>`select rp.version::int,rp.unpublished_at as "unpublishedAt",rp.recipe_id as "recipeId",
+                exists(select 1 from meal.recipe_publications sibling
+                  where sibling.recipe_id=rp.recipe_id and sibling.id<>rp.id and sibling.unpublished_at is null) as "activeSibling"
+                from meal.recipe_publications rp where rp.id=${snapshot.publication.id}::uuid`.execute(db);
             current = row.rows[0]
                 ? {
                       status: row.rows[0].status,
@@ -165,13 +168,22 @@ export class AdminRollbackRegistry {
                 : snapshot.after;
         const publicationReady =
             snapshot.adapter !== 'moderation' ||
-            (
+            ((
                 await sql<{
                     version: number;
-                }>`select version::int from meal.recipe_publications where id=${snapshot.publication.id}::uuid`.execute(
-                    db,
-                )
-            ).rows[0]?.version === snapshot.publication.expectedVersion;
+                    activeSibling: boolean;
+                }>`select rp.version::int,
+                    exists(select 1 from meal.recipe_publications sibling
+                      where sibling.recipe_id=rp.recipe_id and sibling.id<>rp.id and sibling.unpublished_at is null) as "activeSibling"
+                    from meal.recipe_publications rp where rp.id=${snapshot.publication.id}::uuid`.execute(db)
+            ).rows[0]?.version === snapshot.publication.expectedVersion &&
+                !(
+                    await sql<{ activeSibling: boolean }>`select exists(select 1 from meal.recipe_publications target
+                    join meal.recipe_publications sibling on sibling.recipe_id=target.recipe_id and sibling.id<>target.id
+                    where target.id=${snapshot.publication.id}::uuid and sibling.unpublished_at is null) as "activeSibling"`.execute(
+                        db,
+                    )
+                ).rows[0]?.activeSibling);
         const ready = actualVersion === snapshot.expectedVersion && publicationReady && same(current, expectedCurrent);
         return {
             supported: true,
@@ -195,6 +207,19 @@ export class AdminRollbackRegistry {
         if (snapshot.adapter === 'content-release') {
             await this.releases.compensatePublishedReleaseIn(tx, actor, snapshot.targetId, snapshot.expectedVersion);
         } else if (snapshot.adapter === 'moderation') {
+            const recipe = await sql<{
+                recipeId: string;
+                authorId: string;
+            }>`select r.id as "recipeId",r.author_id as "authorId"
+                from meal.recipe_publications rp join meal.recipes r on r.id=rp.recipe_id
+                where rp.id=${snapshot.publication.id}::uuid for update of r`.execute(tx);
+            if (!recipe.rows[0]) throw new ConflictException('Публикация больше не существует');
+            const activeSibling = await sql<{ exists: boolean }>`select exists(select 1 from meal.recipe_publications
+                where recipe_id=${recipe.rows[0].recipeId}::uuid and id<>${snapshot.publication.id}::uuid and unpublished_at is null)`.execute(
+                tx,
+            );
+            if (activeSibling.rows[0]?.exists)
+                throw new ConflictException('Более новая публикация уже активна; компенсация небезопасна');
             const updated = await tx
                 .updateTable('moderation_cases')
                 .set({ status: snapshot.before.status, version: snapshot.expectedVersion + 1 })
@@ -214,12 +239,9 @@ export class AdminRollbackRegistry {
                 .where('version', '=', String(snapshot.publication.expectedVersion))
                 .executeTakeFirst();
             if (Number(publication.numUpdatedRows) !== 1) throw new ConflictException('Публикация изменилась');
-            const recipe = await sql<{
-                recipeId: string;
-                authorId: string;
-            }>`select rr.recipe_id as "recipeId",r.author_id as "authorId"
-                from meal.recipe_publications rp join meal.recipe_revisions rr on rr.id=rp.revision_id join meal.recipes r on r.id=rr.recipe_id
-                where rp.id=${snapshot.publication.id}::uuid`.execute(tx);
+            await sql`update meal.recipes set status='published',version=version+1 where id=${recipe.rows[0].recipeId}::uuid`.execute(
+                tx,
+            );
             if (recipe.rows[0]) {
                 await this.releases.recordReputationEventIn(
                     tx,

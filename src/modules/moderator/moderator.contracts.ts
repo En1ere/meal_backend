@@ -68,6 +68,7 @@ export const moderatorDecisionSchema = z.strictObject({
     action: z.enum(['approve', 'reject', 'publish', 'hide', 'unpublish']),
     category: z.string().trim().min(1).max(100),
     reason: z.string().trim().min(3).max(1000),
+    publicReason: z.string().trim().min(3).max(500).nullable().optional(),
     version: z.number().int().positive(),
     idempotencyKey: z.uuid(),
 });

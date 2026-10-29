@@ -3,6 +3,17 @@ export const contentSectionSchema = z.enum(['queues', 'catalog']);
 export const contentParamsSchema = z.strictObject({ section: contentSectionSchema, id: z.uuid() });
 const fields = z.record(z.string(), z.string().nullable());
 export const contentRevisionSchema = z.strictObject({ id: z.uuid(), version: z.number().int().positive(), fields });
+export const contentReviewSchema = z.strictObject({
+    revisionId: z.uuid(),
+    status: z.string(),
+    publicReason: z.string().nullable(),
+    revision: contentRevisionSchema,
+});
+export const contentPublicationSchema = z.strictObject({
+    revisionId: z.uuid(),
+    publishedAt: z.iso.datetime(),
+    revision: contentRevisionSchema,
+});
 export const contentCardSchema = z.strictObject({
     id: z.uuid(),
     version: z.number().int().positive(),
@@ -19,6 +30,8 @@ export const contentResultSchema = z.strictObject({
     version: z.number().int().positive(),
     current: contentRevisionSchema.nullable(),
     pending: contentRevisionSchema.nullable(),
+    review: contentReviewSchema.nullable(),
+    publication: contentPublicationSchema.nullable(),
     status: z.string(),
     history: z.array(
         z.strictObject({ action: z.string(), reason: z.string(), actor: z.string(), at: z.iso.datetime() }),
@@ -43,6 +56,7 @@ export const contentModerateSchema = z
         action: z.enum(['approve', 'reject', 'hide', 'unpublish']),
         version: z.number().int().positive(),
         reason: z.string().trim().max(2000),
+        publicReason: z.string().trim().min(3).max(500).nullable().optional(),
         ...key,
     })
     .refine((c) => c.action === 'approve' || c.reason.length > 0, 'Укажите причину');

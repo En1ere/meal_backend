@@ -3,6 +3,7 @@ import {
     ForbiddenException,
     Injectable,
     NotFoundException,
+    Optional,
     ServiceUnavailableException,
     UnauthorizedException,
 } from '@nestjs/common';
@@ -11,6 +12,8 @@ import { sql, type Transaction } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
 import type { Principal } from '../auth/auth.service.js';
+import { ContentReleasesService } from '../content-releases/content-releases.service.js';
+import { RecipeLifecycleService, sanitizePublicReviewReason } from '../recipe-lifecycle/recipe-lifecycle.service.js';
 import {
     moderatorClaimSchema,
     moderatorDecisionSchema,
@@ -69,14 +72,18 @@ export type ModeratorDecisionAction = 'approve' | 'reject' | 'publish' | 'hide' 
 
 export function moderatorActionsForStatus(status: string): ModeratorDecisionAction[] {
     if (status === 'published') return ['hide', 'unpublish'];
-    if (['approved', 'pending'].includes(status)) return ['publish', 'reject'];
-    if (['queued', 'in_review'].includes(status)) return ['approve', 'reject'];
+    if (status === 'approved') return ['publish', 'reject'];
+    if (['queued', 'pending', 'in_review'].includes(status)) return ['approve', 'reject'];
     return [];
 }
 
 @Injectable()
 export class ModeratorService {
-    constructor(private readonly database: DatabaseService) {}
+    constructor(
+        private readonly database: DatabaseService,
+        private readonly lifecycle: RecipeLifecycleService,
+        @Optional() private readonly releases?: ContentReleasesService,
+    ) {}
 
     private async db() {
         if (!this.database.db || !(await this.database.ready())) throw new ServiceUnavailableException();
@@ -402,11 +409,15 @@ export class ModeratorService {
     async decision(id: string, raw: unknown, actor: Principal, requestId: string) {
         const input = moderatorDecisionSchema.parse(raw);
         await this.database.transaction(async (tx) => {
-            await this.assertAccess(tx, actor, input.action === 'publish' ? 'catalog.publish' : 'catalog.review');
+            await this.assertAccess(
+                tx,
+                actor,
+                ['publish', 'hide', 'unpublish'].includes(input.action) ? 'catalog.publish' : 'catalog.review',
+            );
             if (await this.replayed(tx, actor, id, `moderator.${input.action}`, input.idempotencyKey, input)) return;
             const item = await tx
                 .selectFrom('moderation_cases')
-                .select(['id', 'version', 'status', 'assigned_to', 'recipe_revision_id'])
+                .select(['id', 'kind', 'version', 'status', 'assigned_to', 'recipe_revision_id'])
                 .where('id', '=', id)
                 .forUpdate()
                 .executeTakeFirst();
@@ -415,6 +426,8 @@ export class ModeratorService {
             if (item.assigned_to !== actor.id) throw new ForbiddenException('Claim the case first');
             if (!moderatorActionsForStatus(item.status).includes(input.action))
                 throw new ConflictException('Action is not available for the current case state');
+            if (input.action === 'publish' && item.kind !== 'recipe')
+                throw new ConflictException('Only recipe submission cases can be published');
             const nextStatus =
                 input.action === 'approve'
                     ? 'approved'
@@ -422,8 +435,20 @@ export class ModeratorService {
                       ? 'rejected'
                       : input.action === 'publish'
                         ? 'published'
-                        : input.action;
+                        : input.action === 'hide'
+                          ? 'hidden'
+                          : 'unpublished';
             const decisionId = randomUUID();
+            const publicReason = sanitizePublicReviewReason(
+                input.publicReason,
+                input.action === 'reject'
+                    ? 'rejected'
+                    : input.action === 'hide'
+                      ? 'hidden'
+                      : input.action === 'unpublish'
+                        ? 'unpublished'
+                        : 'pending',
+            );
             await tx
                 .insertInto('moderation_decisions')
                 .values({
@@ -432,37 +457,72 @@ export class ModeratorService {
                     reason: `[${input.category}] ${input.reason}`,
                     decided_at: new Date(),
                     before_snapshot: { status: item.status },
-                    after_snapshot: { status: nextStatus },
+                    after_snapshot: { status: nextStatus, publicReason },
                     case_id: id,
                     actor_id: actor.id,
                 })
                 .execute();
-            if (input.action === 'publish' && item.recipe_revision_id) {
-                const existing = await tx
-                    .selectFrom('recipe_publications')
-                    .select('id')
-                    .where('revision_id', '=', item.recipe_revision_id)
-                    .where('unpublished_at', 'is', null)
-                    .executeTakeFirst();
-                if (!existing)
-                    await tx
-                        .insertInto('recipe_publications')
-                        .values({
-                            id: randomUUID(),
-                            published_at: new Date(),
-                            unpublished_at: null,
-                            revision_id: item.recipe_revision_id,
-                            decision_id: decisionId,
-                        })
-                        .execute();
+            if (item.recipe_revision_id && item.kind === 'recipe') {
+                if (input.action === 'publish') {
+                    const published = await this.lifecycle.publish(tx, {
+                        caseId: id,
+                        revisionId: item.recipe_revision_id,
+                        decisionId,
+                        actorId: actor.id,
+                    });
+                    if (published.publicationCreated) {
+                        await this.releases?.recordReputationEventIn(
+                            tx,
+                            published.authorId,
+                            'published-own-recipe',
+                            published.recipeId,
+                            `recipe-published:${published.recipeId}`,
+                            { recipeId: published.recipeId, decisionId },
+                        );
+                        await this.releases?.processAchievementEventIn(tx, published.authorId, 'recipe.published', {
+                            recipeId: published.recipeId,
+                            decisionId,
+                        });
+                    }
+                } else if (input.action === 'approve')
+                    await this.lifecycle.markReview(tx, {
+                        caseId: id,
+                        revisionId: item.recipe_revision_id,
+                        status: 'pending',
+                    });
+                else if (input.action === 'reject')
+                    await this.lifecycle.markReview(tx, {
+                        caseId: id,
+                        revisionId: item.recipe_revision_id,
+                        status: 'rejected',
+                        publicReason,
+                    });
+                else if (input.action === 'hide' || input.action === 'unpublish') {
+                    const status = input.action === 'hide' ? 'hidden' : 'unpublished';
+                    const closed = await this.lifecycle.closeActive(tx, {
+                        revisionId: item.recipe_revision_id,
+                        status,
+                        publicReason,
+                        sourceCaseId: id,
+                        actorId: actor.id,
+                    });
+                    await this.releases?.reverseReputationEventByKeyIn(
+                        tx,
+                        closed.authorId,
+                        `recipe-published:${closed.recipeId}`,
+                        'published-own-recipe-reversed',
+                    );
+                }
+            } else if (item.recipe_revision_id && (input.action === 'hide' || input.action === 'unpublish')) {
+                const status = input.action === 'hide' ? 'hidden' : 'unpublished';
+                await this.lifecycle.closeActive(tx, {
+                    revisionId: item.recipe_revision_id,
+                    status,
+                    publicReason,
+                    sourceCaseId: id,
+                    actorId: actor.id,
+                });
             }
-            if (['hide', 'unpublish'].includes(input.action) && item.recipe_revision_id)
-                await tx
-                    .updateTable('recipe_publications')
-                    .set({ unpublished_at: new Date() })
-                    .where('revision_id', '=', item.recipe_revision_id)
-                    .where('unpublished_at', 'is', null)
-                    .execute();
             await tx
                 .updateTable('moderation_cases')
                 .set({

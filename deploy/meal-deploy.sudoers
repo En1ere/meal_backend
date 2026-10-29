@@ -1,0 +1,2 @@
+Cmnd_Alias MEAL_PLANNER_DEPLOY = /usr/local/sbin/meal-deploy *
+%meal-deploy ALL=(root) NOPASSWD: MEAL_PLANNER_DEPLOY

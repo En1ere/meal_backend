@@ -7207,6 +7207,11 @@
                 "nullable": false
             },
             {
+                "name": "recipe_id",
+                "type": "uuid",
+                "nullable": false
+            },
+            {
                 "name": "published_at",
                 "type": "timestamptz",
                 "nullable": false

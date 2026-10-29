@@ -47,6 +47,7 @@ type RequestRow = {
     export_id: string | null;
     version: string | number;
 };
+type RequestRowWithUser = RequestRow & { user_id: string };
 
 @Injectable()
 export class AccountLifecycleService {
@@ -81,6 +82,13 @@ export class AccountLifecycleService {
             from meal.legal_requests where user_id=${userId}::uuid and kind='account_deletion' order by requested_at desc,id desc limit 1 ${suffix}`.execute(
                 db,
             );
+        return rows.rows[0] ?? null;
+    }
+    private async deletionById(id: string, db: Connection, lock = false) {
+        const suffix = lock ? sql`for update` : sql``;
+        const rows =
+            await sql<RequestRowWithUser>`select id,user_id,status,requested_at,cancel_until,cancelled_at,finalization_not_before,executed_at,approved_at,policy_version,blocker_snapshot,export_id,version
+            from meal.legal_requests where id=${id}::uuid and kind='account_deletion' ${suffix}`.execute(db);
         return rows.rows[0] ?? null;
     }
     private async policy(db: Connection) {
@@ -250,7 +258,7 @@ export class AccountLifecycleService {
             if (replay.rows[0]) return this.projection(replay.rows[0]);
             await this.reauth.consume(tx, userId, sessionId, token, 'account_lifecycle');
             const existing = await this.current(userId, tx, true);
-            if (existing && ['requested', 'retention_wait', 'ready'].includes(existing.status))
+            if (existing && ['requested', 'retention_wait', 'ready', 'blocked'].includes(existing.status))
                 return this.projection(existing);
             const { policy, blockers } = await this.blockers(userId, tx);
             const now = new Date();
@@ -297,17 +305,45 @@ export class AccountLifecycleService {
     async reviewDeletion(
         actor: Principal,
         id: string,
-        input: { decision: 'approve' | 'reject'; expectedVersion: number; reason: string },
+        input: {
+            decision: 'approve' | 'reject';
+            expectedVersion: number;
+            reason: string;
+            idempotencyKey: string;
+        },
         requestId: string,
     ) {
+        const operation = 'admin.account-deletion.review';
+        const namespace = `admin:${actor.id}`;
+        const requestHash = createHash('sha256')
+            .update(
+                JSON.stringify({
+                    decision: input.decision,
+                    expectedVersion: input.expectedVersion,
+                    reason: input.reason,
+                }),
+            )
+            .digest('hex');
         return this.database.transaction(async (tx) => {
+            await this.adminAccess.assertAdminRole(tx, actor);
             await this.adminAccess.assertCritical(tx, actor);
-            const found = await sql<
-                RequestRow & { user_id: string }
-            >`select id,user_id,status,requested_at,cancel_until,cancelled_at,finalization_not_before,executed_at,approved_at,policy_version,blocker_snapshot,export_id,version from meal.legal_requests where id=${id}::uuid and kind='account_deletion' for update`.execute(
+            await sql`select pg_advisory_xact_lock(hashtextextended(${`${namespace}:${operation}:${id}:${input.idempotencyKey}`},0))`.execute(
                 tx,
             );
-            const row = found.rows[0];
+            const replay = await tx
+                .selectFrom('idempotency_records')
+                .select(['request_hash', 'response_snapshot'])
+                .where('actor_namespace', '=', namespace)
+                .where('operation', '=', operation)
+                .where('target_binding', '=', id)
+                .where('key', '=', input.idempotencyKey)
+                .executeTakeFirst();
+            if (replay) {
+                if (replay.request_hash !== requestHash)
+                    throw new ConflictException('Ключ идемпотентности уже использован для другого запроса');
+                return deletionRequestSchema.parse(replay.response_snapshot);
+            }
+            const row = await this.deletionById(id, tx, true);
             if (!row) throw new NotFoundException();
             if (Number(row.version) !== input.expectedVersion) throw new HttpException('Запрос изменился', 412);
             if (!['requested', 'retention_wait', 'blocked'].includes(row.status))
@@ -341,8 +377,25 @@ export class AccountLifecycleService {
                 id,
                 requestId,
             );
-            const updated = await this.current(row.user_id, tx, true);
-            return this.projection(updated!);
+            const updated = await this.deletionById(id, tx, true);
+            const result = this.projection(updated!);
+            await tx
+                .insertInto('idempotency_records')
+                .values({
+                    id: randomUUID(),
+                    operation,
+                    target_binding: id,
+                    key: input.idempotencyKey,
+                    request_hash: requestHash,
+                    status: 'completed',
+                    response_snapshot: result,
+                    expires_at: sql`'infinity'::timestamptz`,
+                    user_id: actor.id,
+                    scope_id: null,
+                    actor_namespace: namespace,
+                })
+                .execute();
+            return result;
         });
     }
     private async finalize(

@@ -1,6 +1,6 @@
 {
     "name": "meal-planner-back",
-    "version": "0.0.113",
+    "version": "0.0.132",
     "private": true,
     "type": "module",
     "engines": {

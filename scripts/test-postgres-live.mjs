@@ -12,6 +12,8 @@ import { AiService } from '../dist/src/modules/ai/ai.service.js';
 import { SubscriptionSettingsService } from '../dist/src/modules/subscription-settings/subscription-settings.service.js';
 import { ProOverviewService } from '../dist/src/modules/pro-overview/pro-overview.service.js';
 import { AccountLifecycleService } from '../dist/src/modules/account-lifecycle/account-lifecycle.service.js';
+import { AdminContentService } from '../dist/src/modules/admin-content/admin-content.service.js';
+import { DatabaseService } from '../dist/src/infrastructure/database/database.service.js';
 import { FamilyService } from '../dist/src/modules/family/family.service.js';
 import { runShoppingReceiptsAcceptance } from './acceptance/shopping-receipts.mjs';
 import { runPlanningPreservesCookingAcceptance } from './acceptance/planning-preserves-cooking.mjs';
@@ -19,11 +21,17 @@ import { runAdminDomainAcceptance } from './acceptance/admin-domain.mjs';
 import { runAiProDomainAcceptance } from './acceptance/ai-pro-domain.mjs';
 import { runRemainingDomainsAcceptance } from './acceptance/remaining-domains.mjs';
 import { runQueryOptimizationsAcceptance } from './acceptance/query-optimizations.mjs';
+import { runRecipeLifecycleMigrationAcceptance } from './acceptance/recipe-lifecycle-migration.mjs';
+import { runRecipeLifecycleAcceptance } from './acceptance/recipe-lifecycle.mjs';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error('Set DATABASE_URL for the isolated PostgreSQL acceptance database');
 const ownerConnectionString = process.env.ACCEPTANCE_OWNER_DATABASE_URL;
 if (!ownerConnectionString) throw new Error('Set ACCEPTANCE_OWNER_DATABASE_URL for isolated fixture preparation');
+const latencyMultiplier = Number(process.env.ACCEPTANCE_REMOTE_LATENCY_MULTIPLIER ?? '1');
+if (!Number.isFinite(latencyMultiplier) || latencyMultiplier < 1 || latencyMultiplier > 10)
+    throw new Error('ACCEPTANCE_REMOTE_LATENCY_MULTIPLIER must be between 1 and 10');
+const remoteFunctionalOnly = process.env.ACCEPTANCE_REMOTE_FUNCTIONAL_ONLY === 'true';
 const target = new URL(connectionString);
 const ownerTarget = new URL(ownerConnectionString);
 if (
@@ -60,6 +68,20 @@ const expectPgCode = async (code, operation) => {
         assert.fail(`Expected PostgreSQL ${code}`);
     } catch (error) {
         assert.equal(error?.code, code);
+    }
+};
+
+const expectSerializablePgCode = async (database, code, operation) => {
+    const client = await database.connect();
+    try {
+        await client.query('begin isolation level serializable');
+        await expectPgCode(code, () => operation(client));
+        await client.query('rollback');
+    } catch (error) {
+        await client.query('rollback').catch(() => undefined);
+        throw error;
+    } finally {
+        client.release();
     }
 };
 
@@ -107,6 +129,290 @@ try {
         history.rows.map((row) => ({ version: Number(row.version), sha256: row.checksum })),
         manifest.migrations.map(({ version, sha256 }) => ({ version, sha256 })),
     );
+    assert.equal(Number(history.rows.at(-1)?.version), 29);
+    await runRecipeLifecycleMigrationAcceptance(ownerConnectionString);
+
+    const lifecycleFixture = {
+        userId: randomUUID(),
+        scopeId: randomUUID(),
+        recipeId: randomUUID(),
+        revisionId: randomUUID(),
+        otherRecipeId: randomUUID(),
+        otherRevisionId: randomUUID(),
+        caseId: randomUUID(),
+        otherCaseId: randomUUID(),
+        otherDecisionId: randomUUID(),
+        decisionIds: Array.from({ length: 7 }, () => randomUUID()),
+    };
+    {
+        const client = await ownerPool.connect();
+        try {
+            await client.query('begin isolation level serializable');
+            await client.query(
+                `insert into meal.users(id,login,display_name,email_normalized,status,email_verified_at,is_test_account)
+                 values($1,$2,'Lifecycle fixture',$3,'active',now(),true)`,
+                [
+                    lifecycleFixture.userId,
+                    `lifecycle_${lifecycleFixture.userId}`,
+                    `${lifecycleFixture.userId}@example.test`,
+                ],
+            );
+            await client.query(`insert into meal.data_scopes(id,kind,user_id) values($1,'private',$2)`, [
+                lifecycleFixture.scopeId,
+                lifecycleFixture.userId,
+            ]);
+            await client.query(
+                `insert into meal.recipes(id,title,status,author_id,scope_id) values
+                   ($1,'Lifecycle fixture','approved',$3,$4),
+                   ($2,'Lifecycle mismatch fixture','approved',$3,$4)`,
+                [
+                    lifecycleFixture.recipeId,
+                    lifecycleFixture.otherRecipeId,
+                    lifecycleFixture.userId,
+                    lifecycleFixture.scopeId,
+                ],
+            );
+            await client.query(
+                `insert into meal.recipe_revisions(id,revision,title,portions,method,recipe_id,created_by) values
+                   ($1,1,'Lifecycle fixture',2,'Acceptance',$3,$5),
+                   ($2,1,'Lifecycle mismatch fixture',2,'Acceptance',$4,$5)`,
+                [
+                    lifecycleFixture.revisionId,
+                    lifecycleFixture.otherRevisionId,
+                    lifecycleFixture.recipeId,
+                    lifecycleFixture.otherRecipeId,
+                    lifecycleFixture.userId,
+                ],
+            );
+            await client.query(
+                `insert into meal.moderation_cases(
+                   id,kind,status,reason,submitted_at,queue_priority,evidence,recipe_revision_id,reporter_id
+                 ) values
+                   ($1,'recipe','approved','Lifecycle acceptance',now(),1,'{}'::jsonb,$2,$3),
+                   ($4,'recipe','approved','Lifecycle mismatch acceptance',now(),1,'{}'::jsonb,$5,$3)`,
+                [
+                    lifecycleFixture.caseId,
+                    lifecycleFixture.revisionId,
+                    lifecycleFixture.userId,
+                    lifecycleFixture.otherCaseId,
+                    lifecycleFixture.otherRevisionId,
+                ],
+            );
+            for (const decisionId of lifecycleFixture.decisionIds)
+                await client.query(
+                    `insert into meal.moderation_decisions(
+                       id,action,reason,decided_at,before_snapshot,after_snapshot,case_id,actor_id
+                     ) values($1,'publish','Lifecycle acceptance',now(),'{}'::jsonb,'{}'::jsonb,$2,$3)`,
+                    [decisionId, lifecycleFixture.caseId, lifecycleFixture.userId],
+                );
+            await client.query(
+                `insert into meal.moderation_decisions(
+                   id,action,reason,decided_at,before_snapshot,after_snapshot,case_id,actor_id
+                 ) values($1,'publish','Lifecycle mismatch acceptance',now(),'{}'::jsonb,'{}'::jsonb,$2,$3)`,
+                [lifecycleFixture.otherDecisionId, lifecycleFixture.otherCaseId, lifecycleFixture.userId],
+            );
+            await client.query('commit');
+        } catch (error) {
+            await client.query('rollback');
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+    const lifecycleSchema = await ownerPool.query(
+        `select
+           (select is_nullable from information_schema.columns
+             where table_schema='meal' and table_name='recipe_publications' and column_name='recipe_id') recipe_id_nullable,
+           (select count(*)::int from meal.recipe_publications where recipe_id is null) null_recipe_ids,
+           (select tgenabled from pg_trigger where tgrelid='meal.recipe_publications'::regclass and tgname='protect_identity') protect_identity,
+           (select tgenabled from pg_trigger where tgrelid='meal.recipe_publications'::regclass and tgname='sync_recipe_publication_recipe_id') compatibility_trigger,
+           has_table_privilege('meal_app','meal.recipe_publications','SELECT,INSERT') app_select_insert,
+           has_column_privilege('meal_app','meal.recipe_publications','recipe_id','UPDATE') app_recipe_id_update`,
+    );
+    assert.deepEqual(lifecycleSchema.rows[0], {
+        recipe_id_nullable: 'NO',
+        null_recipe_ids: 0,
+        protect_identity: 'O',
+        compatibility_trigger: 'O',
+        app_select_insert: true,
+        app_recipe_id_update: false,
+    });
+
+    const compatibilityPublicationId = randomUUID();
+    {
+        const client = await pool.connect();
+        try {
+            await client.query('begin isolation level serializable');
+            const inserted = await client.query(
+                `insert into meal.recipe_publications(id,published_at,revision_id,decision_id)
+                 values($1,now(),$2,$3) returning recipe_id`,
+                [compatibilityPublicationId, lifecycleFixture.revisionId, lifecycleFixture.decisionIds[0]],
+            );
+            assert.equal(inserted.rows[0].recipe_id, lifecycleFixture.recipeId);
+            await client.query(
+                `update meal.recipe_publications set unpublished_at=now(),version=version+1 where id=$1`,
+                [compatibilityPublicationId],
+            );
+            await client.query('commit');
+        } catch (error) {
+            await client.query('rollback');
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+    await expectSerializablePgCode(pool, '23514', (client) =>
+        client.query(
+            `insert into meal.recipe_publications(id,published_at,recipe_id,revision_id,decision_id)
+             values($1,now(),$2,$3,$4)`,
+            [
+                randomUUID(),
+                lifecycleFixture.otherRecipeId,
+                lifecycleFixture.revisionId,
+                lifecycleFixture.decisionIds[1],
+            ],
+        ),
+    );
+    await expectSerializablePgCode(pool, '23503', (client) =>
+        client.query(
+            `insert into meal.recipe_publications(id,published_at,recipe_id,revision_id,decision_id)
+             values($1,now(),$2,$3,$4)`,
+            [randomUUID(), lifecycleFixture.recipeId, randomUUID(), lifecycleFixture.decisionIds[1]],
+        ),
+    );
+    await expectSerializablePgCode(pool, '23514', (client) =>
+        client.query(
+            `insert into meal.recipe_publications(id,published_at,revision_id,decision_id)
+             values($1,now(),$2,$3)`,
+            [randomUUID(), lifecycleFixture.revisionId, lifecycleFixture.otherDecisionId],
+        ),
+    );
+
+    const activePublicationId = randomUUID();
+    {
+        const client = await pool.connect();
+        try {
+            await client.query('begin isolation level serializable');
+            await client.query(
+                `insert into meal.recipe_publications(id,published_at,revision_id,decision_id)
+                 values($1,now(),$2,$3)`,
+                [activePublicationId, lifecycleFixture.revisionId, lifecycleFixture.decisionIds[1]],
+            );
+            await client.query('commit');
+        } catch (error) {
+            await client.query('rollback');
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+    await expectSerializablePgCode(pool, '23505', (client) =>
+        client.query(
+            `insert into meal.recipe_publications(id,published_at,revision_id,decision_id)
+             values($1,now(),$2,$3)`,
+            [randomUUID(), lifecycleFixture.revisionId, lifecycleFixture.decisionIds[2]],
+        ),
+    );
+    await expectSerializablePgCode(pool, '42501', (client) =>
+        client.query(`update meal.recipe_publications set recipe_id=$1 where id=$2`, [
+            lifecycleFixture.otherRecipeId,
+            activePublicationId,
+        ]),
+    );
+    await expectSerializablePgCode(ownerPool, '23514', (client) =>
+        client.query(`update meal.recipe_publications set recipe_id=$1 where id=$2`, [
+            lifecycleFixture.otherRecipeId,
+            activePublicationId,
+        ]),
+    );
+    {
+        const client = await pool.connect();
+        try {
+            await client.query('begin isolation level serializable');
+            await client.query(
+                `update meal.recipe_publications set unpublished_at=now(),version=version+1 where id=$1`,
+                [activePublicationId],
+            );
+            for (const [index, decisionId] of lifecycleFixture.decisionIds.slice(3, 5).entries())
+                await client.query(
+                    `insert into meal.recipe_publications(id,published_at,unpublished_at,revision_id,decision_id)
+                     values($1,now()-interval '1 day',now() + ($2::text || ' seconds')::interval,$3,$4)`,
+                    [randomUUID(), index + 1, lifecycleFixture.revisionId, decisionId],
+                );
+            await client.query('commit');
+        } catch (error) {
+            await client.query('rollback');
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+    assert.equal(
+        Number(
+            (
+                await pool.query(`select count(*) count from meal.recipe_publications where recipe_id=$1`, [
+                    lifecycleFixture.recipeId,
+                ])
+            ).rows[0].count,
+        ),
+        4,
+    );
+    await expectSerializablePgCode(pool, '23505', (client) =>
+        client.query(
+            `insert into meal.moderation_cases(
+               id,kind,status,reason,submitted_at,queue_priority,evidence,recipe_revision_id,reporter_id
+             ) values($1,'recipe','pending','Duplicate submission',now(),1,'{}'::jsonb,$2,$3)`,
+            [randomUUID(), lifecycleFixture.revisionId, lifecycleFixture.userId],
+        ),
+    );
+    {
+        const client = await pool.connect();
+        try {
+            await client.query('begin isolation level serializable');
+            await client.query(
+                `insert into meal.moderation_cases(
+                   id,kind,status,reason,submitted_at,queue_priority,evidence,recipe_revision_id,reporter_id
+                 ) values($1,'report','pending','Report remains allowed',now(),1,'{}'::jsonb,$2,$3)`,
+                [randomUUID(), lifecycleFixture.revisionId, lifecycleFixture.userId],
+            );
+            await client.query('commit');
+        } catch (error) {
+            await client.query('rollback');
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+    await expectSerializablePgCode(pool, '23514', (client) =>
+        client.query(
+            `insert into meal.moderation_cases(
+               id,kind,status,reason,submitted_at,queue_priority,evidence,recipe_revision_id,reporter_id
+             ) values($1,'recipe','pending','Missing target',now(),1,'{}'::jsonb,null,$2)`,
+            [randomUUID(), lifecycleFixture.userId],
+        ),
+    );
+    {
+        const client = await ownerPool.connect();
+        try {
+            await client.query('begin isolation level serializable');
+            await client.query(`delete from meal.recipe_publications where recipe_id=$1`, [lifecycleFixture.recipeId]);
+            await client.query(
+                `delete from meal.moderation_decisions where case_id in(
+                   select id from meal.moderation_cases where recipe_revision_id=any($1::uuid[])
+                 )`,
+                [[lifecycleFixture.revisionId, lifecycleFixture.otherRevisionId]],
+            );
+            await client.query(`delete from meal.moderation_cases where recipe_revision_id=any($1::uuid[])`, [
+                [lifecycleFixture.revisionId, lifecycleFixture.otherRevisionId],
+            ]);
+            await client.query('commit');
+        } catch (error) {
+            await client.query('rollback');
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
     await expectPgCode('42501', () => pool.query('create table meal.acceptance_forbidden(id integer)'));
     await expectPgCode('42501', () => pool.query('delete from meal.users where false'));
 
@@ -894,8 +1200,8 @@ try {
     const decisionCases = [
         { id: rejectedCaseId, action: 'reject', status: 'rejected' },
         { id: publishedCaseId, action: 'publish', status: 'published' },
-        { id: hiddenCaseId, action: 'hide', status: 'hide' },
-        { id: unpublishedCaseId, action: 'unpublish', status: 'unpublish' },
+        { id: hiddenCaseId, action: 'hide', status: 'hidden' },
+        { id: unpublishedCaseId, action: 'unpublish', status: 'unpublished' },
     ];
     for (const decisionCase of decisionCases) {
         const payload = {
@@ -1124,8 +1430,8 @@ try {
     );
 
     const largeTenantRows = 10_000;
-    const largeTenantUnitId = randomUUID();
-    const nutritionUnitId = randomUUID();
+    let largeTenantUnitId = randomUUID();
+    let nutritionUnitId = randomUUID();
     const largeTenantCategoryId = randomUUID();
     const largeTenantIngredientId = randomUUID();
     const activeFinanceIngredientId = randomUUID();
@@ -1136,9 +1442,17 @@ try {
         await fixtureClient.query('begin isolation level serializable');
         await fixtureClient.query(
             `insert into meal.units(id,code,dimension,factor,approximate)
-             values($1,$2,'count',1,false),($3,'g','mass',1,false)`,
-            [largeTenantUnitId, 'pcs', nutritionUnitId],
+             values($1,'pcs','count',1,false),($2,'g','mass',1,false)
+             on conflict(code) do nothing`,
+            [largeTenantUnitId, nutritionUnitId],
         );
+        const unitRows = await fixtureClient.query(
+            `select id,code from meal.units where code in ('pcs','g') order by code`,
+        );
+        largeTenantUnitId = unitRows.rows.find((row) => row.code === 'pcs')?.id;
+        nutritionUnitId = unitRows.rows.find((row) => row.code === 'g')?.id;
+        assert.ok(largeTenantUnitId, 'pcs reference unit must exist');
+        assert.ok(nutritionUnitId, 'g reference unit must exist');
         await fixtureClient.query(`insert into meal.categories(id,code,name,parent_id) values($1,$2,$3,null)`, [
             largeTenantCategoryId,
             `acceptance-${suffix}`,
@@ -2750,111 +3064,135 @@ try {
     assert.ok(largeTenantProbe.json().data.total >= largeTenantRows);
     assert.equal(largeTenantProbe.json().data.items.length, 50);
 
-    const percentile = (values, fraction) => {
-        const sorted = [...values].sort((left, right) => left - right);
-        return sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * fraction) - 1))];
-    };
-    let performanceRequestIndex = 0;
-    const performanceInject = (options) => {
-        const index = performanceRequestIndex++;
-        return app.inject({
-            ...options,
-            remoteAddress: `198.20.${Math.floor(index / 250) + 1}.${(index % 250) + 1}`,
-        });
-    };
-    const latency = async (label, request, expectedStatus = 200) => {
-        for (let index = 0; index < 5; index += 1) {
-            const warm = await request();
-            assert.equal(warm.statusCode, expectedStatus, `${label} warm-up: ${warm.body}`);
-        }
-        const values = [];
-        for (let index = 0; index < 60; index += 1) {
-            const started = performance.now();
-            const response = await request();
-            values.push(performance.now() - started);
-            assert.equal(response.statusCode, expectedStatus, `${label}: ${response.body}`);
-        }
-        const result = {
-            p50Ms: Number(percentile(values, 0.5).toFixed(2)),
-            p95Ms: Number(percentile(values, 0.95).toFixed(2)),
-            p99Ms: Number(percentile(values, 0.99).toFixed(2)),
+    let performanceResults = { mode: 'remote-functional-only', latencyMultiplier };
+    if (!remoteFunctionalOnly) {
+        const percentile = (values, fraction) => {
+            const sorted = [...values].sort((left, right) => left - right);
+            return sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * fraction) - 1))];
         };
-        assert.ok(result.p95Ms <= 500, `${label} local p95 ${result.p95Ms}ms exceeds 500ms guardrail`);
-        assert.ok(result.p99Ms <= 1000, `${label} local p99 ${result.p99Ms}ms exceeds 1000ms guardrail`);
-        return result;
-    };
-    globalThis.gc?.();
-    const heapBefore = process.memoryUsage().heapUsed;
-    const performanceResults = {
-        health: await latency('health', () => performanceInject({ method: 'GET', url: '/health/ready' })),
-        entitlement: await latency('entitlement', () =>
-            performanceInject({ method: 'GET', url: '/api/v1/entitlements', headers: { cookie: headers().cookie } }),
-        ),
-        formerPro: await latency('former-pro overview', () =>
-            performanceInject({ method: 'GET', url: '/api/v1/pro/overview', headers: { cookie: headers().cookie } }),
-        ),
-        adminSession: await latency('admin session', () =>
-            performanceInject({ method: 'GET', url: '/api/v1/admin/auth/me', headers: adminHeaders() }),
-        ),
-        largeTenant: {
-            rows: largeTenantRows,
-            seedMs: Number(seedMs.toFixed(2)),
-            listPlan: largeTenantListPlan,
-            searchPlan: largeTenantSearchPlan,
-            countPlan: largeTenantCountPlan,
-            lockTimeoutMs: Number(lockTimeoutMs.toFixed(2)),
-            recoveredVersion,
-            list: await latency('large tenant inventory', () =>
+        let performanceRequestIndex = 0;
+        const performanceInject = (options) => {
+            const index = performanceRequestIndex++;
+            return app.inject({
+                ...options,
+                remoteAddress: `198.20.${Math.floor(index / 250) + 1}.${(index % 250) + 1}`,
+            });
+        };
+        const latency = async (label, request, expectedStatus = 200) => {
+            for (let index = 0; index < 5; index += 1) {
+                const warm = await request();
+                assert.equal(warm.statusCode, expectedStatus, `${label} warm-up: ${warm.body}`);
+            }
+            const values = [];
+            for (let index = 0; index < 60; index += 1) {
+                const started = performance.now();
+                const response = await request();
+                values.push(performance.now() - started);
+                assert.equal(response.statusCode, expectedStatus, `${label}: ${response.body}`);
+            }
+            const result = {
+                p50Ms: Number(percentile(values, 0.5).toFixed(2)),
+                p95Ms: Number(percentile(values, 0.95).toFixed(2)),
+                p99Ms: Number(percentile(values, 0.99).toFixed(2)),
+            };
+            const p95Guardrail = 500 * latencyMultiplier;
+            const p99Guardrail = 1000 * latencyMultiplier;
+            assert.ok(
+                result.p95Ms <= p95Guardrail,
+                `${label} p95 ${result.p95Ms}ms exceeds ${p95Guardrail}ms topology-adjusted guardrail`,
+            );
+            assert.ok(
+                result.p99Ms <= p99Guardrail,
+                `${label} p99 ${result.p99Ms}ms exceeds ${p99Guardrail}ms topology-adjusted guardrail`,
+            );
+            return result;
+        };
+        globalThis.gc?.();
+        const heapBefore = process.memoryUsage().heapUsed;
+        performanceResults = {
+            latencyMultiplier,
+            health: await latency('health', () => performanceInject({ method: 'GET', url: '/health/ready' })),
+            entitlement: await latency('entitlement', () =>
                 performanceInject({
                     method: 'GET',
-                    url: '/api/v1/inventory?localDate=2026-10-14&limit=50&offset=9950',
+                    url: '/api/v1/entitlements',
                     headers: { cookie: headers().cookie },
                 }),
             ),
-            search: await latency('large tenant inventory search', () =>
+            formerPro: await latency('former-pro overview', () =>
                 performanceInject({
                     method: 'GET',
-                    url: '/api/v1/inventory?localDate=2026-10-14&limit=50&offset=0&q=tenant%20item%209999',
+                    url: '/api/v1/pro/overview',
                     headers: { cookie: headers().cookie },
                 }),
             ),
-        },
-    };
-    const concurrentStarted = performance.now();
-    const concurrentResponses = await Promise.all(
-        Array.from({ length: 40 }, () =>
-            performanceInject({ method: 'GET', url: '/api/v1/entitlements', headers: { cookie: headers().cookie } }),
-        ),
-    );
-    const concurrentMs = performance.now() - concurrentStarted;
-    assert.equal(
-        concurrentResponses.filter((response) => response.statusCode === 200).length,
-        concurrentResponses.length,
-    );
-    assert.ok(concurrentMs <= 5000, `40-request pool burst took ${concurrentMs.toFixed(2)}ms`);
-    globalThis.gc?.();
-    const heapGrowthBytes = Math.max(0, process.memoryUsage().heapUsed - heapBefore);
-    assert.ok(heapGrowthBytes <= 96 * 1024 * 1024, `bounded request pack grew heap by ${heapGrowthBytes} bytes`);
-    performanceResults.concurrent40 = { wallMs: Number(concurrentMs.toFixed(2)) };
-    performanceResults.heap = { growthBytes: heapGrowthBytes };
-    let rateLimitedAt = null;
-    for (let index = 1; index <= 220; index += 1) {
-        const response = await app.inject({
-            method: 'GET',
-            url: '/api/v1/entitlements',
-            headers: { cookie: headers().cookie },
-            remoteAddress: '198.21.0.1',
-        });
-        if (response.statusCode !== 429) {
-            assert.equal(response.statusCode, 200, response.body);
-            continue;
+            adminSession: await latency('admin session', () =>
+                performanceInject({ method: 'GET', url: '/api/v1/admin/auth/me', headers: adminHeaders() }),
+            ),
+            largeTenant: {
+                rows: largeTenantRows,
+                seedMs: Number(seedMs.toFixed(2)),
+                listPlan: largeTenantListPlan,
+                searchPlan: largeTenantSearchPlan,
+                countPlan: largeTenantCountPlan,
+                lockTimeoutMs: Number(lockTimeoutMs.toFixed(2)),
+                recoveredVersion,
+                list: await latency('large tenant inventory', () =>
+                    performanceInject({
+                        method: 'GET',
+                        url: '/api/v1/inventory?localDate=2026-10-14&limit=50&offset=9950',
+                        headers: { cookie: headers().cookie },
+                    }),
+                ),
+                search: await latency('large tenant inventory search', () =>
+                    performanceInject({
+                        method: 'GET',
+                        url: '/api/v1/inventory?localDate=2026-10-14&limit=50&offset=0&q=tenant%20item%209999',
+                        headers: { cookie: headers().cookie },
+                    }),
+                ),
+            },
+        };
+        const concurrentStarted = performance.now();
+        const concurrentResponses = await Promise.all(
+            Array.from({ length: 40 }, () =>
+                performanceInject({
+                    method: 'GET',
+                    url: '/api/v1/entitlements',
+                    headers: { cookie: headers().cookie },
+                }),
+            ),
+        );
+        const concurrentMs = performance.now() - concurrentStarted;
+        assert.equal(
+            concurrentResponses.filter((response) => response.statusCode === 200).length,
+            concurrentResponses.length,
+        );
+        assert.ok(concurrentMs <= 5000, `40-request pool burst took ${concurrentMs.toFixed(2)}ms`);
+        globalThis.gc?.();
+        const heapGrowthBytes = Math.max(0, process.memoryUsage().heapUsed - heapBefore);
+        assert.ok(heapGrowthBytes <= 96 * 1024 * 1024, `bounded request pack grew heap by ${heapGrowthBytes} bytes`);
+        performanceResults.concurrent40 = { wallMs: Number(concurrentMs.toFixed(2)) };
+        performanceResults.heap = { growthBytes: heapGrowthBytes };
+        let rateLimitedAt = null;
+        for (let index = 1; index <= 220; index += 1) {
+            const response = await app.inject({
+                method: 'GET',
+                url: '/api/v1/entitlements',
+                headers: { cookie: headers().cookie },
+                remoteAddress: '198.21.0.1',
+            });
+            if (response.statusCode !== 429) {
+                assert.equal(response.statusCode, 200, response.body);
+                continue;
+            }
+            assert.equal(errorEnvelopeSchema.safeParse(response.json()).success, true);
+            rateLimitedAt = index;
+            break;
         }
-        assert.equal(errorEnvelopeSchema.safeParse(response.json()).success, true);
-        rateLimitedAt = index;
-        break;
+        assert.ok(rateLimitedAt !== null, 'fixed-IP request burst did not reach the configured rate limit');
+        performanceResults.rateLimit = { first429At: rateLimitedAt };
     }
-    assert.ok(rateLimitedAt !== null, 'fixed-IP request burst did not reach the configured rate limit');
-    performanceResults.rateLimit = { first429At: rateLimitedAt };
 
     const document = openApiDocument(app);
     const statuses = new Map();
@@ -3328,7 +3666,7 @@ try {
         },
         { search_reads: 1, detail_reads: 2, preference_reads: 1, preference_updates: 1 },
     );
-    await runAdminDomainAcceptance({
+    const { backupAdminRoleId } = await runAdminDomainAcceptance({
         app,
         pool,
         ownerPool,
@@ -3340,6 +3678,7 @@ try {
         ingredientId: largeTenantIngredientId,
         unitId: largeTenantUnitId,
         suffix,
+        adminContentService: app.get(AdminContentService),
     });
     const staffAcceptanceHeaders = () => ({
         ...headers(),
@@ -5727,6 +6066,72 @@ try {
         })}`,
     );
 
+    // The full-suite process intentionally proves the global HTTP limiter earlier. Start a fresh
+    // in-memory HTTP acceptance instance so the focused endpoint matrix is not coupled to that burst.
+    await app.close();
+    app = await createApp(config);
+    assert.equal((await app.inject({ method: 'GET', url: '/health/ready' })).statusCode, 200);
+
+    const lifecycleModeratorId = randomUUID();
+    const lifecycleModeratorSessionId = randomUUID();
+    const lifecycleModeratorToken = randomBytes(32).toString('base64url');
+    await ownerPool.query('begin isolation level serializable');
+    try {
+        await ownerPool.query(
+            `insert into meal.users(id,login,display_name,email_normalized,status,archived_at,email_verified_at,is_test_account)
+             values($1,$2,'Focused lifecycle moderator',$3,'active',null,now(),true)`,
+            [lifecycleModeratorId, `lifecycle-moderator-${suffix}`, `lifecycle-moderator-${suffix}@example.test`],
+        );
+        await ownerPool.query(
+            `insert into meal.staff_role_assignments(id,role,assigned_at,user_id,assigned_by)
+             values($1,'moderator',now(),$2,$2)`,
+            [randomUUID(), lifecycleModeratorId],
+        );
+        for (const permission of ['catalog.review'])
+            await ownerPool.query(
+                `insert into meal.staff_grants(id,permission,scope,valid_until,revoked_at,user_id,granted_by)
+                 values($1,$2,'global',null,null,$3,$3)`,
+                [randomUUID(), permission, lifecycleModeratorId],
+            );
+        await ownerPool.query(
+            `insert into meal.mfa_factors(id,kind,secret_ciphertext,verified_at,revoked_at,last_accepted_step,user_id)
+             values($1,'totp','focused-lifecycle-acceptance',now(),null,null,$2)`,
+            [randomUUID(), lifecycleModeratorId],
+        );
+        await ownerPool.query(
+            `insert into meal.sessions(id,kind,token_hash,expires_at,revoked_at,authenticated_at,mfa_verified_at,user_id,auth_context)
+             values($1,'staff',$2,now()+interval '1 day',null,now(),now(),$3,'moderator')`,
+            [
+                lifecycleModeratorSessionId,
+                createHash('sha256').update(lifecycleModeratorToken).digest('hex'),
+                lifecycleModeratorId,
+            ],
+        );
+        await ownerPool.query('commit');
+    } catch (error) {
+        await ownerPool.query('rollback');
+        throw error;
+    }
+    const lifecycleModeratorPost = (url, payload) =>
+        app.inject({
+            method: 'POST',
+            url,
+            headers: { ...headers(), cookie: `${headers().cookie}; meal_staff=${lifecycleModeratorToken}` },
+            payload,
+        });
+    const lifecycleDatabase = new DatabaseService({ ...config, DATABASE_POOL_SIZE: 2 });
+    try {
+        await runRecipeLifecycleAcceptance({
+            database: lifecycleDatabase,
+            ownerPool,
+            author: familyOwner,
+            moderatorUserId: lifecycleModeratorId,
+            moderatorPost: lifecycleModeratorPost,
+        });
+    } finally {
+        await lifecycleDatabase.onApplicationShutdown();
+    }
+
     await runAiProDomainAcceptance({
         app,
         pool,
@@ -6042,18 +6447,117 @@ try {
         throw error;
     }
     await setAdminCriticalUntil(new Date(Date.now() + 5 * 60_000));
-    const reviewed = await app.inject({
+    const newerDeletionRequestId = randomUUID();
+    await ownerPool.query('begin isolation level serializable');
+    try {
+        await ownerPool.query(
+            `insert into meal.legal_requests(
+               id,kind,status,scope_snapshot,retention_basis,user_id,idempotency_key,requested_at,
+               cancel_until,cancelled_at,finalization_not_before,policy_version,blocker_snapshot
+             ) values($1,'account_deletion','cancelled',$2::jsonb,$3::jsonb,$4,$5,now(),now(),now(),now(),$6,'[]'::jsonb)`,
+            [
+                newerDeletionRequestId,
+                JSON.stringify({ requesterId: finalizeClient.userId }),
+                JSON.stringify(retentionPolicy),
+                finalizeClient.userId,
+                randomUUID(),
+                retentionPolicy.version,
+            ],
+        );
+        await ownerPool.query('commit');
+    } catch (error) {
+        await ownerPool.query('rollback');
+        throw error;
+    }
+    const reviewIdempotencyKey = randomUUID();
+    const reviewPayload = {
+        decision: 'approve',
+        expectedVersion: finalizeRequest.json().data.version,
+        reason: 'Exact acceptance approval',
+        idempotencyKey: reviewIdempotencyKey,
+    };
+    const injectReview = () =>
+        app.inject({
+            method: 'POST',
+            url: `/api/v1/admin/account-deletions/${finalizeRequest.json().data.id}/review`,
+            headers: criticalAdminHeaders,
+            remoteAddress: '198.26.254.1',
+            payload: reviewPayload,
+        });
+    const [reviewed, reviewReplay] = await Promise.all([injectReview(), injectReview()]);
+    assert.equal(reviewed.statusCode, 200, reviewed.body);
+    assert.equal(reviewed.json().data.id, finalizeRequest.json().data.id);
+    assert.notEqual(reviewed.json().data.id, newerDeletionRequestId);
+    assert.equal(reviewed.json().data.status, 'ready');
+    assert.equal(reviewReplay.statusCode, 200, reviewReplay.body);
+    assert.deepEqual(reviewReplay.json().data, reviewed.json().data);
+    assert.equal(reviewReplay.json().data.id, finalizeRequest.json().data.id);
+    const reviewKeyConflict = await app.inject({
         method: 'POST',
         url: `/api/v1/admin/account-deletions/${finalizeRequest.json().data.id}/review`,
         headers: criticalAdminHeaders,
-        payload: {
-            decision: 'approve',
-            expectedVersion: finalizeRequest.json().data.version,
-            reason: 'Exact acceptance approval',
-        },
+        remoteAddress: '198.26.254.1',
+        payload: { ...reviewPayload, reason: 'Different acceptance approval reason' },
     });
-    assert.equal(reviewed.statusCode, 200, reviewed.body);
-    assert.equal(reviewed.json().data.status, 'ready');
+    assert.equal(reviewKeyConflict.statusCode, 409, reviewKeyConflict.body);
+    const reviewEffects = await pool.query(
+        `select
+           (select count(*)::int from meal.legal_request_steps where request_id=$1 and kind='admin_review') review_steps,
+           (select count(*)::int from meal.audit_events where actor_id=$2 and target_id=$1 and action='account.deletion.approved') review_audits,
+           (select count(*)::int from meal.idempotency_records where actor_namespace=$3 and operation='admin.account-deletion.review' and target_binding=$1::text and key=$4) idempotency_records`,
+        [finalizeRequest.json().data.id, userId, `admin:${userId}`, reviewIdempotencyKey],
+    );
+    assert.deepEqual(reviewEffects.rows[0], {
+        review_steps: 1,
+        review_audits: 1,
+        idempotency_records: 1,
+    });
+    await ownerPool.query('begin isolation level serializable');
+    let revokedAdminRoles;
+    try {
+        await ownerPool.query(`update meal.staff_role_assignments set revoked_at=null,version=version+1 where id=$1`, [
+            backupAdminRoleId,
+        ]);
+        revokedAdminRoles = await ownerPool.query(
+            `update meal.staff_role_assignments set revoked_at=now(),version=version+1
+             where user_id=$1 and role='admin' and revoked_at is null returning id`,
+            [userId],
+        );
+        await ownerPool.query('commit');
+    } catch (error) {
+        await ownerPool.query('rollback');
+        throw error;
+    }
+    assert.ok(revokedAdminRoles.rowCount > 0);
+    await assert.rejects(
+        app
+            .get(AccountLifecycleService)
+            .reviewDeletion(adminVerify.json().data.user, finalizeRequest.json().data.id, reviewPayload, randomUUID()),
+        (error) => typeof error?.getStatus === 'function' && error.getStatus() === 403,
+    );
+    const deniedReviewEffects = await pool.query(
+        `select
+           (select count(*)::int from meal.legal_request_steps where request_id=$1 and kind='admin_review') review_steps,
+           (select count(*)::int from meal.audit_events where actor_id=$2 and target_id=$1 and action='account.deletion.approved') review_audits`,
+        [finalizeRequest.json().data.id, userId],
+    );
+    assert.deepEqual(deniedReviewEffects.rows[0], { review_steps: 1, review_audits: 1 });
+    await ownerPool.query('begin isolation level serializable');
+    try {
+        await ownerPool.query(
+            `update meal.staff_role_assignments set revoked_at=null,version=version+1
+             where id=any($1::uuid[])`,
+            [revokedAdminRoles.rows.map((role) => role.id)],
+        );
+        await ownerPool.query(`update meal.staff_role_assignments set revoked_at=now(),version=version+1 where id=$1`, [
+            backupAdminRoleId,
+        ]);
+        await ownerPool.query(`delete from meal.legal_requests where id=$1`, [newerDeletionRequestId]);
+        await ownerPool.query('commit');
+    } catch (error) {
+        await ownerPool.query('rollback');
+        throw error;
+    }
     const blockedFinalize = await finalizeClient.request('POST', '/api/v1/account/deletion/finalize', {
         reauthToken: await issueLifecycleReauth(finalizeClient),
         expectedVersion: reviewed.json().data.version,
@@ -6080,6 +6584,22 @@ try {
         export_id: null,
         blocked_audits: 1,
     });
+    const blockedRequestReplay = await finalizeClient.request('POST', '/api/v1/account/deletion', {
+        reauthToken: await issueLifecycleReauth(finalizeClient),
+        idempotencyKey: randomUUID(),
+        acknowledgement: true,
+    });
+    assert.equal(blockedRequestReplay.statusCode, 202, blockedRequestReplay.body);
+    assert.deepEqual(blockedRequestReplay.json().data, blockedFinalize.json().data);
+    assert.equal(
+        (
+            await pool.query(
+                `select count(*)::int count from meal.legal_requests where user_id=$1 and kind='account_deletion'`,
+                [finalizeClient.userId],
+            )
+        ).rows[0].count,
+        1,
+    );
 
     const exportAssetId = randomUUID();
     const exportJobId = randomUUID();
@@ -6151,6 +6671,7 @@ try {
             decision: 'approve',
             expectedVersion: blockedFinalize.json().data.version,
             reason: 'Exact acceptance export verification',
+            idempotencyKey: randomUUID(),
         },
     });
     assert.equal(rereviewed.statusCode, 200, rereviewed.body);

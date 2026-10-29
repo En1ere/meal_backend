@@ -257,7 +257,7 @@ void test('prepared worker lease migration is manifest-bound and grants no delet
         },
     );
     assert.equal(manifest.totalTables, 209);
-    assert.equal(manifest.foreignKeys, 482);
+    assert.equal(manifest.foreignKeys, 483);
     assert.match(grants, /GRANT SELECT,INSERT ON meal\.worker_leases TO meal_app/);
     assert.doesNotMatch(grants, /GRANT DELETE ON meal\.worker_leases/);
 });
@@ -309,7 +309,7 @@ const recoverySet = {
     state: 'ready',
     database: 'meal_planner_postgres',
     postgresMajor: 18,
-    schemaVersion: 26,
+    schemaVersion: 29,
     migrationManifestChecksum: `sha256:${'a'.repeat(64)}`,
     snapshotAt: now,
     secrets: 'excluded',
@@ -319,7 +319,7 @@ const gates = {
     artifactHashes: true,
     schemaVersion: true,
     tableCount209: true,
-    foreignKeyCount482: true,
+    foreignKeyCount483: true,
     applicationRole: true,
     domainSmoke: true,
     mediaCoverage: true,
@@ -329,8 +329,8 @@ void test('recovery set requires one encrypted immutable offsite artifact of eve
     assert.equal(recoverySetSchema.safeParse(recoverySet).success, true);
     assert.equal(recoverySetSchema.safeParse({ ...recoverySet, contractVersion: 2 }).success, false);
     assert.equal(recoverySetSchema.safeParse({ ...recoverySet, contractVersion: 3 }).success, false);
-    assert.equal(recoverySetSchema.safeParse({ ...recoverySet, schemaVersion: 24 }).success, false);
-    assert.equal(recoverySetSchema.safeParse({ ...recoverySet, schemaVersion: 25 }).success, false);
+    assert.equal(recoverySetSchema.safeParse({ ...recoverySet, schemaVersion: 28 }).success, false);
+    assert.equal(recoverySetSchema.safeParse({ ...recoverySet, schemaVersion: 30 }).success, false);
     assert.equal(recoverySetSchema.safeParse({ ...recoverySet, artifacts: artifacts.slice(1) }).success, false);
     assert.equal(recoverySetSchema.safeParse({ ...recoverySet, secrets: 'included' }).success, false);
 });

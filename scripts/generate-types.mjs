@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { format } from 'prettier';
 const root = new URL('../', import.meta.url);
 const tables = JSON.parse(fs.readFileSync(new URL('database/type-source-v1.json', root), 'utf8'));
-let source = `// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026 overlays.\nimport type { ColumnType, Generated } from 'kysely';
+let source = `// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029 overlays.\nimport type { ColumnType, Generated } from 'kysely';
 type Timestamp = ColumnType<Date, Date | string, Date | string>;
 type Int64 = ColumnType<string, string | number | bigint, string | number | bigint>;
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };

@@ -3,13 +3,15 @@ param(
     [ValidateRange(1, 10)]
     [int]$Iterations = 3,
     [string]$PgBin = '',
+    [string]$PrivateRoot = '',
     [string]$EvidenceRoot = ''
 )
 
 $ErrorActionPreference = 'Stop'
 if (-not $PgBin) { throw 'Provide -PgBin pointing to PostgreSQL 18 binaries.' }
 $backRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$privateRoot = [IO.Path]::GetFullPath('D:\AITemp\meal-backend-postgres-acceptance')
+if (-not $PrivateRoot) { $PrivateRoot = 'D:\AITemp\meal-backend-postgres-acceptance' }
+$privateRoot = [IO.Path]::GetFullPath($PrivateRoot)
 $runtimeRoot = [IO.Path]::GetFullPath((Join-Path $privateRoot 'acceptance-postgres'))
 $qaRoot = [IO.Path]::GetFullPath((Join-Path $privateRoot 'evidence'))
 $prettier = Join-Path $backRoot 'node_modules\.bin\prettier.cmd'
@@ -18,7 +20,7 @@ $EvidenceRoot = [IO.Path]::GetFullPath($EvidenceRoot)
 $port = 54329
 
 if (-not $runtimeRoot.StartsWith($privateRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
-    throw 'Refusing a runtime path outside the dedicated D:\AITemp directory.'
+    throw 'Refusing a runtime path outside the dedicated private directory.'
 }
 if ([IO.Path]::GetFileName($runtimeRoot) -ne 'acceptance-postgres') {
     throw 'Unexpected runtime directory name.'
@@ -130,7 +132,16 @@ try {
             $acceptanceOutput = @(& node --expose-gc scripts/test-postgres-live.mjs 2>&1)
             $acceptanceExitCode = $LASTEXITCODE
             $acceptanceOutput | ForEach-Object { Write-Output $_ }
-            if ($acceptanceExitCode -ne 0) { throw "Iteration ${iteration}: live acceptance failed." }
+            if ($acceptanceExitCode -ne 0) {
+                $failureRoot = Join-Path $EvidenceRoot "I${iteration}"
+                New-Item -ItemType Directory -Path $failureRoot -Force | Out-Null
+                [IO.File]::WriteAllLines(
+                    (Join-Path $failureRoot 'stdout.failed.log'),
+                    [string[]]($acceptanceOutput | ForEach-Object { [string]$_ }),
+                    [Text.UTF8Encoding]::new($false)
+                )
+                throw "Iteration ${iteration}: live acceptance failed. See $failureRoot\stdout.failed.log"
+            }
             $evidenceLines = @($acceptanceOutput | ForEach-Object { [string]$_ } | Where-Object { $_.StartsWith('ACCEPTANCE_EVIDENCE ') })
             if ($evidenceLines.Count -ne 1) { throw "Iteration ${iteration}: expected exactly one ACCEPTANCE_EVIDENCE line." }
             $workflowEvidence = $evidenceLines[0].Substring('ACCEPTANCE_EVIDENCE '.Length) | ConvertFrom-Json
@@ -153,6 +164,7 @@ try {
                 @{ Prefix = 'FAMILY_ACCEPTANCE_EVIDENCE '; Key = 'family'; Schema = 'family-live-happy-path-v1' },
                 @{ Prefix = 'QUERY_OPTIMIZATIONS_EVIDENCE '; Key = 'queryOptimizations'; Schema = 'query-optimizations-live-v1' },
                 @{ Prefix = 'RECIPE_WORKSPACE_ACCEPTANCE_EVIDENCE '; Key = 'recipeWorkspace'; Schema = 'recipe-workspace-live-v1' },
+                @{ Prefix = 'RECIPE_LIFECYCLE_ACCEPTANCE_EVIDENCE '; Key = 'recipeLifecycle'; Schema = 'recipe-revision-lifecycle-live-v1' },
                 @{ Prefix = 'SHOPPING_RECEIPTS_ACCEPTANCE_EVIDENCE '; Key = 'shoppingReceipts'; Schema = 'shopping-receipts-live-v1' },
                 @{ Prefix = 'PLANNING_PRESERVES_COOKING_EVIDENCE '; Key = 'planningPreservesCooking'; Schema = 'planning-preserves-cooking-live-v1' },
                 @{ Prefix = 'AI_PRO_DOMAIN_ACCEPTANCE_EVIDENCE '; Key = 'aiProDomain'; Schema = 'ai-pro-domain-live-v1' },

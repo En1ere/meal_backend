@@ -64,4 +64,5 @@ export const adminDeletionDecisionSchema = z.strictObject({
     decision: z.enum(['approve', 'reject']),
     expectedVersion: z.number().int().positive(),
     reason: z.string().trim().min(10).max(1000),
+    idempotencyKey: z.uuid(),
 });

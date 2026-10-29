@@ -319,18 +319,6 @@ export async function runAiProDomainAcceptance({
         412,
         'diary update stale CAS',
     );
-    const diaryArchived = expectStatus(
-        await request(
-            'POST',
-            `/api/v1/diary/${diaryCreated.id}/archive`,
-            { archived: true, expectedVersion: 2, idempotencyKey: randomUUID() },
-            { 'if-match': '"2"' },
-        ),
-        200,
-        'diary archive',
-    ).json().data.entry;
-    assert.equal(diaryArchived.state, 'archived');
-
     const proposalId = randomUUID();
     const attemptId = randomUUID();
     const movementFixture = await pool.query(
@@ -447,6 +435,17 @@ export async function runAiProDomainAcceptance({
     ).json().data;
     assert.equal(analytics.disclaimer, 'informational_not_medical');
     assert.ok(analytics.summary.entryCount >= 1);
+    const diaryArchived = expectStatus(
+        await request(
+            'POST',
+            `/api/v1/diary/${diaryCreated.id}/archive`,
+            { archived: true, expectedVersion: 2, idempotencyKey: randomUUID() },
+            { 'if-match': '"2"' },
+        ),
+        200,
+        'diary archive',
+    ).json().data.entry;
+    assert.equal(diaryArchived.state, 'archived');
 
     // Export: preview, single-use critical grant, idempotent create and cursor-based list.
     const previewSelection = {

@@ -13,6 +13,7 @@ import type { DatabaseSchema } from '../../infrastructure/database/schema.genera
 import { AdminAccessService } from '../admin-auth/admin-access.service.js';
 import type { Principal } from '../auth/auth.service.js';
 import { ContentReleasesService } from '../content-releases/content-releases.service.js';
+import { RecipeLifecycleService, sanitizePublicReviewReason } from '../recipe-lifecycle/recipe-lifecycle.service.js';
 import {
     contentCompareSchema,
     contentMergeSchema,
@@ -24,6 +25,33 @@ import {
 } from './admin-content.contracts.js';
 
 type Tx = Transaction<DatabaseSchema>;
+type Connection = NonNullable<DatabaseService['db']> | Tx;
+
+type ProductPair = readonly [string, string];
+
+const orderedPair = (leftId: string, rightId: string): ProductPair =>
+    leftId < rightId ? [leftId, rightId] : [rightId, leftId];
+
+export function notDuplicateDecisionApplies(
+    decision: {
+        source_product_id: string | null;
+        target_product_id: string | null;
+        preview: unknown;
+    },
+    left: Pick<ContentCard, 'id' | 'version'>,
+    right: Pick<ContentCard, 'id' | 'version'>,
+) {
+    if (!decision.source_product_id || !decision.target_product_id) return false;
+    const preview = decision.preview;
+    if (!preview || typeof preview !== 'object' || Array.isArray(preview)) return false;
+    const values = preview as Record<string, unknown>;
+    if (typeof values.leftVersion !== 'number' || typeof values.rightVersion !== 'number') return false;
+    if (decision.source_product_id === left.id && decision.target_product_id === right.id)
+        return values.leftVersion === left.version && values.rightVersion === right.version;
+    if (decision.source_product_id === right.id && decision.target_product_id === left.id)
+        return values.leftVersion === right.version && values.rightVersion === left.version;
+    return false;
+}
 
 export function compareContentCards(
     left: ContentCard,
@@ -65,14 +93,15 @@ export class AdminContentService {
     constructor(
         private readonly database: DatabaseService,
         private readonly access: AdminAccessService,
+        private readonly lifecycle: RecipeLifecycleService,
         @Optional() private readonly releases?: ContentReleasesService,
     ) {}
     private async db() {
         if (!this.database.db || !(await this.database.ready())) throw new ServiceUnavailableException();
         return this.database.db;
     }
-    private async cards(db: NonNullable<DatabaseService['db']>): Promise<ContentCard[]> {
-        const rows = await db
+    private async cards(db: Connection, pair?: ProductPair, lock = false): Promise<ContentCard[]> {
+        let productQuery = db
             .selectFrom('brand_products')
             .select([
                 'brand_products.id',
@@ -83,10 +112,12 @@ export class AdminContentService {
                 'brand_products.variant_id',
                 'brand_products.package_quantity',
                 'brand_products.package_unit_id',
-            ])
-            .orderBy('brand_products.created_at', 'desc')
-            .limit(200)
-            .execute();
+            ]);
+        if (pair) productQuery = productQuery.where('brand_products.id', 'in', [...pair]);
+        productQuery = lock
+            ? productQuery.orderBy('brand_products.id', 'asc').forUpdate()
+            : productQuery.orderBy('brand_products.created_at', 'desc').limit(200);
+        const rows = await productQuery.execute();
         const compositions = rows.length
             ? await db
                   .selectFrom('composition_versions')
@@ -137,6 +168,37 @@ export class AdminContentService {
             };
         });
     }
+    private assertPairTarget(target: string, leftId: string, rightId: string) {
+        if (leftId === rightId || ![leftId, rightId].includes(target))
+            throw new ConflictException('Route target must belong to the selected pair');
+    }
+    private async assertPairAvailable(
+        db: Connection,
+        left: Pick<ContentCard, 'id' | 'version'>,
+        right: Pick<ContentCard, 'id' | 'version'>,
+    ) {
+        const [first, second] = orderedPair(left.id, right.id);
+        const decisions = await db
+            .selectFrom('catalog_merges')
+            .select(['source_product_id', 'target_product_id', 'preview'])
+            .where('kind', '=', 'not_duplicate')
+            .where('status', '=', 'closed')
+            .where((expression) =>
+                expression.or([
+                    expression.and([
+                        expression('source_product_id', '=', first),
+                        expression('target_product_id', '=', second),
+                    ]),
+                    expression.and([
+                        expression('source_product_id', '=', second),
+                        expression('target_product_id', '=', first),
+                    ]),
+                ]),
+            )
+            .execute();
+        if (decisions.some((decision) => notDuplicateDecisionApplies(decision, left, right)))
+            throw new ConflictException('Pair is marked as not duplicate for the current versions');
+    }
     async load(raw: unknown) {
         const params = contentParamsSchema.parse(raw);
         const db = await this.db();
@@ -150,6 +212,8 @@ export class AdminContentService {
                 version: card.version,
                 current: null,
                 pending: null,
+                review: null,
+                publication: null,
                 status: card.aliasOf ? 'merged' : 'active',
                 history: [],
                 cards,
@@ -165,11 +229,13 @@ export class AdminContentService {
                 'moderation_cases.id',
                 'moderation_cases.version',
                 'moderation_cases.status',
+                'moderation_cases.evidence',
                 'recipe_revisions.id as revision_id',
                 'recipe_revisions.revision',
                 'recipe_revisions.title',
                 'recipe_revisions.portions',
                 'recipe_revisions.method',
+                'recipes.id as recipe_id',
                 'recipes.author_id',
             ])
             .where('moderation_cases.id', '=', params.id)
@@ -194,12 +260,59 @@ export class AdminContentService {
                   },
               }
             : null;
+        const activePublication = row.recipe_id
+            ? await sql<{
+                  id: string;
+                  revision: number;
+                  title: string;
+                  portions: number;
+                  method: string;
+                  authorId: string;
+                  publishedAt: Date;
+              }>`select rr.id,rr.revision,rr.title,rr.portions,rr.method,r.author_id as "authorId",p.published_at as "publishedAt"
+                  from meal.recipe_publications p join meal.recipe_revisions rr on rr.id=p.revision_id
+                  join meal.recipes r on r.id=p.recipe_id
+                  where p.recipe_id=${row.recipe_id}::uuid and p.unpublished_at is null
+                  order by p.published_at desc,p.id desc limit 1`.execute(db)
+            : null;
+        const published = activePublication?.rows[0];
+        const current = published
+            ? {
+                  id: published.id,
+                  version: published.revision,
+                  fields: {
+                      title: published.title,
+                      portions: String(published.portions),
+                      method: published.method,
+                      author: published.authorId,
+                  },
+              }
+            : null;
+        const evidence =
+            row.evidence && typeof row.evidence === 'object' && !Array.isArray(row.evidence)
+                ? (row.evidence as Record<string, unknown>)
+                : {};
+        const sanitizerStatus = ['rejected', 'published', 'hidden', 'unpublished'].includes(row.status)
+            ? (row.status as 'rejected' | 'published' | 'hidden' | 'unpublished')
+            : 'pending';
+        const publicReason = sanitizePublicReviewReason(
+            typeof evidence.publicReason === 'string' ? evidence.publicReason : null,
+            sanitizerStatus,
+        );
         return contentResultSchema.parse({
             section: params.section,
             id: params.id,
             version: Number(row.version),
-            current: row.status === 'approved' ? revision : null,
-            pending: ['pending', 'in_review'].includes(row.status) ? revision : null,
+            current,
+            pending: ['pending', 'in_review', 'approved'].includes(row.status) ? revision : null,
+            review: revision ? { revisionId: revision.id, status: row.status, publicReason, revision } : null,
+            publication: published
+                ? {
+                      revisionId: published.id,
+                      publishedAt: new Date(published.publishedAt).toISOString(),
+                      revision: current,
+                  }
+                : null,
             status: row.status,
             history: history.map((item) => ({
                 action: item.action,
@@ -216,11 +329,13 @@ export class AdminContentService {
         const params = contentParamsSchema.parse(rawParams);
         const input = contentCompareSchema.parse(raw);
         if (params.section !== 'catalog') throw new ConflictException();
+        this.assertPairTarget(params.id, input.leftId, input.rightId);
         const view = await this.load(params);
         const left = view.cards.find((card) => card.id === input.leftId);
         const right = view.cards.find((card) => card.id === input.rightId);
         if (!left || !right || left.id === right.id || left.aliasOf || right.aliasOf)
             throw new ConflictException('Select active cards');
+        await this.assertPairAvailable(await this.db(), left, right);
         return contentResultSchema.parse({ ...view, comparison: compareContentCards(left, right, input) });
     }
     async moderate(rawParams: unknown, raw: unknown, actor: Principal, requestId: string) {
@@ -229,6 +344,8 @@ export class AdminContentService {
         if (params.section !== 'queues') throw new ConflictException();
         const replayed = await this.database.transaction(async (tx) => {
             await this.assertActor(tx, actor);
+            await this.access.assertAdminRole(tx, actor);
+            await this.access.assertCritical(tx, actor);
             if (await this.replay(tx, actor, params.id, `admin.content.${input.action}`, input.idempotencyKey, input))
                 return true;
             const item = await tx
@@ -248,7 +365,7 @@ export class AdminContentService {
                 .executeTakeFirst();
             if (!item) throw new NotFoundException();
             if (Number(item.version) !== input.version) throw new ConflictException('Case changed');
-            const isRecipeReview = item.recipe_revision_id !== null;
+            const isRecipeReview = item.kind === 'recipe' && item.recipe_revision_id !== null;
             const isSubstantiveCorrection =
                 item.kind === 'catalog_correction' &&
                 item.catalog_proposal_revision_id !== null &&
@@ -258,7 +375,24 @@ export class AdminContentService {
                 item.evidence.substantive === true;
             if (!isRecipeReview && !isSubstantiveCorrection)
                 throw new ConflictException('Recipe revision or substantive catalog correction required');
+            if (isRecipeReview) {
+                const allowed =
+                    input.action === 'approve' || input.action === 'reject'
+                        ? ['queued', 'pending', 'in_review', 'approved'].includes(item.status)
+                        : ['hide', 'unpublish'].includes(input.action) && item.status === 'published';
+                if (!allowed) throw new ConflictException('Recipe review transition is not allowed');
+            }
             const decisionId = randomUUID();
+            const publicReason = sanitizePublicReviewReason(
+                input.publicReason,
+                input.action === 'reject'
+                    ? 'rejected'
+                    : input.action === 'hide'
+                      ? 'hidden'
+                      : input.action === 'unpublish'
+                        ? 'unpublished'
+                        : 'pending',
+            );
             await tx
                 .insertInto('moderation_decisions')
                 .values({
@@ -269,6 +403,7 @@ export class AdminContentService {
                     before_snapshot: { status: item.status },
                     after_snapshot: {
                         status: input.action,
+                        publicReason,
                         transition: isSubstantiveCorrection
                             ? input.action === 'approve'
                                 ? 'catalog.correction.accepted'
@@ -279,26 +414,36 @@ export class AdminContentService {
                     actor_id: actor.id,
                 })
                 .execute();
-            if (input.action === 'approve' && item.recipe_revision_id)
-                await tx
-                    .insertInto('recipe_publications')
-                    .values({
-                        id: randomUUID(),
-                        published_at: new Date(),
-                        unpublished_at: null,
-                        revision_id: item.recipe_revision_id,
-                        decision_id: decisionId,
-                    })
-                    .execute();
+            let publishedRecipe: { recipeId: string; authorId: string; publicationCreated: boolean } | undefined;
+            if (item.recipe_revision_id) {
+                if (input.action === 'approve')
+                    publishedRecipe = await this.lifecycle.publish(tx, {
+                        caseId: item.id,
+                        revisionId: item.recipe_revision_id,
+                        decisionId,
+                        actorId: actor.id,
+                    });
+                else if (input.action === 'reject')
+                    await this.lifecycle.markReview(tx, {
+                        caseId: item.id,
+                        revisionId: item.recipe_revision_id,
+                        status: 'rejected',
+                        publicReason,
+                    });
+                else {
+                    const status = input.action === 'hide' ? 'hidden' : 'unpublished';
+                    await this.lifecycle.closeActive(tx, {
+                        revisionId: item.recipe_revision_id,
+                        status,
+                        publicReason,
+                        sourceCaseId: item.id,
+                        actorId: actor.id,
+                    });
+                }
+            }
             if (input.action === 'approve' && item.recipe_revision_id) {
-                const recipe = await sql<{
-                    recipeId: string;
-                    authorId: string;
-                }>`select rr.recipe_id as "recipeId",r.author_id as "authorId" from meal.recipe_revisions rr join meal.recipes r on r.id=rr.recipe_id where rr.id=${item.recipe_revision_id}::uuid`.execute(
-                    tx,
-                );
-                const value = recipe.rows[0];
-                if (value) {
+                const value = publishedRecipe;
+                if (value?.publicationCreated) {
                     await this.releases?.recordReputationEventIn(
                         tx,
                         value.authorId,
@@ -358,13 +503,6 @@ export class AdminContentService {
                     });
                 }
             }
-            if ((input.action === 'hide' || input.action === 'unpublish') && item.recipe_revision_id)
-                await tx
-                    .updateTable('recipe_publications')
-                    .set({ unpublished_at: new Date() })
-                    .where('revision_id', '=', item.recipe_revision_id)
-                    .where('unpublished_at', 'is', null)
-                    .execute();
             if ((input.action === 'hide' || input.action === 'unpublish') && item.recipe_revision_id) {
                 const recipe = await sql<{
                     recipeId: string;
@@ -386,7 +524,13 @@ export class AdminContentService {
                 .updateTable('moderation_cases')
                 .set({
                     status:
-                        input.action === 'approve' ? 'approved' : input.action === 'reject' ? 'rejected' : input.action,
+                        input.action === 'approve'
+                            ? 'published'
+                            : input.action === 'reject'
+                              ? 'rejected'
+                              : input.action === 'hide'
+                                ? 'hidden'
+                                : 'unpublished',
                     version: Number(item.version) + 1,
                 })
                 .where('id', '=', item.id)
@@ -410,50 +554,58 @@ export class AdminContentService {
     async merge(rawParams: unknown, raw: unknown, actor: Principal, requestId: string) {
         const params = contentParamsSchema.parse(rawParams);
         const input = contentMergeSchema.parse(raw);
-        const alreadyApplied = await this.database.transaction(async (tx) => {
-            await this.access.assertCritical(tx, actor);
-            return this.replay(tx, actor, params.id, 'admin.content.merge', input.idempotencyKey, input);
-        });
-        if (alreadyApplied)
-            return contentResultSchema.parse({ ...(await this.load(params)), message: 'Запрос уже выполнен.' });
-        const preview = await this.compare(params, {
-            leftId: input.leftId,
-            rightId: input.rightId,
-            leftVersion: input.leftVersion,
-            rightVersion: input.rightVersion,
-            canonicalId: input.canonicalId,
-            choices: input.choices,
-        });
+        if (params.section !== 'catalog') throw new ConflictException();
+        this.assertPairTarget(params.id, input.leftId, input.rightId);
         const replayed = await this.database.transaction(async (tx) => {
+            await this.access.assertAdminRole(tx, actor);
             await this.access.assertCritical(tx, actor);
             if (await this.replay(tx, actor, params.id, 'admin.content.merge', input.idempotencyKey, input))
                 return true;
+            const pair = orderedPair(input.leftId, input.rightId);
+            const cards = await this.cards(tx, pair, true);
+            const left = cards.find((card) => card.id === input.leftId);
+            const right = cards.find((card) => card.id === input.rightId);
+            if (!left || !right) throw new ConflictException('Select two active cards');
+            await this.assertPairAvailable(tx, left, right);
+            const comparison = compareContentCards(left, right, {
+                leftId: input.leftId,
+                rightId: input.rightId,
+                leftVersion: input.leftVersion,
+                rightVersion: input.rightVersion,
+                canonicalId: input.canonicalId,
+                choices: input.choices,
+            });
             if (
-                !preview.comparison ||
-                preview.comparison.blockedReason ||
-                preview.comparison.conflicts.some((key) => !input.choices[key]) ||
-                preview.comparison.previewKey !== input.previewKey
+                comparison.blockedReason ||
+                comparison.conflicts.some((key) => !input.choices[key]) ||
+                comparison.previewKey !== input.previewKey
             )
                 throw new ConflictException('Refresh preview');
             const sourceId = input.canonicalId === input.leftId ? input.rightId : input.leftId;
-            const canonical = preview.comparison.resolved;
-            await tx
+            const source = sourceId === left.id ? left : right;
+            const canonicalCard = input.canonicalId === left.id ? left : right;
+            const canonical = comparison.resolved;
+            const canonicalUpdate = await tx
                 .updateTable('brand_products')
-                .set({ name: canonical.name ?? preview.comparison.left.name, version: sql`version+1` })
+                .set({ name: canonical.name ?? canonicalCard.name, version: sql`version+1` })
                 .where('id', '=', input.canonicalId)
-                .execute();
-            await tx
+                .where('version', '=', String(canonicalCard.version))
+                .executeTakeFirst();
+            const sourceUpdate = await tx
                 .updateTable('brand_products')
                 .set({ status: 'merged', version: sql`version+1` })
                 .where('id', '=', sourceId)
-                .execute();
+                .where('version', '=', String(source.version))
+                .executeTakeFirst();
+            if (canonicalUpdate.numUpdatedRows !== 1n || sourceUpdate.numUpdatedRows !== 1n)
+                throw new ConflictException('Cards changed');
             await tx
                 .insertInto('catalog_merges')
                 .values({
                     id: randomUUID(),
                     kind: 'product_duplicate',
                     status: 'applied',
-                    preview: preview.comparison,
+                    preview: comparison,
                     applied_at: new Date(),
                     reason: input.reason,
                     source_ingredient_id: null,
@@ -483,14 +635,19 @@ export class AdminContentService {
     async notDuplicate(rawParams: unknown, raw: unknown, actor: Principal, requestId: string) {
         const params = contentParamsSchema.parse(rawParams);
         const input = contentNotDuplicateSchema.parse(raw);
+        if (params.section !== 'catalog') throw new ConflictException();
+        this.assertPairTarget(params.id, input.leftId, input.rightId);
         const replayed = await this.database.transaction(async (tx) => {
             await this.assertActor(tx, actor);
+            await this.access.assertAdminRole(tx, actor);
             if (await this.replay(tx, actor, params.id, 'admin.content.not-duplicate', input.idempotencyKey, input))
                 return true;
+            const pair = orderedPair(input.leftId, input.rightId);
             const products = await tx
                 .selectFrom('brand_products')
                 .select(['id', 'version', 'status'])
-                .where('id', 'in', [input.leftId, input.rightId])
+                .where('id', 'in', [...pair])
+                .orderBy('id', 'asc')
                 .forUpdate()
                 .execute();
             const left = products.find((product) => product.id === input.leftId);
@@ -500,6 +657,11 @@ export class AdminContentService {
                 throw new ConflictException('Select active cards');
             if (Number(left.version) !== input.leftVersion || Number(right.version) !== input.rightVersion)
                 throw new ConflictException('Cards changed');
+            await this.assertPairAvailable(
+                tx,
+                { id: left.id, version: Number(left.version) },
+                { id: right.id, version: Number(right.version) },
+            );
             await tx
                 .insertInto('catalog_merges')
                 .values({

@@ -53,7 +53,7 @@ GRANT SELECT(id,version,created_at,name,status,ingredient_id) ON meal.ingredient
 GRANT SELECT(id,variant_id) ON meal.brand_products TO meal_app;
 GRANT SELECT(product_id,id,version,created_at,code,format,verified_at) ON meal.product_barcodes TO meal_app;
 GRANT SELECT(product_id,id,version,created_at,revision,composition_text,kcal,protein,fat,carbs,basis_quantity,basis_unit_id,source,confidence) ON meal.composition_versions TO meal_app;
-GRANT SELECT(source_product_id,target_product_id,id,version,created_at,kind,status,reason,applied_at,actor_id) ON meal.catalog_merges TO meal_app;
+GRANT SELECT(source_product_id,target_product_id,id,version,created_at,kind,status,reason,preview,applied_at,actor_id) ON meal.catalog_merges TO meal_app;
 GRANT SELECT(announcement_id,id,version,created_at,kind,status,scheduled_at,created_by) ON meal.mail_campaigns TO meal_app;
 GRANT SELECT(campaign_id,notification_id,id,version,created_at,channel,status,scheduled_at,sent_at,attempt_no) ON meal.notification_deliveries TO meal_app;
 GRANT SELECT(id,announcement_id) ON meal.notifications TO meal_app;
@@ -167,7 +167,7 @@ GRANT UPDATE(revoked_at,version) ON meal.staff_role_assignments TO meal_app;
 GRANT UPDATE(revoked_at) ON meal.staff_grants TO meal_app;
 GRANT UPDATE(status,resolved_at,decision,version) ON meal.appeals TO meal_app;
 GRANT UPDATE(body,version) ON meal.support_messages TO meal_app;
-GRANT UPDATE(status,assigned_to,version) ON meal.moderation_cases TO meal_app;
+GRANT UPDATE(status,assigned_to,evidence,version) ON meal.moderation_cases TO meal_app;
 GRANT INSERT,UPDATE(released_at,outcome,version) ON meal.moderation_claims TO meal_app;
 GRANT INSERT ON meal.support_messages,meal.support_events TO meal_app;
 GRANT UPDATE(name,status,version) ON meal.brand_products TO meal_app;

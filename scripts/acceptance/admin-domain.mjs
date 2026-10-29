@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 const expectStatus = (response, status, label) => {
     assert.equal(response.statusCode, status, `${label}: ${response.body}`);
@@ -20,6 +20,7 @@ export async function runAdminDomainAcceptance({
     ingredientId,
     unitId,
     suffix,
+    adminContentService,
 }) {
     let requestIndex = 0;
     const request = (method, url, payload, requestHeaders = adminHeaders()) =>
@@ -61,14 +62,19 @@ export async function runAdminDomainAcceptance({
         recipe: randomUUID(),
         revision: randomUUID(),
         moderationCase: randomUUID(),
+        rejectedRevision: randomUUID(),
+        rejectedCase: randomUUID(),
         targetUser: randomUUID(),
+        backupAdmin: randomUUID(),
         notification: randomUUID(),
         reviewRelease: randomUUID(),
         reviewEvent: randomUUID(),
         compensationRequest: randomUUID(),
         compensationItem: randomUUID(),
         compensationSourceAudit: randomUUID(),
+        staleUnlock: randomUUID(),
     };
+    const staleUnlockToken = randomBytes(32).toString('base64url');
     const allergenCode = `acceptance-${suffix}`;
     const targetLogin = `admin_target_${suffix}`;
     const owner = await ownerPool.connect();
@@ -77,6 +83,11 @@ export async function runAdminDomainAcceptance({
         await owner.query(`update meal.sessions set admin_critical_until=now()+interval '30 minutes' where id=$1`, [
             adminSessionId,
         ]);
+        await owner.query(
+            `insert into meal.admin_session_unlocks(id,session_id,token_hash,created_at,expires_at)
+             values($1,$2,$3,now()-interval '2 days',now()-interval '1 day')`,
+            [ids.staleUnlock, adminSessionId, createHash('sha256').update(staleUnlockToken).digest('hex')],
+        );
         await owner.query(`insert into meal.allergens(id,code,name) values($1,$2,$3)`, [
             ids.allergen,
             allergenCode,
@@ -135,6 +146,11 @@ export async function runAdminDomainAcceptance({
             `insert into meal.users(id,login,display_name,email_normalized,status,archived_at,email_verified_at,is_test_account)
              values($1,$2,'Governance target',$3,'active',null,now(),true)`,
             [ids.targetUser, targetLogin, `${targetLogin}@example.test`],
+        );
+        await owner.query(
+            `insert into meal.users(id,login,display_name,email_normalized,status,archived_at,email_verified_at,is_test_account)
+             values($1,$2,'Backup acceptance administrator',$3,'active',null,now(),true)`,
+            [ids.backupAdmin, `backup_admin_${suffix}`, `backup-admin-${suffix}@example.test`],
         );
         await owner.query(
             `insert into meal.notifications(
@@ -274,10 +290,137 @@ export async function runAdminDomainAcceptance({
         'admin content queue load',
     );
     assert.equal(queueLoad.json().data.pending.id, ids.revision);
+    assert.deepEqual(queueLoad.json().data.review, {
+        revisionId: ids.revision,
+        status: 'pending',
+        publicReason: null,
+        revision: queueLoad.json().data.pending,
+    });
+    assert.equal(queueLoad.json().data.publication, null);
     const moderatePayload = { action: 'approve', version: 1, reason: '', idempotencyKey: randomUUID() };
     const moderateUrl = `/api/v1/admin/content-workspace/queues/${ids.moderationCase}/moderate`;
+    const missingUnlockHeaders = { ...adminHeaders() };
+    delete missingUnlockHeaders['x-admin-unlock'];
+    const missingUnlock = await expectError(
+        request('POST', moderateUrl, moderatePayload, missingUnlockHeaders),
+        403,
+        'admin content missing unlock proof',
+    );
+    assert.equal(missingUnlock.json().error.code, 'ADMIN_LOCKED');
+    const staleUnlock = await expectError(
+        request('POST', moderateUrl, moderatePayload, {
+            ...adminHeaders(),
+            'x-admin-unlock': staleUnlockToken,
+        }),
+        403,
+        'admin content stale unlock proof',
+    );
+    assert.equal(staleUnlock.json().error.code, 'ADMIN_LOCKED');
+    await ownerPool.query('begin isolation level serializable');
+    try {
+        await ownerPool.query(`update meal.sessions set admin_critical_until=null where id=$1`, [adminSessionId]);
+        await ownerPool.query('commit');
+    } catch (error) {
+        await ownerPool.query('rollback');
+        throw error;
+    }
+    const missingCritical = await expectError(
+        request('POST', moderateUrl, moderatePayload),
+        403,
+        'admin content missing critical confirmation',
+    );
+    assert.equal(missingCritical.json().error.code, 'ADMIN_CONFIRMATION_REQUIRED');
+    await ownerPool.query('begin isolation level serializable');
+    try {
+        await ownerPool.query(`update meal.sessions set admin_critical_until=now()-interval '1 second' where id=$1`, [
+            adminSessionId,
+        ]);
+        await ownerPool.query('commit');
+    } catch (error) {
+        await ownerPool.query('rollback');
+        throw error;
+    }
+    const expiredCritical = await expectError(
+        request('POST', moderateUrl, moderatePayload),
+        403,
+        'admin content expired critical confirmation',
+    );
+    assert.equal(expiredCritical.json().error.code, 'ADMIN_CONFIRMATION_REQUIRED');
+    await ownerPool.query('begin isolation level serializable');
+    try {
+        await ownerPool.query(`update meal.sessions set admin_critical_until=now()+interval '30 minutes' where id=$1`, [
+            adminSessionId,
+        ]);
+        await ownerPool.query('commit');
+    } catch (error) {
+        await ownerPool.query('rollback');
+        throw error;
+    }
     const moderated = await replayIgnoringMessage('POST', moderateUrl, moderatePayload, 200, 'admin content moderate');
-    assert.equal(moderated.json().data.status, 'approved');
+    assert.equal(moderated.json().data.status, 'published');
+    assert.equal(moderated.json().data.review.status, 'published');
+    assert.equal(moderated.json().data.review.revisionId, ids.revision);
+    assert.equal(moderated.json().data.publication.revisionId, ids.revision);
+    assert.equal(moderated.json().data.publication.revision.id, ids.revision);
+
+    await ownerPool.query('begin isolation level serializable');
+    try {
+        await ownerPool.query(
+            `insert into meal.recipe_revisions(id,revision,title,portions,method,nutrition_snapshot,timing,change_kind,recipe_id,created_by)
+             values($1,2,$2,2,'Rejected acceptance method',null,null,'admin-content-rejected',$3,$4)`,
+            [ids.rejectedRevision, `Rejected admin content recipe ${suffix}`, ids.recipe, userId],
+        );
+        await ownerPool.query(
+            `insert into meal.moderation_cases(
+               id,kind,status,reason,submitted_at,queue_priority,evidence,recipe_revision_id,assigned_to
+             ) values($1,'recipe','pending','Internal seeded note',now(),1,$2::jsonb,$3,$4)`,
+            [
+                ids.rejectedCase,
+                JSON.stringify({ internalNote: 'must-not-enter-review-axis' }),
+                ids.rejectedRevision,
+                adminUserId,
+            ],
+        );
+        await ownerPool.query('commit');
+    } catch (error) {
+        await ownerPool.query('rollback');
+        throw error;
+    }
+    const rejectedPayload = {
+        action: 'reject',
+        version: 1,
+        reason: 'Internal rejection note',
+        publicReason: '  Исправьте\nописание  ',
+        idempotencyKey: randomUUID(),
+    };
+    const rejected = await replayIgnoringMessage(
+        'POST',
+        `/api/v1/admin/content-workspace/queues/${ids.rejectedCase}/moderate`,
+        rejectedPayload,
+        200,
+        'admin content revision-aware reject',
+    );
+    assert.equal(rejected.json().data.status, 'rejected');
+    const rejectedProjection = expectStatus(
+        await request('GET', `/api/v1/admin/content-workspace/queues/${ids.rejectedCase}`),
+        200,
+        'admin content revision-aware rejected projection',
+    );
+    const rejectedData = rejectedProjection.json().data;
+    assert.equal(rejectedData.current.id, ids.revision);
+    assert.equal(rejectedData.pending, null);
+    assert.deepEqual(rejectedData.review, {
+        revisionId: ids.rejectedRevision,
+        status: 'rejected',
+        publicReason: 'Исправьте описание',
+        revision: rejectedData.review.revision,
+    });
+    assert.equal(rejectedData.review.revision.id, ids.rejectedRevision);
+    assert.equal(rejectedData.publication.revisionId, ids.revision);
+    assert.equal(rejectedData.publication.revision.id, ids.revision);
+    assert.equal('internalNote' in rejectedData.review, false);
+    assert.equal(JSON.stringify(rejectedData.review).includes('Internal rejection note'), false);
+    assert.equal(JSON.stringify(rejectedData.review).includes('must-not-enter-review-axis'), false);
     const catalogLoad = expectStatus(
         await request('GET', `/api/v1/admin/content-workspace/catalog/${ids.productLeft}`),
         200,
@@ -297,6 +440,11 @@ export async function runAdminDomainAcceptance({
         'admin content compare',
     );
     assert.equal(compared.json().data.comparison.blockedReason, null);
+    await expectError(
+        request('POST', `/api/v1/admin/content-workspace/catalog/${randomUUID()}/compare`, comparePayload),
+        409,
+        'admin content compare route target binding',
+    );
     const notDuplicatePayload = {
         leftId: ids.productLeft,
         rightId: ids.productRight,
@@ -305,6 +453,14 @@ export async function runAdminDomainAcceptance({
         reason: 'Acceptance cards are distinct',
         idempotencyKey: randomUUID(),
     };
+    await expectError(
+        request('POST', `/api/v1/admin/content-workspace/catalog/${randomUUID()}/not-duplicate`, {
+            ...notDuplicatePayload,
+            idempotencyKey: randomUUID(),
+        }),
+        409,
+        'admin content not-duplicate route target binding',
+    );
     await replayIgnoringMessage(
         'POST',
         `/api/v1/admin/content-workspace/catalog/${ids.productLeft}/not-duplicate`,
@@ -312,33 +468,150 @@ export async function runAdminDomainAcceptance({
         200,
         'admin content not duplicate',
     );
-    const mergePayload = {
+    const blockedMergePayload = {
         ...comparePayload,
         previewKey: compared.json().data.comparison.previewKey,
         reason: 'Acceptance duplicate merge',
         idempotencyKey: randomUUID(),
     };
     const mergeUrl = `/api/v1/admin/content-workspace/catalog/${ids.productLeft}/merge`;
-    const mergeResponse = await request('POST', mergeUrl, mergePayload);
+    await expectError(
+        request('POST', `/api/v1/admin/content-workspace/catalog/${ids.productLeft}/compare`, comparePayload),
+        409,
+        'admin content not-duplicate blocks compare for exact versions',
+    );
+    await expectError(
+        request('POST', mergeUrl, blockedMergePayload),
+        409,
+        'admin content not-duplicate blocks merge for exact versions',
+    );
+    await ownerPool.query('begin isolation level serializable');
+    try {
+        const changed = await ownerPool.query(`update meal.brand_products set version=version+1 where id=$1`, [
+            ids.productLeft,
+        ]);
+        assert.equal(changed.rowCount, 1);
+        await ownerPool.query('commit');
+    } catch (error) {
+        await ownerPool.query('rollback');
+        throw error;
+    }
+    const refreshedComparePayload = { ...comparePayload, leftVersion: 2 };
+    const refreshedComparison = expectStatus(
+        await request(
+            'POST',
+            `/api/v1/admin/content-workspace/catalog/${ids.productLeft}/compare`,
+            refreshedComparePayload,
+        ),
+        200,
+        'admin content changed version reopens pair',
+    );
+    await expectError(
+        request('POST', mergeUrl, { ...blockedMergePayload, idempotencyKey: randomUUID() }),
+        409,
+        'admin content stale preview rollback',
+    );
+    const mergePayload = {
+        ...refreshedComparePayload,
+        previewKey: refreshedComparison.json().data.comparison.previewKey,
+        reason: 'Acceptance duplicate merge after meaningful change',
+        idempotencyKey: randomUUID(),
+    };
+    await expectError(
+        request('POST', `/api/v1/admin/content-workspace/catalog/${randomUUID()}/merge`, {
+            ...mergePayload,
+            idempotencyKey: randomUUID(),
+        }),
+        409,
+        'admin content merge route target binding',
+    );
+    const [mergeResponse, mergeReplayResponse] = await Promise.all([
+        request('POST', mergeUrl, mergePayload),
+        request('POST', mergeUrl, mergePayload),
+    ]);
     const merged = expectStatus(mergeResponse, 200, 'admin content merge');
-    const mergedReplay = expectStatus(await request('POST', mergeUrl, mergePayload), 200, 'admin content merge replay');
+    const mergedReplay = expectStatus(mergeReplayResponse, 200, 'admin content concurrent merge replay');
     const { message: _mergedMessage, ...mergedState } = merged.json().data;
     const { message: _mergedReplayMessage, ...mergedReplayState } = mergedReplay.json().data;
     assert.deepEqual(mergedReplayState, mergedState);
     assert.equal(merged.json().data.cards.find((item) => item.id === ids.productRight).aliasOf, ids.productLeft);
+    const backupAdminRoleId = randomUUID();
+    await ownerPool.query('begin isolation level serializable');
+    let revokedAdminRoleIds;
+    try {
+        await ownerPool.query(
+            `insert into meal.staff_role_assignments(id,role,assigned_at,user_id,assigned_by)
+             values($1,'admin',now(),$2,$3)`,
+            [backupAdminRoleId, ids.backupAdmin, adminUserId],
+        );
+        const revoked = await ownerPool.query(
+            `update meal.staff_role_assignments set revoked_at=now(),version=version+1
+             where user_id=$1 and role='admin' and revoked_at is null returning id`,
+            [adminUserId],
+        );
+        revokedAdminRoleIds = revoked.rows.map((row) => row.id);
+        assert.ok(revokedAdminRoleIds.length > 0);
+        await ownerPool.query('commit');
+    } catch (error) {
+        await ownerPool.query('rollback');
+        throw error;
+    }
+    await assert.rejects(
+        adminContentService.merge(
+            { section: 'catalog', id: ids.productLeft },
+            mergePayload,
+            {
+                id: adminUserId,
+                sessionId: adminSessionId,
+                context: 'admin',
+                displayName: 'Acceptance admin',
+                expiresAt: new Date(Date.now() + 300_000).toISOString(),
+            },
+            randomUUID(),
+        ),
+        (error) => typeof error?.getStatus === 'function' && error.getStatus() === 403,
+    );
+    await ownerPool.query('begin isolation level serializable');
+    try {
+        await ownerPool.query(
+            `update meal.staff_role_assignments set revoked_at=null,version=version+1 where id=any($1::uuid[])`,
+            [revokedAdminRoleIds],
+        );
+        await ownerPool.query(`update meal.staff_role_assignments set revoked_at=now(),version=version+1 where id=$1`, [
+            backupAdminRoleId,
+        ]);
+        await ownerPool.query('commit');
+    } catch (error) {
+        await ownerPool.query('rollback');
+        throw error;
+    }
     const contentEffects = await pool.query(
         `select
           (select status from meal.moderation_cases where id=$1) moderation_status,
           (select count(*)::int from meal.recipe_publications where revision_id=$2 and unpublished_at is null) publications,
           (select count(*)::int from meal.catalog_merges where source_product_id=$3 and target_product_id=$4 and status='applied') merges,
-          (select count(*)::int from meal.catalog_merges where source_product_id=$4 and target_product_id=$3 and status='closed') distinct_pairs`,
-        [ids.moderationCase, ids.revision, ids.productRight, ids.productLeft],
+          (select count(*)::int from meal.catalog_merges where source_product_id=$4 and target_product_id=$3 and status='closed') distinct_pairs,
+          (select count(*)::int from meal.audit_events where actor_id=$5 and target_id=$4 and action='admin.content.merge') merge_audits,
+          (select count(*)::int from meal.idempotency_records where actor_namespace=$6 and target_binding=$4::text and operation='admin.content.merge' and key=$7) merge_idempotency,
+          (select count(*)::int from meal.idempotency_records where actor_namespace=$6 and target_binding=$4::text and operation='admin.content.merge') merge_idempotency_total`,
+        [
+            ids.moderationCase,
+            ids.revision,
+            ids.productRight,
+            ids.productLeft,
+            adminUserId,
+            `admin:${adminUserId}`,
+            mergePayload.idempotencyKey,
+        ],
     );
     assert.deepEqual(contentEffects.rows[0], {
-        moderation_status: 'approved',
+        moderation_status: 'published',
         publications: 1,
         merges: 1,
         distinct_pairs: 1,
+        merge_audits: 1,
+        merge_idempotency: 1,
+        merge_idempotency_total: 1,
     });
 
     const releaseCreatePayload = { name: `Acceptance release ${suffix}`, idempotencyKey: randomUUID() };
@@ -726,7 +999,10 @@ export async function runAdminDomainAcceptance({
                 criticalGate: true,
                 roleGate: true,
                 providerBoundariesExcluded: true,
+                revisionAwareContentAxes: true,
+                recipeModerationCriticalGate: true,
             },
         })}`,
     );
+    return { backupAdminRoleId };
 }

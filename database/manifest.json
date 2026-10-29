@@ -4,7 +4,7 @@
     "postgresMajor": 18,
     "domainTables": 204,
     "totalTables": 209,
-    "foreignKeys": 482,
+    "foreignKeys": 483,
     "migrations": [
         {
             "version": 1,
@@ -145,6 +145,11 @@
             "version": 28,
             "file": "028_query_optimization_indexes.sql",
             "sha256": "4ca1c7bc05500038eee7d08a9a405eafd67e0f3c9046338e2b687a7c4b610ea6"
+        },
+        {
+            "version": 29,
+            "file": "029_recipe_revision_lifecycle.sql",
+            "sha256": "ff1d7f9d9a6d4a0ddc20ba9a8e9746029d534a74f5dba19e546b9f32633df98f"
         }
     ]
 }

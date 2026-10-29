@@ -79,7 +79,17 @@ export class ApiExceptionFilter implements ExceptionFilter {
                     : (messages[status] ?? ['INTERNAL_ERROR', 'Внутренняя ошибка сервиса']);
         const details = exception instanceof LegalConsentRequiredException ? exception.details : null;
         if (status >= 500) {
-            request.log.error({ requestId: request.id, status }, 'Request failed');
+            const failure =
+                exception instanceof Error
+                    ? {
+                          name: exception.name,
+                          message: exception.message,
+                          stack: exception.stack,
+                          code: 'code' in exception ? exception.code : undefined,
+                          constraint: 'constraint' in exception ? exception.constraint : undefined,
+                      }
+                    : exception;
+            request.log.error({ failure, requestId: request.id, status }, 'Request failed');
             void this.telemetry.recordOperational('backend.http.unhandled', {
                 requestId: request.id,
                 severity: status >= 503 ? 'critical' : 'error',

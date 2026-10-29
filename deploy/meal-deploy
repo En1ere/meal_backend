@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+set -eu
+
+[ "$#" -eq 3 ] || { echo "usage: meal-deploy <component> <digest-image> <40-char-revision>" >&2; exit 64; }
+component=$1 image=$2 revision=$3
+printf '%s\n' "$revision" | grep -Eq '^[0-9a-f]{40}$' || { echo "Invalid revision" >&2; exit 64; }
+case "$component:$image" in
+    backend:ghcr.io/[Ee]n1ere/meal_backend@sha256:*) ;;
+    frontend:ghcr.io/[Ee]n1ere/meal_frontend@sha256:*) ;;
+    admin:ghcr.io/[Ee]n1ere/meal_admin@sha256:*) ;;
+    *) echo "Component/image repository is not allowlisted" >&2; exit 64 ;;
+esac
+exec /bin/sh /srv/meal/deployment/deploy.sh --component "$component" --image "$image" --revision "$revision"

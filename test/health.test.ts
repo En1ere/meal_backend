@@ -31,7 +31,6 @@ await test('health, envelope, request ID, missing database and CORS are distinct
         await app.close();
     }
 });
-
 await test('invalid deployment configuration fails before startup without secret disclosure', () => {
     assert.throws(() => readConfig({ PORT: '-1' }), /PORT/);
     assert.throws(() => readConfig({ NODE_ENV: 'production' }), /Production/);

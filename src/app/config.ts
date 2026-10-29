@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { isIP } from 'node:net';
+import { isAbsolute } from 'node:path';
+import { readFileSync } from 'node:fs';
 
 export const configSchema = z.object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -82,8 +84,34 @@ export const configSchema = z.object({
 export type AppConfig = z.infer<typeof configSchema>;
 export const APP_CONFIG = Symbol('APP_CONFIG');
 
+const secretFiles = {
+    DATABASE_URL: 'DATABASE_URL_FILE',
+    SECURITY_KEY: 'SECURITY_KEY_FILE',
+    MFA_ENCRYPTION_KEY: 'MFA_ENCRYPTION_KEY_FILE',
+} as const;
+
+function withSecretFiles(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+    const resolved = { ...env };
+    for (const [field, fileField] of Object.entries(secretFiles) as [keyof typeof secretFiles, string][]) {
+        const direct = env[field];
+        const file = env[fileField];
+        if (direct && file) throw new Error(`Configure either ${field} or ${fileField}, not both`);
+        if (!file) continue;
+        if (!isAbsolute(file)) throw new Error(`${fileField} must be an absolute path`);
+        let value: string;
+        try {
+            value = readFileSync(file, 'utf8').replace(/\r?\n$/, '');
+        } catch {
+            throw new Error(`Unable to read ${fileField}`);
+        }
+        if (!value || /[\r\n\0]/.test(value)) throw new Error(`${fileField} must contain one non-empty line`);
+        resolved[field] = value;
+    }
+    return resolved;
+}
+
 export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
-    const result = configSchema.safeParse(env);
+    const result = configSchema.safeParse(withSecretFiles(env));
     if (!result.success) {
         throw new Error(
             `Invalid configuration fields: ${result.error.issues.map((issue) => issue.path.join('.')).join(', ')}`,

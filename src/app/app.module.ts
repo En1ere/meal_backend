@@ -148,6 +148,7 @@ import { AdminReviewService } from '../modules/admin-review/admin-review.service
 import { AdminRollbackRegistry } from '../modules/admin-review/admin-rollback.registry.js';
 import { ModeratorController, ModeratorSessionGuard } from '../modules/moderator/moderator.http.js';
 import { ModeratorService } from '../modules/moderator/moderator.service.js';
+import { RecipeLifecycleService } from '../modules/recipe-lifecycle/recipe-lifecycle.service.js';
 import { AccountController, MailboxController } from '../modules/account/account.http.js';
 import { Module, type DynamicModule } from '@nestjs/common';
 import { CookingLifecycleService } from '../modules/cooking/cooking-lifecycle.service.js';
@@ -244,6 +245,7 @@ export class AppModule {
             providers: [
                 RecipePolicyService,
                 RecipeWorkspaceService,
+                RecipeLifecycleService,
                 CookingService,
                 CookingLifecycleService,
                 CookingStatisticsPolicy,

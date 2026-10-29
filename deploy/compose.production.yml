@@ -1,0 +1,182 @@
+name: meal-planner
+
+x-application-hardening: &application-hardening
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    restart: unless-stopped
+
+services:
+    postgres:
+        image: ${POSTGRES_IMAGE:?immutable PostgreSQL digest reference is required}
+        environment:
+            POSTGRES_DB: meal_planner_postgres
+            POSTGRES_USER: ${POSTGRES_USER:-meal_owner}
+            POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+        secrets: [postgres_password, runtime_database_password]
+        volumes:
+            - meal-postgres-data:/var/lib/postgresql
+        healthcheck:
+            test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d meal_planner_postgres']
+            interval: 10s
+            timeout: 5s
+            retries: 12
+            start_period: 30s
+        stop_grace_period: 60s
+        restart: unless-stopped
+        shm_size: 256mb
+        security_opt: [no-new-privileges:true]
+        networks: [meal-db]
+
+    backend:
+        <<: *application-hardening
+        image: ${BACKEND_IMAGE:?immutable backend digest reference is required}
+        environment:
+            NODE_ENV: production
+            HOST: 0.0.0.0
+            PORT: '3001'
+            APP_VERSION: ${BACKEND_VERSION:?backend version is required}
+            FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?frontend HTTPS origin is required}
+            ADMIN_FRONTEND_ORIGIN: ${ADMIN_FRONTEND_ORIGIN:?admin HTTPS origin is required}
+            DATABASE_URL_FILE: /run/secrets/backend_database_url
+            SECURITY_KEY_FILE: /run/secrets/backend_security_key
+            MFA_ENCRYPTION_KEY_FILE: /run/secrets/backend_mfa_encryption_key
+            DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-10}
+            LOG_LEVEL: ${BACKEND_LOG_LEVEL:-info}
+            TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:?trusted host proxy CIDR is required}
+            ADMIN_ALLOWED_IPS: ${ADMIN_ALLOWED_IPS:-}
+            AI_RECONCILIATION_ENABLED: 'false'
+            COOKING_LIFECYCLE_ENABLED: 'false'
+        secrets: [backend_database_url, backend_security_key, backend_mfa_encryption_key]
+        ports: ['127.0.0.1:3001:3001']
+        tmpfs:
+            - '/tmp:rw,noexec,nosuid,nodev,size=128m'
+        depends_on:
+            postgres:
+                condition: service_healthy
+        healthcheck:
+            test:
+                [
+                    CMD,
+                    node,
+                    -e,
+                    "fetch('http://127.0.0.1:3001/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+                ]
+            interval: 10s
+            timeout: 3s
+            retries: 12
+            start_period: 30s
+        stop_grace_period: 120s
+        networks: [meal-db, meal-egress]
+
+    frontend:
+        <<: *application-hardening
+        image: ${FRONTEND_IMAGE:?immutable frontend digest reference is required}
+        environment:
+            NODE_ENV: production
+            HOSTNAME: 0.0.0.0
+            PORT: '3000'
+            NEXT_TELEMETRY_DISABLED: '1'
+        ports: ['127.0.0.1:3000:3000']
+        tmpfs:
+            - /tmp:rw,noexec,nosuid,nodev,size=64m
+            - /app/front/.next/cache:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=0750,size=256m
+        healthcheck:
+            test:
+                [
+                    CMD,
+                    node,
+                    -e,
+                    "fetch('http://127.0.0.1:3000/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+                ]
+            interval: 10s
+            timeout: 3s
+            retries: 12
+            start_period: 30s
+        stop_grace_period: 45s
+        networks: [meal-egress]
+
+    admin:
+        <<: *application-hardening
+        image: ${ADMIN_IMAGE:?immutable admin digest reference is required}
+        ports: ['127.0.0.1:3002:8080']
+        tmpfs:
+            - /tmp:rw,noexec,nosuid,nodev,size=32m
+            - /var/cache/nginx:rw,noexec,nosuid,nodev,uid=101,gid=101,mode=0750,size=64m
+            - /var/run:rw,noexec,nosuid,nodev,uid=101,gid=101,mode=0750,size=8m
+        healthcheck:
+            test: [CMD-SHELL, 'wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1']
+            interval: 10s
+            timeout: 3s
+            retries: 12
+            start_period: 15s
+        stop_grace_period: 30s
+        networks: [meal-egress]
+
+    migrate:
+        image: ${BACKEND_IMAGE:?immutable backend digest reference is required}
+        profiles: [tools]
+        read_only: true
+        user: node
+        cap_drop: [ALL]
+        security_opt: [no-new-privileges:true]
+        environment:
+            PGHOST: postgres
+            PGPORT: '5432'
+            PGDATABASE: meal_planner_postgres
+            PGUSER: ${MIGRATION_DATABASE_USER:-meal_owner}
+            MIGRATION_ENVIRONMENT: ${MIGRATION_ENVIRONMENT:-test}
+        secrets: [migration_pgpass]
+        tmpfs:
+            - '/tmp:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=0700,size=8m'
+        depends_on:
+            postgres:
+                condition: service_healthy
+        networks: [meal-db]
+        restart: 'no'
+        command:
+            - sh
+            - -ec
+            - |
+                cp /run/secrets/migration_pgpass /tmp/.pgpass
+                chmod 600 /tmp/.pgpass
+                export PGPASSFILE=/tmp/.pgpass
+                case "$${MIGRATION_ENVIRONMENT}" in
+                  test) production_flag="" ;;
+                  production) production_flag="--allow-production" ;;
+                  *) echo "Unsupported migration environment" >&2; exit 64 ;;
+                esac
+                exec node scripts/migrate.mjs --apply --environment="$${MIGRATION_ENVIRONMENT}" --allow-remote $${production_flag}
+
+volumes:
+    meal-postgres-data:
+        name: meal-postgres-data
+
+networks:
+    meal-db:
+        name: meal-db
+        internal: true
+        ipam:
+            config:
+                - subnet: ${MEAL_NETWORK_SUBNET:-172.30.0.0/24}
+    meal-egress:
+        name: meal-egress
+        ipam:
+            config:
+                - subnet: ${MEAL_EGRESS_SUBNET:-172.31.0.0/24}
+
+secrets:
+    postgres_password:
+        file: ${POSTGRES_PASSWORD_FILE:-/etc/meal-planner/secrets/postgres-password}
+    runtime_database_password:
+        file: ${RUNTIME_DATABASE_PASSWORD_FILE:-/etc/meal-planner/secrets/runtime-database-password}
+    backend_database_url:
+        file: ${BACKEND_DATABASE_URL_FILE:-/etc/meal-planner/secrets/backend-database-url}
+    backend_security_key:
+        file: ${BACKEND_SECURITY_KEY_FILE:-/etc/meal-planner/secrets/backend-security-key}
+    backend_mfa_encryption_key:
+        file: ${BACKEND_MFA_ENCRYPTION_KEY_FILE:-/etc/meal-planner/secrets/backend-mfa-encryption-key}
+    migration_pgpass:
+        file: ${MIGRATION_PGPASS_FILE:-/etc/meal-planner/secrets/migration.pgpass}

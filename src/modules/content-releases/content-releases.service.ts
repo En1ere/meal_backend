@@ -922,6 +922,7 @@ export class ContentReleasesService {
     }
 
     async reverseReputationEventByKeyIn(tx: Tx, userId: string, qualifyingEventKey: string, reason: string) {
+        await sql`select pg_advisory_xact_lock(hashtextextended(${qualifyingEventKey},0))`.execute(tx);
         const original = await sql<{
             id: string;
             delta: number;
@@ -930,7 +931,7 @@ export class ContentReleasesService {
         }>`select re.id,re.delta::int,re.rule_version as "ruleVersion",re.evidence from meal.reputation_events re
             where re.user_id=${userId}::uuid and re.evidence->>'qualifyingEventKey'=${qualifyingEventKey}
               and not exists(select 1 from meal.reputation_events next where next.reverses_id=re.id)
-            order by re.recorded_at desc,re.id desc limit 1 for update`.execute(tx);
+            order by re.recorded_at desc,re.id desc limit 1`.execute(tx);
         const row = original.rows[0];
         if (!row || row.delta <= 0) return { eventId: row?.id ?? null, created: false };
         const id = randomUUID();

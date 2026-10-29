@@ -9,7 +9,7 @@ import {
     PostgresQueryCompiler,
     type DatabaseConnection,
 } from 'kysely';
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import {
     AdminAccessService,
     AdminLockedException,
@@ -153,6 +153,17 @@ await test('admin proof is required, bound to portal session, survives reload an
         assert.equal((await service.status('cookie', 'p'.repeat(43))).status, 'unlocked');
         state.marker = false;
         await assert.rejects(service.status('legacy-staff-cookie', 'p'.repeat(43)), UnauthorizedException);
+    } finally {
+        await db.destroy();
+    }
+});
+await test('transaction-local admin role revalidation rejects a revoked role', async () => {
+    const { service, state, actor, db } = fixture();
+    try {
+        const tx = db as unknown as Parameters<Parameters<DatabaseService['transaction']>[0]>[0];
+        await service.assertAdminRole(tx, actor);
+        state.role = false;
+        await assert.rejects(service.assertAdminRole(tx, actor), ForbiddenException);
     } finally {
         await db.destroy();
     }

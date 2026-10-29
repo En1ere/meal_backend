@@ -1,4 +1,4 @@
-import { Injectable, HttpException, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, HttpException, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { sql, type Transaction } from 'kysely';
 import { z } from 'zod';
@@ -8,6 +8,8 @@ import { RecipePolicyService } from '../recipe-policy/recipe-policy.service.js';
 import { EntitlementsService } from '../entitlements/entitlements.service.js';
 import { LegalConsentService } from '../legal-consents/legal-consent.service.js';
 import { recipeNutritionSchema } from '../recipes/recipes.contracts.js';
+import { RecipeLifecycleService } from '../recipe-lifecycle/recipe-lifecycle.service.js';
+import { ContentReleasesService } from '../content-releases/content-releases.service.js';
 import { workspaceNutrition, workspaceIngredientSource, type WorkspaceComposition } from './recipe-workspace.domain.js';
 import {
     workspaceRecipeSchema,
@@ -40,6 +42,8 @@ export class RecipeWorkspaceService {
         private readonly policy: RecipePolicyService,
         private readonly entitlements: EntitlementsService,
         private readonly legalConsents: LegalConsentService,
+        private readonly lifecycle: RecipeLifecycleService,
+        @Optional() private readonly releases?: ContentReleasesService,
     ) {}
     reports(user: string, input: z.infer<typeof workspaceReportsQuerySchema>) {
         return this.run(user, false, async (tx) => {
@@ -181,6 +185,7 @@ export class RecipeWorkspaceService {
             );
         const wrapped = workspaceNutritionSchema.safeParse(rr.nutrition_snapshot),
             raw = recipeNutritionSchema.safeParse(rr.nutrition_snapshot);
+        const lifecycle = await this.lifecycle.projection(tx, String(recipe.id), String(rr.id), String(recipe.status));
         return workspaceRecipeSchema.parse({
             nutrition: wrapped.success
                 ? wrapped.data
@@ -193,7 +198,9 @@ export class RecipeWorkspaceService {
             revisionId: rr.id,
             version: Number(recipe.version),
             revision: rr.revision,
-            status: recipe.status,
+            status: lifecycle.review.status,
+            review: lifecycle.review,
+            publication: lifecycle.publication,
             archived: !!recipe.archived_at,
             baseRecipeId: recipe.base_recipe_id,
             availabilityScope: recipe.scope_kind,
@@ -361,7 +368,7 @@ export class RecipeWorkspaceService {
                     String(r.scope_id),
                     r.scope_kind as 'private' | 'family',
                 );
-                await sql`update meal.recipes set title=${input.document.title},version=version+1 where id=${id}::uuid`.execute(
+                await sql`update meal.recipes set title=${input.document.title},status='draft',version=version+1 where id=${id}::uuid`.execute(
                     tx,
                 );
                 return { recipe: await this.revision(tx, await this.owned(tx, user, id)) };
@@ -392,10 +399,10 @@ export class RecipeWorkspaceService {
                             fail(e instanceof Error ? e.message : 'Заполните рецепт', 422);
                         }
                         const pending =
-                            await sql`select id from meal.moderation_cases where recipe_revision_id=${recipe.revisionId}::uuid and kind='recipe' and status='pending'`.execute(
+                            await sql`select id from meal.moderation_cases where recipe_revision_id=${recipe.revisionId}::uuid and kind='recipe'`.execute(
                                 tx,
                             );
-                        if (pending.rows.length) fail('Версия уже на проверке');
+                        if (pending.rows.length) fail('Эта версия уже отправлялась на проверку');
                         await this.policy.assertAllowance(tx, user, 'submission');
                         await this.case(tx, user, recipe.revisionId, null, 'publication', null, 'recipe');
                         await sql`update meal.recipes set status='pending',version=version+1 where id=${id}::uuid`.execute(
@@ -422,15 +429,20 @@ export class RecipeWorkspaceService {
                             r.scope_kind as 'private' | 'family',
                             previous.nutrition,
                         );
-                        await sql`update meal.recipes set title=${previous.document.title},version=version+1 where id=${id}::uuid`.execute(
+                        await sql`update meal.recipes set title=${previous.document.title},status='draft',version=version+1 where id=${id}::uuid`.execute(
                             tx,
                         );
                     } else {
-                        if (action === 'archive')
-                            await sql`update meal.recipe_publications set unpublished_at=now(),version=version+1 where revision_id in(select id from meal.recipe_revisions where recipe_id=${id}::uuid) and unpublished_at is null`.execute(
+                        const archive = action === 'archive' ? await this.lifecycle.archive(tx, id, user) : null;
+                        if (archive?.closed)
+                            await this.releases?.reverseReputationEventByKeyIn(
                                 tx,
+                                archive.authorId,
+                                `recipe-published:${archive.recipeId}`,
+                                'published-own-recipe-reversed',
                             );
-                        await sql`update meal.recipes set archived_at=${action === 'archive' ? new Date() : null},version=version+1 where id=${id}::uuid`.execute(
+                        await sql`update meal.recipes set archived_at=${action === 'archive' ? new Date() : null},
+                            status=case when ${archive?.closed ?? false}::boolean then 'unpublished' else status end,version=version+1 where id=${id}::uuid`.execute(
                             tx,
                         );
                     }
@@ -618,10 +630,26 @@ export class RecipeWorkspaceService {
                         await sql`update meal.recipe_comments set removed_at=now(),version=version+1 where id=${input.commentId}::uuid and recipe_id=${id}::uuid`.execute(
                             tx,
                         );
-                    else
-                        await sql`update meal.recipes set status='hidden',version=version+1 where id=${id}::uuid`.execute(
-                            tx,
-                        );
+                    else {
+                        const closed = await this.lifecycle.closeActive(tx, {
+                            revisionId: String(recipe.revision_id),
+                            status: 'hidden',
+                            publicReason: 'Рецепт скрыт после критической жалобы.',
+                            sourceCaseId: reportId,
+                            actorId: null,
+                            decisionAction: 'auto_hide',
+                            decisionReason: 'Критическая жалоба закрыла активную публикацию',
+                            allowAnyActiveRevision: true,
+                            allowMissingPublication: true,
+                        });
+                        if (closed.publicationClosed)
+                            await this.releases?.reverseReputationEventByKeyIn(
+                                tx,
+                                closed.authorId,
+                                `recipe-published:${closed.recipeId}`,
+                                'published-own-recipe-reversed',
+                            );
+                    }
                 }
                 return { id: reportId };
             }),

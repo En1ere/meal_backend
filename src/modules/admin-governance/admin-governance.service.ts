@@ -538,7 +538,8 @@ export class AdminGovernanceService {
                     .execute();
                 for (const permission of [
                     'catalog.review',
-                    'support.manage',
+                    'catalog.publish',
+                    'support.reply',
                     ...(input.allowTemporaryBan ? ['sanctions.temporary'] : []),
                 ])
                     await tx

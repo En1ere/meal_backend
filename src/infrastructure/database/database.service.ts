@@ -30,7 +30,7 @@ export class DatabaseService implements OnApplicationShutdown {
                 select current_database() as database,
                   not (rolsuper or rolbypassrls or rolcreatedb or rolcreaterole or rolinherit or rolreplication)
                     as role_safe,
-                  exists(select 1 from meal.schema_migrations where version=28) as migrated
+                  exists(select 1 from meal.schema_migrations where version=29) as migrated
                 from pg_roles where rolname = current_user
             `.execute(this.db);
             return (
