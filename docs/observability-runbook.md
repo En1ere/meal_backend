@@ -78,3 +78,12 @@ systemctl daemon-reload
 ## Alerts и owner input
 
 Внешняя отправка alerts в этом checkpoint **отключена**. Admin snapshot не отправляет email/webhook и не содержит channel secret. Для следующего этапа владелец должен выбрать канал (email/Telegram/webhook), получателя и пороги; secret передаётся только через server/GitHub secret store. До этого оператор вручную реагирует на `stale/unavailable`, unhealthy/missing containers, restarts, disk pressure, due/failed queue, worker failures и provider timeout/error.
+
+## VPS acceptance 29.10.2026
+
+- Root bootstrap и checksummed rollback evidence сохранены в `/var/backups/meal-planner/root-artifacts/observability-0.0.146-cutover-20261029T095700Z`; deployment backup — `/srv/meal/deployment-backup-pre-observability-0.0.146`.
+- `systemd-analyze verify` прошёл без ошибок; security exposure collector unit — `2.3 OK`. Timer enabled/active, повторный snapshot получен по расписанию.
+- Directory `root:meal-observability 2750`, snapshot `root:meal-observability 0640`; параллельное чтение при atomic replacement прошло. Искусственная недоступность Docker дала fresh `partial` с успешным oneshot, после восстановления collector вернулся в `ok`.
+- `deploy/verify.sh --component all` прошёл: пять containers healthy, backend/worker используют один digest, observability directory имеет единственный read-only mount в backend, Docker socket отсутствует в application containers.
+- Public health endpoints возвращают `200`; anonymous observability — `401` и `Cache-Control: no-store`. Реальный admin+MFA запрос отрисовал host/database/queue/10 workers/8 providers и корректный сигнал `rebootRequired`.
+- Admin `0.0.124`, commit `8285d2f`, прошёл GitHub Actions `Admin checks` run `40857924493` и `Admin image and deploy` run `40858092836`; production UI проверен во всех четырёх темах, manual refresh и browser console без ошибок.
