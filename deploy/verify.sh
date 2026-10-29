@@ -25,23 +25,33 @@ require_running() {
         echo "$1 container is not running" >&2; exit 1;
     }
 }
-require_healthy() {
-    require_running "$1"
-    container_id=$(compose ps -q "$1")
-    test "$(docker inspect --format '{{.State.Health.Status}}' "$container_id")" = healthy || {
-        echo "$1 container is not healthy" >&2; exit 1;
-    }
+wait_healthy() {
+    health_service=$1
+    health_attempts=${2:-45}
+    while [ "$health_attempts" -gt 0 ]; do
+        health_container_id=$(compose ps -q "$health_service")
+        if [ -n "$health_container_id" ]; then
+            health_running=$(docker inspect --format '{{.State.Running}}' "$health_container_id" 2>/dev/null || true)
+            health_status=$(docker inspect --format '{{.State.Health.Status}}' "$health_container_id" 2>/dev/null || true)
+            [ "$health_running" = true ] || break
+            [ "$health_status" = healthy ] && return 0
+        fi
+        health_attempts=$((health_attempts - 1))
+        sleep 2
+    done
+    echo "$health_service container did not become healthy" >&2
+    return 1
 }
 
 case "$component" in
     backend)
-        require_running postgres; require_running backend; require_healthy worker
+        require_running postgres; require_running backend; wait_healthy worker
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready ;;
     frontend) require_running frontend; wait_http frontend http://127.0.0.1:3000/healthz ;;
     admin) require_running admin; wait_http admin http://127.0.0.1:3002/healthz ;;
     all)
-        require_running postgres; require_running backend; require_healthy worker; require_running frontend; require_running admin
+        require_running postgres; require_running backend; wait_healthy worker; require_running frontend; require_running admin
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready
         wait_http frontend http://127.0.0.1:3000/healthz

@@ -75,7 +75,10 @@ void test('component deployment isolates UI rollout from database migration', as
     assert.match(bootstrap, /systemctl is-active/);
     assert.match(bootstrap, /validate_network_route meal-egress/);
     const verify = await text('deploy/verify.sh');
-    assert.match(verify, /require_healthy worker/);
+    assert.match(verify, /wait_healthy worker/);
+    assert.match(verify, /health_attempts=\$\{2:-45\}/);
+    assert.match(verify, /sleep 2/);
+    assert.doesNotMatch(verify, /require_healthy worker/);
     assert.match(verify, /TRUSTED_PROXY_CIDRS must equal the exact Docker gateway \/32 addresses/);
     assert.match(verify, /grep -E '\^\[0-9\]\{1,3\}/);
     const proxySmoke = await text('deploy/proxy-smoke.sh');

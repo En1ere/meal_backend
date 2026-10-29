@@ -121,7 +121,7 @@ Root-owned `deploy/meal-deploy` устанавливается как `/usr/loca
 6. Сверить migration manifest. Сначала переключить совместимые admin/frontend, затем снять свежий backup и остановить writers. Миграции применять владельцем только после отдельного разрешения: `npm run db:migrate -- --environment=test`. Migration 029 обязана выполняться одной транзакцией с `SERIALIZABLE`; стандартный `READ COMMITTED` корректно завершается fail-closed. Seed при старте API не выполняется.
 7. Проверить runtime-role и `search_path` запросами выше. Затем проверить release командой `node dist/src/export-openapi.js` либо заранее сверенным OpenAPI artifact без изменения работающего процесса.
 8. Остановить только backend, атомарно переключить `current` на новый release, выполнить `systemctl daemon-reload` при изменении unit и запустить `meal-backend.service`.
-9. Дождаться `active`, затем проверить local `/health/live`, `/health/ready` и те же endpoints через HTTPS. Readiness `503` запрещает продолжение.
+9. Дождаться `active`, затем проверить local `/health/live`, `/health/ready` и те же endpoints через HTTPS. Worker verification ограниченно ждёт Docker health до 90 секунд, включая `start_period`; мгновенный статус `starting` не считается отказом, а итоговый `unhealthy` или timeout запрещает продолжение. Readiness `503` запрещает продолжение.
 10. Выполнить post-deploy smoke ниже. Только после него release считается активным; прежний release и backup сохраняются до завершения окна наблюдения.
 
 Миграции обязаны быть совместимыми с предыдущим runtime на время переключения. Если rollback приложения требует отката данных/DDL, автоматический symlink rollback запрещён: остановите rollout и используйте отдельно согласованный recovery plan.
