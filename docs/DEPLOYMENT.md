@@ -119,8 +119,11 @@ Root-owned `deploy/meal-deploy` устанавливается как `/usr/loca
 ```sh
 systemctl is-active nginx
 systemctl is-inactive meal-backend.service meal-frontend.service postgresql.service
-docker compose --env-file /srv/meal/deployment/runtime.env \
-  -f /srv/meal/deployment/deploy/compose.production.yml ps
+set -a
+. /etc/meal-planner/deploy.env
+. /var/lib/meal-planner/deployments/images.env
+set +a
+docker compose -f /srv/meal/deployment/compose.production.yml ps
 curl --fail --silent http://127.0.0.1:3001/health/live
 curl --fail --silent http://127.0.0.1:3001/health/ready
 curl --fail --silent http://127.0.0.1:3000/healthz
@@ -129,8 +132,7 @@ curl --fail --silent https://abstract-usable-gazebo.ruweb.place/health/live
 curl --fail --silent https://abstract-usable-gazebo.ruweb.place/health/ready
 curl --fail --silent --output /dev/null https://abstract-usable-gazebo.ruweb.place/
 curl --fail --silent --output /dev/null https://admin.abstract-usable-gazebo.ruweb.place/
-docker compose --env-file /srv/meal/deployment/runtime.env \
-  -f /srv/meal/deployment/deploy/compose.production.yml logs --since 15m
+docker compose -f /srv/meal/deployment/compose.production.yml logs --since 15m
 nginx -t
 ufw status verbose
 ```
@@ -162,10 +164,12 @@ ufw status verbose
 ## Наблюдение и обслуживание
 
 ```sh
-docker compose --env-file /srv/meal/deployment/runtime.env \
-  -f /srv/meal/deployment/deploy/compose.production.yml ps
-docker compose --env-file /srv/meal/deployment/runtime.env \
-  -f /srv/meal/deployment/deploy/compose.production.yml logs --since 1h
+set -a
+. /etc/meal-planner/deploy.env
+. /var/lib/meal-planner/deployments/images.env
+set +a
+docker compose -f /srv/meal/deployment/compose.production.yml ps
+docker compose -f /srv/meal/deployment/compose.production.yml logs --since 1h
 docker stats --no-stream
 df -h / /srv /var/backups
 journalctl --disk-usage

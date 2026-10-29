@@ -1,5 +1,7 @@
 # Backend version-list
 
+0.0.134 - 10.29.2026 | 10:06 - Compose observation commands в production runbook синхронизированы с фактическим deployment layout: helper-файлы лежат в `/srv/meal/deployment`, non-secret settings читаются из `/etc/meal-planner/deploy.env`, а текущие digests — из root-owned `images.env`; runtime/API не изменялись.
+
 0.0.133 - 10.29.2026 | 09:47 - Docker build context включает `contracts/http-cases.json`, который нужен TypeScript-сборке contract-теста; исправлен Linux-only container build failure без изменения runtime/API.
 
 0.0.132 - 10.28.2026 | 17:51 - Добавлена production Docker/Compose и GitHub Actions инфраструктура общего стека с immutable digest images, явными migration/backup/verify/rollback gates и hardening; Docker secrets поддержаны через безопасные `_FILE` переменные. Recovery contract синхронизирован со schema v29 / 483 FK, runtime-role документирован как `meal_runtime` login с effective `role=meal_app`, а runbook переведён с legacy systemd/symlink smoke на фактический Compose health/rollback/observation и фиксирует текущий legacy health-route blocker.
