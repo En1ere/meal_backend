@@ -54,6 +54,7 @@ void test('host observability collector is bounded, atomic and systemd sandboxed
         'InaccessiblePaths=/etc/meal-planner/secrets',
     ])
         assert.ok(service.includes(directive), directive);
+    assert.doesNotMatch(service, /RuntimeMaxSec=/, 'oneshot timeout is enforced by TimeoutStartSec');
     const timer = await text('deploy/systemd/meal-observability-collector.timer');
     assert.match(timer, /OnUnitActiveSec=60s/);
     assert.match(timer, /Persistent=false/);
@@ -117,6 +118,10 @@ void test('component deployment isolates UI rollout from database migration', as
     assert.match(observabilityRunbook, /\[ ! -s "\$backup_dir\/SHA256SUMS" \] \|\|/);
     assert.match(observabilityRunbook, /CANDIDATE_SHA256SUMS/);
     assert.match(observabilityRunbook, /candidate_stage/);
+    assert.match(
+        observabilityRunbook,
+        /install -d -o root -g root -m 0755 \/usr\/local\/libexec\/meal-planner \/etc\/sysusers\.d \/etc\/tmpfiles\.d/,
+    );
     assert.match(observabilityRunbook, /до первого rollout compose-файла/);
     const wrapper = await text('deploy/meal-deploy');
     assert.match(wrapper, /\[ "\$#" -eq 3 \]/);

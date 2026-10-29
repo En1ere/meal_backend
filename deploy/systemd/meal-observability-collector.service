@@ -9,7 +9,6 @@ SupplementaryGroups=meal-observability
 UMask=0027
 ExecStart=/usr/bin/python3 /usr/local/libexec/meal-planner/host-observability-collector.py
 TimeoutStartSec=30
-RuntimeMaxSec=30
 NoNewPrivileges=true
 CapabilityBoundingSet=
 AmbientCapabilities=

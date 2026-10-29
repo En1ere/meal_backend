@@ -32,7 +32,7 @@ install -o root -g root -m 0644 deploy/systemd/meal-observability-collector.serv
 install -o root -g root -m 0644 deploy/systemd/meal-observability-collector.timer "$candidate_stage/meal-observability-collector.timer"
 (cd "$candidate_stage" && sha256sum ./* > ../CANDIDATE_SHA256SUMS)
 (cd "$candidate_stage" && sha256sum -c ../CANDIDATE_SHA256SUMS)
-install -d -o root -g root -m 0755 /usr/local/libexec/meal-planner
+install -d -o root -g root -m 0755 /usr/local/libexec/meal-planner /etc/sysusers.d /etc/tmpfiles.d
 install -o root -g root -m 0755 "$candidate_stage/host-observability-collector.py" /usr/local/libexec/meal-planner/host-observability-collector.py
 install -o root -g root -m 0644 "$candidate_stage/meal-observability.sysusers.conf" /etc/sysusers.d/meal-observability.conf
 install -o root -g root -m 0644 "$candidate_stage/meal-observability.tmpfiles.conf" /etc/tmpfiles.d/meal-observability.conf
