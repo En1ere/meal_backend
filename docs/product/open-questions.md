@@ -2,6 +2,25 @@
 
 Часть спецификации **3.32.1**. [Master и приоритет правил](../../MEAL_PLANNER_MASTER_v3.md). Номера исходных разделов сохранены; уточнения §28 имеют прежний приоритет. История макетов и состояние реализации перенесены в архив.
 
+## 26.0. Актуальный production TODO на 29 октября 2026 года
+
+Тестовый production-like стенд уже использует PostgreSQL 18/schema v29 и общий Docker Compose для БД, backend, frontend и admin. TLS/Nginx, digest-pinned GHCR images, `main`-autodeploy, backup перед backend rollout, restore drill, least-privilege runtime role, обязательный admin MFA и container health/readiness проверены. Legacy application/PostgreSQL systemd units отключены. Это закрывает инфраструктурный cutover тестового стенда, но не разрешает публичный коммерческий запуск.
+
+Оставшиеся работы закрываются последовательно; следующий пункт не включается production-ключами, пока предыдущий не имеет contract tests, provider sandbox evidence, timeout/unknown/retry/reconciliation проверки, мониторинг и документированный rollback/disable switch:
+
+1. **Юридические и data-processing решения.** Заполнить реквизиты оператора, production-домены, регионы хранения/обработки, перечень subprocessors, retention/legal hold и согласовать 152-ФЗ, детские и специальные категории данных. Удалить `draft_blocked` можно только после юридического утверждения.
+2. **Off-host backup и наблюдаемость.** Выбрать зашифрованное внешнее хранилище backup, KMS/key custody, retention, RPO/RTO и isolated restore target; подключить error/metric/trace sink, uptime probes, alert routing, disk/DB/container/certificate/queue/provider-budget alerts. Локальный dump на том же VPS не закрывает этот gate.
+3. **Транзакционная почта.** Выбрать provider и sender domain, настроить SPF/DKIM/DMARC, production API/SMTP secret, bounce/complaint webhook и suppression policy. Проверить verify/recovery/email-change/security notifications, дедупликацию, provider timeout и неизвестный исход; marketing остаётся отдельно и default-off.
+4. **Object storage/CDN и malware scanner.** Выбрать S3/R2-compatible storage, регион, bucket policy, encryption/KMS, lifecycle, signed URL TTL, quarantine и CDN. Подключить scanner до публикации любого asset; проверить abort/orphan cleanup, oversized/MIME mismatch, malicious/timeout/unknown result и удаление по retention/legal hold.
+5. **OCR чеков и изображений.** После storage/scanner выбрать OCR provider, лимиты файлов/стоимости, минимизацию передаваемых данных и retention. Проверить receipt/inventory import, low-confidence review, duplicate/replay, 429/5xx/timeout, budget stop-loss и запрет доменного эффекта до подтверждения пользователя.
+6. **Платежи, онлайн-чеки и возвраты.** Утвердить юрлицо/валюту/налоги, acquiring provider и интеграцию ККТ/чеков. Настроить production merchant/webhook secrets и подписи; принять sandbox и затем ограниченный live flow: checkout, pending/decline/unknown, replay/out-of-order webhook, trial, renewal, upgrade/downgrade, family coverage, partial/full refund, receipt delivery, idempotency и ledger reconciliation. Saved payment methods остаются blocked до выбора authoritative provider model.
+7. **Push.** Утвердить Web Push provider/VAPID key custody, TTL/urgency/topic policy, endpoint cleanup и consent separation. Проверить revoked/expired endpoint, duplicate, quiet hours/timezone, security bypass policy, retry/backoff и отсутствие ложного `delivered`.
+8. **AI provider.** Выбрать модель/поставщика/регион, data-training/retention policy, quality baseline, per-task budget и месячный stop-loss. Настроить production secret только после отдельного consent/data-minimization review; проверить reserve→call→commit/release, timeout/unknown/reconciliation, quota races, moderation и аварийное отключение.
+9. **Workers и shared lease.** Подключить принятый lease/scheduler backend и telemetry, затем по одному включить email changes, exports, scheduled news/sanctions/incidents, retention inspection, account retention, AI reconciliation и cooking lifecycle. Для каждого нужны fencing, bounded batch/concurrency, poison isolation, kill/restart и alert evidence; destructive retention требует policy, legal-hold check и admin approval.
+10. **Финальная приёмка публичного запуска.** Утвердить browser/device/accessibility matrix, физические iOS/Android проверки, external header/TLS probe, capacity/OOM/load drill, performance budgets, contribution-margin/provider-cost alerts и полный сквозной ручной цикл по `TESTs.md` на production providers.
+
+Production credentials, webhook signing keys и provider payloads хранятся только в согласованном secret store/GitHub Environment и root-owned server secrets; в Git и клиентские bundles они не попадают. Пока конкретный пункт не закрыт, соответствующая функция остаётся fail-closed и не имитирует успешную оплату, отправку, загрузку, OCR/AI-результат или доставку.
+
 <a id="source-2134"></a>
 <!-- migration:source-2134 -->
 

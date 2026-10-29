@@ -1,6 +1,6 @@
 # Тестовый production-стенд
 
-Актуально на 28 октября 2026 года. Стенд предназначен для интеграционной и ручной приёмки, а не для публичного коммерческого запуска. Этот runbook не содержит паролей, TOTP secret, recovery-кодов, connection strings и содержимого env-файлов.
+Актуально на 29 октября 2026 года. Стенд предназначен для интеграционной и ручной приёмки, а не для публичного коммерческого запуска. Этот runbook не содержит паролей, TOTP secret, recovery-кодов, connection strings и содержимого env-файлов.
 
 ## Быстрая карта деплоя
 
@@ -22,27 +22,29 @@
 | Liveness                          | `https://abstract-usable-gazebo.ruweb.place/health/live`  |
 | Readiness                         | `https://abstract-usable-gazebo.ruweb.place/health/ready` |
 
-Оба интерфейса используют same-origin `/api`; прямые порты Node.js и PostgreSQL из интернета недоступны. Backend слушает `127.0.0.1:3001`, frontend — `127.0.0.1:3000`, PostgreSQL — loopback. UFW разрешает только OpenSSH и `Nginx Full`. Админка вынесена на отдельный origin, потому что её абсолютные маршруты пересекаются с маршрутами пользовательского приложения.
+Оба интерфейса используют same-origin `/api`; прямые порты приложений и PostgreSQL из интернета недоступны. Backend опубликован только на `127.0.0.1:3001`, frontend — `127.0.0.1:3000`, admin — `127.0.0.1:3002`; PostgreSQL не имеет host publish. UFW разрешает только OpenSSH и `Nginx Full`. Админка вынесена на отдельный origin, потому что её абсолютные маршруты пересекаются с маршрутами пользовательского приложения.
 
-## Подтверждённый release inventory
+## Подтверждённый cutover baseline
 
-| Компонент | Активный release                                           | Версия на стенде             | Runtime                              |
-| --------- | ---------------------------------------------------------- | ---------------------------- | ------------------------------------ |
-| Backend   | `/srv/meal/backend/releases/20261028-0705-0.0.128`         | `0.0.128`                    | `meal-backend.service`, порт `3001`  |
-| Frontend  | `/srv/meal/frontend/releases/20261028-0735-0.0.28-0.0.137` | root `0.0.28`, app `0.0.137` | `meal-frontend.service`, порт `3000` |
-| Admin     | `/srv/meal/admin/releases/20261028-0757-0.0.117`           | `0.0.117`                    | Nginx static SPA                     |
+Таблица фиксирует проверенный baseline непосредственно после переключения на контейнеры. Текущие immutable digests после последующих автодеплоев всегда читаются из root-only `/var/lib/meal-planner/deployments/images.env`; это единственный источник истины для активного release.
 
-`current` каждого приложения — symlink на immutable release directory. Candidate нельзя считать развёрнутым, пока `current`, systemd/process environment и post-deploy smoke не подтверждают одну и ту же версию. Repository revision `0.0.132` содержит подготовленную, но ещё не применённую Docker/CI инфраструктуру; исполняемый backend на стенде остаётся проверенным release `0.0.128` до отдельного cutover.
+| Компонент | Активный release                                    | Версия на стенде             | Runtime                         |
+| --------- | --------------------------------------------------- | ---------------------------- | ------------------------------- |
+| Backend   | `ghcr.io/en1ere/meal_backend@sha256:0d2d11…b8e9b8`  | `0.0.138`                    | Docker, loopback `3001`         |
+| Frontend  | `ghcr.io/en1ere/meal_frontend@sha256:da978f…33a0aa` | root `0.0.38`, app `0.0.147` | Docker, loopback `3000`         |
+| Admin     | `ghcr.io/en1ere/meal_admin@sha256:3845a3…08e246`    | `0.0.122`                    | Docker/Nginx, loopback `3002`   |
+| Database  | `postgres:18-bookworm@sha256:5c4783…31a2c8`         | schema `v29`                 | private Docker network, no port |
+
+Source of truth активных immutable digests — root-owned `/var/lib/meal-planner/deployments/images.env`; каждый rollout сохраняет revision/evidence в отдельном каталоге рядом. Legacy release symlinks оставлены только для истории и не получают traffic. Candidate считается развёрнутым только после container health, component/public smoke и записи `passed`; backend additionally требует backup, migration/grants, exact proxy gateway и readiness.
 
 Для каждого следующего выпуска журналируйте вне секретов: source revision, версии package manifests, UTC deploy time, release path, SHA-256 загруженного artifact и предыдущий symlink target. Отсутствие этих данных блокирует переключение.
 
 ## Размещение и конфигурация
 
-- ОС: Ubuntu 24.04, Node.js 24, npm 11, PostgreSQL 18, Nginx и systemd.
-- Backend: `/srv/meal/backend/current`, сервис `meal-backend.service`.
-- Frontend: `/srv/meal/frontend/current`, сервис `meal-frontend.service`.
-- Admin: `/srv/meal/admin/current/build`, статическая выдача Nginx со SPA fallback.
-- Backend env: `/etc/meal-planner/backend.env`, владелец `root:meal`, mode `0640`.
+- ОС: Ubuntu 24.04, Docker Engine/Compose, PostgreSQL 18 image, host Nginx и systemd.
+- Общий Compose/control plane: `/srv/meal/deployment`; автозапуск: `meal-planner-compose.service`.
+- Non-secret settings: `/etc/meal-planner/deploy.env`; secrets: `/etc/meal-planner/secrets`.
+- Legacy `meal-backend.service`, `meal-frontend.service` и host `postgresql.service` отключены.
 - Nginx site: `/etc/nginx/sites-available/meal-planner`, source template `deploy/nginx/meal-planner.conf`.
 - TLS: Let's Encrypt для основного и admin-домена, продление Certbot.
 - Baseline backup до первого deployment: `/var/backups/meal-planner/predeploy-20261027-0515.dump`, root-only.
@@ -149,17 +151,18 @@ ufw status verbose
 
 После технического smoke вручную проверить frontend login/logout и один authenticated read, затем admin password → обязательный TOTP → dashboard и logout. Не помещайте пароль, TOTP seed, recovery code, session cookie или response с PII в evidence. Mutation smoke выполняйте только на namespace тестового аккаунта с заранее описанной очисткой.
 
-### Evidence rollout 2026-10-28
+### Evidence Docker cutover 2026-10-29
 
-- backend `0.0.128` / schema v29 и frontend root/app `0.0.28`/`0.0.137` остаются активны; после базового clients-first rollout текущая admin обновлена до `0.0.117` без изменения wire-контрактов;
-- `APP_VERSION` фактического backend process равен `0.0.128`;
+- проверенный cutover baseline: backend `0.0.138`, frontend root/app `0.0.38`/`0.0.147`, admin `0.0.122`, schema v29; каждый image закреплён immutable digest в `images.env`;
+- `meal-planner-compose.service`, Docker и Nginx активны и включены; legacy `meal-backend.service`, `meal-frontend.service` и host PostgreSQL отключены;
+- PostgreSQL 18 работает только в приватной Docker-сети без опубликованного host-port, backend/frontend/admin доступны host Nginx только через loopback `3001`/`3000`/`3002`;
 - schema history содержит 29 строк, checksum migration 029 равен `ff1d7f9d9a6d4a0ddc20ba9a8e9746029d534a74f5dba19e546b9f32633df98f`;
 - подтверждены 209 таблиц, 483 внешних ключа, валидные lifecycle constraints/indexes/triggers и отсутствие нарушений active-publication/case invariants;
-- `meal-backend.service`, `meal-frontend.service`, Nginx и PostgreSQL активны, Nginx config валиден; при повторной проверке 28 октября legacy process возвращает `404` для local `/health/live` и `/health/ready`, хотя `/api/v1/auth/csrf` и `/api/v1/admin/auth/csrf` отвечают `200`; Docker cutover заблокирован до успешного candidate health smoke;
+- полный `verify.sh --component all`, public health/readiness, обе web-точки и API smoke прошли после cutover; Nginx config валиден;
 - UFW разрешает только OpenSSH и `Nginx Full`; на файловой системе доступно около `27G`;
 - frontend authenticated read, recipe list, обе theme switcher и admin password → обязательный MFA прошли без browser console errors;
-- frontend root/app `0.0.28`/`0.0.137` дополнительно прошёл read-only desktop/mobile production acceptance `24/24`: mutation requests `0`, runtime errors `0`. Исправленный online API/session startup не зависит от готовности best-effort offline Service Worker.
-- admin `0.0.117` подтверждён на root и `/admin/queues/recipes` с `200`; парольный этап доходит до обязательной MFA-границы, а темы `coffee-light` / `nature-dark` переключаются без runtime-ошибок.
+- frontend root/app `0.0.38`/`0.0.147` подтверждён на login и `/recipes`: тестовый пользователь входит, защищённый маршрут открывается, все четыре темы переключаются и сохраняются после reload, browser console errors отсутствуют;
+- admin `0.0.122` подтверждён на root, login и защищённых HTML-route: парольный этап доходит до обязательной MFA-границы, все четыре темы переключаются и сохраняются после reload, browser console errors отсутствуют.
 
 ## Rollback
 
