@@ -4,8 +4,7 @@ import { sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import { publicRecipeImage } from '../recipes/recipes.domain.js';
-import { recipeSummarySchema, type RecipeSummary } from '../recipes/recipes.contracts.js';
+import { publicRecipeImage, recipeSummarySchema, type RecipeSummary } from '../../shared/contracts/recipe-public.js';
 import { EntitlementsService } from '../entitlements/entitlements.service.js';
 import {
     authorFollowResultSchema,

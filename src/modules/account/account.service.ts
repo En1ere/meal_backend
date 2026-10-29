@@ -12,7 +12,7 @@ import { randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import { generateSecret, generateURI } from 'otplib';
 import { z } from 'zod';
-import { APP_CONFIG, type AppConfig } from '../../app/config.js';
+import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import { AuthService } from '../auth/auth.service.js';
 import {

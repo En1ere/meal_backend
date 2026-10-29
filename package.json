@@ -1,6 +1,6 @@
 {
     "name": "meal-planner-back",
-    "version": "0.0.140",
+    "version": "0.0.141",
     "private": true,
     "type": "module",
     "engines": {
@@ -19,7 +19,8 @@
         "test:postgres:isolated": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-isolated-postgres-acceptance.ps1",
         "lint": "eslint . && prettier --check .",
         "format": "prettier --write .",
-        "check": "npm run check:secrets && node scripts/generate-types.mjs --check && npm run typecheck && npm run lint && npm test",
+        "check": "npm run check:secrets && npm run check:architecture && node scripts/generate-types.mjs --check && npm run typecheck && npm run lint && npm test",
+        "check:architecture": "node scripts/check-architecture.mjs",
         "openapi": "npm run build && node dist/src/export-openapi.js",
         "db:plan": "node scripts/migrate.mjs",
         "db:migrate": "node scripts/migrate.mjs --apply",

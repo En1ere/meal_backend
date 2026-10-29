@@ -3,7 +3,12 @@ import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import type { z } from 'zod';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
-import { scopedWorkflow, workflowReplay, type WorkflowScope, type WorkflowTx } from '../cooking/workflow.store.js';
+import {
+    scopedWorkflow,
+    workflowReplay,
+    type WorkflowScope,
+    type WorkflowTx,
+} from '../../shared/workflow/workflow.store.js';
 import {
     preserveHistoryDetailsSchema,
     preserveSchema,

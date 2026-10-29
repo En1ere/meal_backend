@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { recipeSummarySchema } from '../recipes/recipes.contracts.js';
+import { recipeSummarySchema } from '../../shared/contracts/recipe-public.js';
 
 export const recommendationReasonCodeSchema = z.enum([
     'inventory_match',

@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { isIP } from 'node:net';
 import { isAbsolute } from 'node:path';
 import { readFileSync } from 'node:fs';
+import type { AppConfig } from '../shared/config/app-config.js';
+
+export { APP_CONFIG, type AppConfig } from '../shared/config/app-config.js';
 
 export const configSchema = z.object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -81,9 +84,6 @@ export const configSchema = z.object({
             'Expected explicit proxy IPs/CIDRs',
         ),
 });
-export type AppConfig = z.infer<typeof configSchema>;
-export const APP_CONFIG = Symbol('APP_CONFIG');
-
 const secretFiles = {
     DATABASE_URL: 'DATABASE_URL_FILE',
     SECURITY_KEY: 'SECURITY_KEY_FILE',

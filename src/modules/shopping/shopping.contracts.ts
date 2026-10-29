@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { cookingQuantitySchema } from '../cooking/cooking.contracts.js';
-export const shoppingScopeSchema = z.enum(['private', 'family']);
+import { workflowScopeSchema } from '../../shared/contracts/workflow-scope.js';
+export const shoppingScopeSchema = workflowScopeSchema;
 export const shoppingScopeQuerySchema = z.object({ scope: shoppingScopeSchema.default('private') }).strict();
 const originSchema = z
     .array(

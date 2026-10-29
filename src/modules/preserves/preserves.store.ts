@@ -1,6 +1,6 @@
 import { HttpException } from '@nestjs/common';
 import { sql } from 'kysely';
-import type { WorkflowTx } from '../cooking/workflow.store.js';
+import type { WorkflowTx } from '../../shared/workflow/workflow.store.js';
 import { preserveRemainder, preserveTotal } from './preserves.domain.js';
 export async function consumePreserveContainer(
     tx: WorkflowTx,

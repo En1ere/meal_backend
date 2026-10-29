@@ -1,7 +1,7 @@
 import { ForbiddenException, Inject, Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
 import { BlockList, isIP } from 'node:net';
 import type { FastifyRequest } from 'fastify';
-import { APP_CONFIG, type AppConfig } from '../../app/config.js';
+import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 
 @Injectable()
 export class AdminNetworkGuard implements CanActivate {

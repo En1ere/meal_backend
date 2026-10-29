@@ -1,7 +1,7 @@
 import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { sql, type Transaction } from 'kysely';
-import { APP_CONFIG, type AppConfig } from '../../app/config.js';
+import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
 import { AuthService, type Principal } from '../auth/auth.service.js';

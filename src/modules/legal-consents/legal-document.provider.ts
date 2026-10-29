@@ -1,6 +1,6 @@
 import { Inject, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { sql } from 'kysely';
-import { APP_CONFIG, type AppConfig } from '../../app/config.js';
+import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import {
     LEGAL_CONSENT_CONTRACT_VERSION,

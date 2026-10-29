@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { verify } from 'otplib';
 import type { Selectable } from 'kysely';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import type { AccountTx } from '../account/account-state.js';
+import type { AccountTx } from '../../shared/account/account-state.js';
 import { decryptSecret, tokenHash } from './crypto.js';
 export type Factor = Selectable<DatabaseSchema['mfa_factors']>;
 // Caller holds the user and factor locks. Global replay state is shared across all authentication contexts.

@@ -23,7 +23,7 @@ function inputSchema(schema: z.ZodType): SchemaObject {
     // Explicit OpenAPI 3.0 conversion (no JSON Schema boolean schemas); limited to our object DTOs.
     return z.toJSONSchema(schema, { io: 'input', target: 'openapi-3.0' }) as SchemaObject;
 }
-import { APP_CONFIG, type AppConfig } from '../../app/config.js';
+import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import { AuthService, type Principal, type SessionResult } from './auth.service.js';
 import { equalSecret, keyedHash, newToken } from './crypto.js';
 

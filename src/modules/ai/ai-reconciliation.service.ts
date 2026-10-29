@@ -1,15 +1,10 @@
 import { Inject, Injectable, Logger, type OnApplicationShutdown, type OnModuleInit } from '@nestjs/common';
 import { sql } from 'kysely';
-import { APP_CONFIG, type AppConfig } from '../../app/config.js';
+import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
+import { WorkerRuntimeFactory } from '../../infrastructure/workers/worker-runtime.factory.js';
 import { AiService } from './ai.service.js';
-import {
-    executeEmbeddedWorker,
-    PostgresWorkerLeaseProvider,
-    SanitizedJsonWorkerRuntimeSink,
-    type WorkerCounters,
-} from '../operational-runtime/worker-runtime.js';
-import { AdminWorkerRuntimeSink, FanoutWorkerRuntimeSink } from '../telemetry/runtime-telemetry.js';
+import type { WorkerCounters } from '../operational-runtime/worker-runtime.js';
 
 const intervalMs = 60_000;
 const staleAfterMinutes = 15;
@@ -25,7 +20,7 @@ export class AiReconciliationService implements OnModuleInit, OnApplicationShutd
     constructor(
         private readonly database: DatabaseService,
         private readonly ai: AiService,
-        private readonly adminTelemetry: AdminWorkerRuntimeSink,
+        private readonly workerRuntime: WorkerRuntimeFactory,
         @Inject(APP_CONFIG) private readonly config: AppConfig,
     ) {}
 
@@ -55,14 +50,11 @@ export class AiReconciliationService implements OnModuleInit, OnApplicationShutd
     }
 
     private async runObserved(): Promise<void> {
-        await executeEmbeddedWorker({
-            task: 'ai-reconciliation',
-            ownerId: this.config.WORKER_OWNER_ID ?? `embedded-${process.pid}`,
-            leaseProvider: new PostgresWorkerLeaseProvider(this.database.db),
-            sink: new FanoutWorkerRuntimeSink([new SanitizedJsonWorkerRuntimeSink(), this.adminTelemetry]),
-            run: () => this.tick(),
-            counters: (result) => result,
-        });
+        await this.workerRuntime.embedded(
+            'ai-reconciliation',
+            () => this.tick(),
+            (result) => result,
+        );
     }
 
     private async tick(): Promise<WorkerCounters> {

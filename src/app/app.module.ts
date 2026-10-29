@@ -154,6 +154,7 @@ import { Module, type DynamicModule } from '@nestjs/common';
 import { CookingLifecycleService } from '../modules/cooking/cooking-lifecycle.service.js';
 import { APP_CONFIG, type AppConfig } from './config.js';
 import { DatabaseService } from '../infrastructure/database/database.service.js';
+import { WorkerRuntimeFactory } from '../infrastructure/workers/worker-runtime.factory.js';
 import { HealthController } from '../modules/health/health.controller.js';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthService } from '../modules/auth/auth.service.js';
@@ -329,6 +330,7 @@ export class AppModule {
                 FamilyService,
                 { provide: APP_CONFIG, useValue: config },
                 DatabaseService,
+                WorkerRuntimeFactory,
                 AuthService,
                 AdminAccessService,
                 AdminReadService,

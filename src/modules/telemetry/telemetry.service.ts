@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { z } from 'zod';
-import { APP_CONFIG, type AppConfig } from '../../app/config.js';
+import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import { browserTelemetryInputSchema, type BrowserTelemetryInput } from './telemetry.contracts.js';
 import { TelemetryRepository, type SafeTelemetryRecord } from './telemetry.repository.js';
 import { providerObservationSchema, type ProviderObservation } from '../provider-runtime/provider-runtime.js';

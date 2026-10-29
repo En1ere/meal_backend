@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AppConfig } from '../../app/config.js';
+import type { AppConfig } from '../../shared/config/app-config.js';
 
 export const registrationRiskConfigSchema = z.strictObject({
     enabled: z.boolean().default(false),

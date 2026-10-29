@@ -1,10 +1,10 @@
 import { consumeFactor, regenerateRecoveryCodes } from './factor.js';
-import { settleEmailChanges, hasDueEmailChange } from '../account/account-state.js';
+import { settleEmailChanges, hasDueEmailChange } from '../../shared/account/account-state.js';
 import { Inject, Injectable, ServiceUnavailableException, UnauthorizedException, HttpException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { sql, type Transaction } from 'kysely';
 import { generateSecret, generateURI } from 'otplib';
-import { APP_CONFIG, type AppConfig } from '../../app/config.js';
+import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
 import { encryptSecret, keyedHash, newToken, tokenHash, verifyPassword } from './crypto.js';

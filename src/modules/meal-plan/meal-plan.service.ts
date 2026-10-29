@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import { decimal, decimalText } from '../inventory/inventory.domain.js';
 import { scaleRecipeQuantity } from '../recipes/recipes.domain.js';
-import { scopedWorkflow, workflowReplay, type WorkflowTx } from '../cooking/workflow.store.js';
+import { scopedWorkflow, workflowReplay, type WorkflowTx } from '../../shared/workflow/workflow.store.js';
 import { EntitlementsService } from '../entitlements/entitlements.service.js';
 import { DiaryService } from '../diary/diary.service.js';
 import { recipeNutritionSchema } from '../recipes/recipes.contracts.js';

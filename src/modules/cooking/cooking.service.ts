@@ -10,7 +10,7 @@ import {
     type cookingProgressSchema,
     type cookingFinalizeSchema,
 } from './cooking.contracts.js';
-import { personalWorkflow, workflowReplay, type WorkflowTx } from './workflow.store.js';
+import { personalWorkflow, workflowReplay, type WorkflowTx } from '../../shared/workflow/workflow.store.js';
 import { consumedRemainder, progressAttempt } from './cooking.domain.js';
 import { decimal } from '../inventory/inventory.domain.js';
 import { RecipesService } from '../recipes/recipes.service.js';

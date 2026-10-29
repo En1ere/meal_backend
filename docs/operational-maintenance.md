@@ -10,9 +10,11 @@ Versioned manifest `src/modules/operational-runtime/worker-topology.ts` пере
 
 Пересекающийся запуск завершается `skipped_overlap`; отсутствие lease storage — `skipped_not_ready` и ненулевой exit code. Stdout содержит только status и schema-validated observation без domain result, stderr — JSON `worker.run`/`worker.alert` без payload, credentials, URL и пользовательских идентификаторов. Ошибка telemetry sink не меняет результат доменной задачи.
 
-Подготовленная migration `024_worker_leases.sql` добавляет только shared lease state с PostgreSQL clock и монотонным fencing token. Renew/release требуют точные task, owner, lease id и fencing token; истёкший lease можно атомарно перехватить с увеличением token. Application role получает SELECT/INSERT и точечный UPDATE, без DELETE/DDL. Migration зарегистрирована в manifest (205 таблиц, 476 FK), но не применялась. До применения v24 one-shot `--apply` fail closed как `lease_unavailable`; plan-only команды БД не открывают.
+Migration `024_worker_leases.sql`, входящая в текущий schema-v29 baseline, добавляет только shared lease state с PostgreSQL clock и монотонным fencing token. Renew/release требуют точные task, owner, lease id и fencing token; истёкший lease можно атомарно перехватить с увеличением token. Application role получает SELECT/INSERT и точечный UPDATE, без DELETE/DDL. Deployment обязан подтвердить schema version не ниже 24; на более старой схеме one-shot `--apply` fail closed как `lease_unavailable`, а plan-only команды БД не открывают.
 
 `SanitizedJsonWorkerRuntimeSink` остаётся резервным provider-neutral каналом. Composition root объединяет его с first-party sink, который сохраняет только schema-validated метрики и алерты в административные таблицы.
+
+Offline `npm run ops:readiness` отмечает PostgreSQL lease и этот telemetry/alert fanout как готовые repository capabilities. Они не входят во внешние blockers; команда остаётся `blocked_external`, пока отсутствуют подтверждённые RPO/RTO, backup/key custody, isolated restore target и production HTTPS origins.
 
 `executeEmbeddedWorker` предоставляет ту же shared-lease/deadline/observation границу для `ai-reconciliation` и `cooking-lifecycle`; оба application service подключены к ней. До применения v24 их activation flags остаются выключенными. В production включение также требует стабильного `WORKER_OWNER_ID`.
 

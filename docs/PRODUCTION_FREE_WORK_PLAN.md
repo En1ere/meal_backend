@@ -11,20 +11,20 @@
 
 ## Последовательность
 
-| №   | Checkpoint                          | Статус      | Критерий завершения                                                                                                     |
-| --- | ----------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------- |
-| 1   | Предварительные legal-тексты        | выполняется | 11 публичных draft-страниц, единая заглушка, `draft_blocked`, нет production acceptance evidence                        |
-| 2   | Остаточный архитектурный checkpoint | очередь     | актуальные architecture gates трёх репозиториев, без wire/URL изменений                                                 |
-| 3   | Workers и scheduler                 | очередь     | отдельный worker container, PostgreSQL lease/fencing, restart/overlap/poison tests                                      |
-| 4   | Observability в admin               | очередь     | host/container/DB/queue/provider метрики с freshness и безопасным allowlist                                             |
-| 5   | Транзакционная почта                | очередь     | SMTP adapter, outbox worker, verify/recovery/security flows, retry/unknown и DNS evidence                               |
-| 6   | Storage и malware scanner           | очередь     | приватные quarantine/ready buckets, signed URL, ClamAV, cleanup и failure tests                                         |
-| 7   | Локальный OCR                       | очередь     | RU/EN worker, всегда `requiresReview`, resource limits, duplicate/timeout/OOM tests                                     |
-| 8   | Web Push                            | очередь     | VAPID, subscription lifecycle, quiet hours, TTL/topic policy, 404/410 cleanup                                           |
-| 9   | Локальная backup-структура          | очередь     | encrypted local repository, PostgreSQL/media/manifests, retention, disk guard и restore drill; честный `offsite: false` |
-| 10  | AI                                  | отложено    | отдельный epic после workers/telemetry/storage; сначала use cases, privacy, quality и resource baseline                 |
-| 11  | Reliability и сквозная приёмка      | очередь     | CI, E2E, provider failure drills, load/OOM/leak tests, browser/accessibility, VPS restart/rollback                      |
-| 12  | Документация                        | постоянно   | runbook, owner inputs, env/secret inventory, disable/rollback и manual tests обновляются в каждом checkpoint            |
+| №   | Checkpoint                          | Статус    | Критерий завершения                                                                                                     |
+| --- | ----------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 1   | Предварительные legal-тексты        | выполнено | 11 публичных draft-страниц, единая заглушка, `draft_blocked`, нет production acceptance evidence                        |
+| 2   | Остаточный архитектурный checkpoint | выполнено | architecture gates трёх репозиториев, декомпозиция подтверждённых hotspots, без wire/URL изменений                      |
+| 3   | Workers и scheduler                 | очередь   | отдельный worker container, PostgreSQL lease/fencing, restart/overlap/poison tests                                      |
+| 4   | Observability в admin               | очередь   | host/container/DB/queue/provider метрики с freshness и безопасным allowlist                                             |
+| 5   | Транзакционная почта                | очередь   | SMTP adapter, outbox worker, verify/recovery/security flows, retry/unknown и DNS evidence                               |
+| 6   | Storage и malware scanner           | очередь   | приватные quarantine/ready buckets, signed URL, ClamAV, cleanup и failure tests                                         |
+| 7   | Локальный OCR                       | очередь   | RU/EN worker, всегда `requiresReview`, resource limits, duplicate/timeout/OOM tests                                     |
+| 8   | Web Push                            | очередь   | VAPID, subscription lifecycle, quiet hours, TTL/topic policy, 404/410 cleanup                                           |
+| 9   | Локальная backup-структура          | очередь   | encrypted local repository, PostgreSQL/media/manifests, retention, disk guard и restore drill; честный `offsite: false` |
+| 10  | AI                                  | отложено  | отдельный epic после workers/telemetry/storage; сначала use cases, privacy, quality и resource baseline                 |
+| 11  | Reliability и сквозная приёмка      | очередь   | CI, E2E, provider failure drills, load/OOM/leak tests, browser/accessibility, VPS restart/rollback                      |
+| 12  | Документация                        | постоянно | runbook, owner inputs, env/secret inventory, disable/rollback и manual tests обновляются в каждом checkpoint            |
 
 ## Что потребуется от владельца
 
@@ -94,3 +94,7 @@
 ## Уже закрыто
 
 Docker cutover, TLS/Nginx, schema v29, least-privilege DB role, main-to-digest autodeploy, container health/readiness, pre-rollout DB backup/restore drill, admin MFA и theme smoke не выполняются повторно без изменения соответствующего слоя.
+
+Legal checkpoint опубликован как явно неутверждённый draft-каталог: все 11 документов доступны для чтения, содержат единую заглушку `[Тут будут данные]`, закрыты от индексации и не используются как production acceptance evidence.
+
+Архитектурный checkpoint закрыт без изменения HTTP/API, DB schema, URL и wire payload: backend gate подтверждает 60 доменов без циклических групп и запрещает `modules -> app`; admin gate контролирует static/dynamic imports, public feature API и mock boundaries; frontend gate контролирует app/widgets public API и отдельный mock entry. Доказанно смешанные route/release/runtime модули декомпозированы с сохранением публичных экспортов и поведения.

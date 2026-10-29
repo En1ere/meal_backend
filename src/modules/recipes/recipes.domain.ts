@@ -1,4 +1,5 @@
 import type { RecipeIngredient } from './recipes.contracts.js';
+export { publicRecipeImage } from '../../shared/contracts/recipe-public.js';
 export interface RecipeStock {
     ingredientId: string | null;
     variantId: string | null;
@@ -85,14 +86,4 @@ export function recipeAvailability(
         needsQuantityCheck: required.some((row) => row.needsQuantityCheck),
         items,
     };
-}
-export function publicRecipeImage(value: unknown): string | null {
-    if (typeof value !== 'string') return null;
-    if (/^\/(?:recipes|assets)\/[A-Za-z0-9/_\.\-]+$/.test(value) && !value.includes('..')) return value;
-    try {
-        const url = new URL(value);
-        return url.protocol === 'https:' && !url.username && !url.password ? url.href : null;
-    } catch {
-        return null;
-    }
 }

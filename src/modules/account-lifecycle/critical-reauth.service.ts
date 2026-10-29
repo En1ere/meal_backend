@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { sql, type Transaction } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import { APP_CONFIG, type AppConfig } from '../../app/config.js';
+import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import { AuthService } from '../auth/auth.service.js';
 import { newToken, tokenHash, verifyPassword } from '../auth/crypto.js';
 import { consumeFactor } from '../auth/factor.js';

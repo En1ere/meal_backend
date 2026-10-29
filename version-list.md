@@ -1,5 +1,7 @@
 # Backend version-list
 
+0.0.141 - 10.29.2026 | 12:43 - Уточнена внутренняя архитектура без изменения HTTP/API/DB/URL: operational readiness теперь тестируемо отражает готовые schema-v29 lease и telemetry capabilities; добавлен CI-gate направлений зависимостей и циклов; AppConfig contract перенесён в shared; единая WorkerRuntimeFactory устранила три concrete-сборки; разорваны четыре междоменных SCC через нейтральные account/workflow/scope/recipe primitives; reputation и achievements выделены из content-release orchestration за совместимым facade.
+
 0.0.140 - 10.29.2026 | 12:06 - Синхронизированы 11 пользовательских legal draft-текстов с согласованной заглушкой `[Тут будут данные]` при сохранении `draft_blocked`/`publicationEligible:false`; добавлен regression-test, исключающий случайную публикацию. Зафиксирован последовательный бесплатный production tracker и точный owner-input checklist для observability, email, storage/scanner, OCR, push, backup и будущего AI; API, схема БД и consent evidence не менялись.
 
 0.0.139 - 10.29.2026 | 11:23 - Актуализированы live Docker inventory и единый production TODO по данным read-only legacy root и текущего operational-readiness: отдельно отмечен закрытый Docker/schema v29 cutover тестового стенда и зафиксирован последовательный план внешних gates — legal/data processing, off-host backup/observability, email, storage/scanner, OCR, payments/receipts/refunds, push, AI, workers/shared lease и финальная физическая приёмка. Provider credentials и публичные контракты не добавлялись.

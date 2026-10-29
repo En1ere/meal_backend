@@ -9,22 +9,17 @@ import {
 import { randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import type { z } from 'zod';
-import { APP_CONFIG, type AppConfig } from '../../app/config.js';
+import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
-import { personalWorkflow, workflowReplay, type WorkflowTx } from './workflow.store.js';
+import { WorkerRuntimeFactory } from '../../infrastructure/workers/worker-runtime.factory.js';
+import { personalWorkflow, workflowReplay, type WorkflowTx } from '../../shared/workflow/workflow.store.js';
 import { cookingReminderSchedule, cookingNotificationTime, cookingArchiveHiddenAt } from './cooking.domain.js';
 import {
     cookingReminderPreferencesSchema,
     cookingReminderSchema,
     type cookingReminderPreferencesChangeSchema,
 } from './cooking.contracts.js';
-import {
-    executeEmbeddedWorker,
-    PostgresWorkerLeaseProvider,
-    SanitizedJsonWorkerRuntimeSink,
-    type WorkerCounters,
-} from '../operational-runtime/worker-runtime.js';
-import { AdminWorkerRuntimeSink, FanoutWorkerRuntimeSink } from '../telemetry/runtime-telemetry.js';
+import type { WorkerCounters } from '../operational-runtime/worker-runtime.js';
 
 const validZone = (zone: string | null | undefined): zone is string => {
     if (!zone || /^[+-]/.test(zone)) return false;
@@ -43,7 +38,7 @@ export class CookingLifecycleService implements OnModuleInit, OnApplicationShutd
     private actorCursor: string | null = null;
     constructor(
         private readonly database: DatabaseService,
-        private readonly adminTelemetry: AdminWorkerRuntimeSink,
+        private readonly workerRuntime: WorkerRuntimeFactory,
         @Inject(APP_CONFIG) private readonly config: AppConfig,
     ) {}
     onModuleInit() {
@@ -66,14 +61,11 @@ export class CookingLifecycleService implements OnModuleInit, OnApplicationShutd
         await this.running;
     }
     private async runObserved(): Promise<void> {
-        await executeEmbeddedWorker({
-            task: 'cooking-lifecycle',
-            ownerId: this.config.WORKER_OWNER_ID ?? `embedded-${process.pid}`,
-            leaseProvider: new PostgresWorkerLeaseProvider(this.database.db),
-            sink: new FanoutWorkerRuntimeSink([new SanitizedJsonWorkerRuntimeSink(), this.adminTelemetry]),
-            run: () => this.tick(),
-            counters: (result) => result,
-        });
+        await this.workerRuntime.embedded(
+            'cooking-lifecycle',
+            () => this.tick(),
+            (result) => result,
+        );
     }
     private async preferencesRow(tx: WorkflowTx, userId: string) {
         const row = (
