@@ -1,0 +1,17 @@
+[Unit]
+Description=Meal Planner Docker Compose stack
+Requires=docker.service
+Wants=network-online.target
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh /srv/meal/deployment/stack.sh up
+ExecReload=/bin/sh /srv/meal/deployment/stack.sh up
+ExecStop=/bin/sh /srv/meal/deployment/stack.sh stop
+TimeoutStartSec=0
+TimeoutStopSec=300
+
+[Install]
+WantedBy=multi-user.target

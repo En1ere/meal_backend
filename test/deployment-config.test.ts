@@ -22,6 +22,7 @@ void test('production compose keeps database private and every image digest-pinn
     assert.match(compose, /127\.0\.0\.1:3000:3000/);
     assert.match(compose, /127\.0\.0\.1:3002:8080/);
     assert.match(compose, /profiles: \[(?:"|')?tools(?:"|')?\]/);
+    assert.equal([...compose.matchAll(/group_add: \['\$\{MEAL_SECRETS_GID:-29001\}'\]/g)].length, 2);
 });
 
 void test('backend build uses the verified immutable Node base', async () => {
@@ -73,4 +74,14 @@ void test('component deployment isolates UI rollout from database migration', as
     assert.match(proxySmoke, /Runtime proxy source verified by admin guard/);
     assert.match(bootstrap, /29\/209\/483\/18/);
     assert.match(bootstrap, /meal_runtime/);
+    assert.match(bootstrap, /chown postgres:postgres "\$restore_path"/);
+    assert.match(bootstrap, /chmod 0600 "\$restore_path"/);
+    assert.match(bootstrap, /--username "\$\{POSTGRES_USER:-meal_owner\}" --no-owner/);
+    const stack = await text('deploy/stack.sh');
+    assert.match(stack, /compose up -d/);
+    assert.doesNotMatch(stack, /migrate|db:migrate/);
+    const systemd = await text('deploy/systemd/meal-planner-compose.service');
+    assert.match(systemd, /Requires=docker\.service/);
+    assert.match(systemd, /ExecStart=\/bin\/sh \/srv\/meal\/deployment\/stack\.sh up/);
+    assert.match(systemd, /ExecStop=\/bin\/sh \/srv\/meal\/deployment\/stack\.sh stop/);
 });

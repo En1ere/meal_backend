@@ -70,8 +70,13 @@ SQL
 restore_path=/tmp/meal-planner-bootstrap.dump
 docker cp "$dump" "$postgres_id:$restore_path"
 trap 'docker exec --user root "$postgres_id" rm -f "$restore_path" >/dev/null 2>&1 || true' EXIT HUP INT TERM
+# `docker cp` preserves the root-owned, mode 0600 backup. Grant only the
+# PostgreSQL process access inside the container before running pg_restore.
+docker exec --user root "$postgres_id" chown postgres:postgres "$restore_path"
+docker exec --user root "$postgres_id" chmod 0600 "$restore_path"
 docker exec --user postgres "$postgres_id" pg_restore --exit-on-error --single-transaction \
-    --no-owner --no-acl --role "${POSTGRES_USER:-meal_owner}" --dbname meal_planner_postgres "$restore_path"
+    --username "${POSTGRES_USER:-meal_owner}" --no-owner --no-acl \
+    --role "${POSTGRES_USER:-meal_owner}" --dbname meal_planner_postgres "$restore_path"
 
 compose --profile tools run --rm --no-deps --entrypoint cat migrate database/application-grants.sql \
     | compose exec -T postgres psql --username "${POSTGRES_USER:-meal_owner}" \

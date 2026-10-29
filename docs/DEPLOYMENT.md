@@ -2,6 +2,16 @@
 
 Актуально на 28 октября 2026 года. Стенд предназначен для интеграционной и ручной приёмки, а не для публичного коммерческого запуска. Этот runbook не содержит паролей, TOTP secret, recovery-кодов, connection strings и содержимого env-файлов.
 
+## Быстрая карта деплоя
+
+1. Код, миграции и общий Compose меняются только в `meal_backend`; серверный control plane лежит в `deploy/`.
+2. Push в `main` запускает `.github/workflows/deploy.yml`: quality gate → `ghcr.io/en1ere/meal_backend:sha-<full-sha>` → immutable `@sha256:` → Environment `test`.
+3. Workflow вызывает `sudo /usr/local/sbin/meal-deploy backend <image@digest> <git-sha>`. Source/dist в `/srv/meal/backend` больше не копируются: runtime загружается из GHCR.
+4. На VPS: `/srv/meal/deployment` — scripts/Compose, `/etc/meal-planner/deploy.env` — non-secret settings, `/etc/meal-planner/secrets` — Docker secrets, `/var/lib/meal-planner/deployments` — digests/evidence. Secrets принадлежат `root:meal-secrets`, имеют mode `0640`, а непривилегированные backend/migrate получают только supplemental GID `29001`. `meal-planner-compose.service` поднимает текущие digests после reboot без автомиграций.
+5. Backend доступен только на `127.0.0.1:3001`; host Nginx из `deploy/nginx/meal-planner.conf` отдаёт `/api/` и `/health/`. Smoke: local/public `/health/live` и `/health/ready`.
+6. Обычный rollout сам делает backup, migration/grants и verify. Первый перенос host PostgreSQL выполняет только `bootstrap-restore.sh` после fresh backup и остановки writers.
+7. Backend rollback после migration разрешён только с root-owned compatibility evidence; БД автоматически не откатывается.
+
 ## Адреса и сетевые границы
 
 | Компонент                         | Адрес                                                     |

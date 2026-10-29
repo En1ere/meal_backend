@@ -33,6 +33,7 @@ services:
     backend:
         <<: *application-hardening
         image: ${BACKEND_IMAGE:?immutable backend digest reference is required}
+        group_add: ['${MEAL_SECRETS_GID:-29001}']
         environment:
             NODE_ENV: production
             HOST: 0.0.0.0
@@ -120,6 +121,7 @@ services:
         profiles: [tools]
         read_only: true
         user: node
+        group_add: ['${MEAL_SECRETS_GID:-29001}']
         cap_drop: [ALL]
         security_opt: [no-new-privileges:true]
         environment:

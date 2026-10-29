@@ -1,5 +1,7 @@
 # Backend version-list
 
+0.0.136 - 10.29.2026 | 10:17 - В deployment runbook добавлена краткая карта для человека и агента: `main`/GHCR digest, allowlisted helper, server paths, ports, health, first restore и rollback boundary. Добавлен `meal-planner-compose.service`, который после reboot идемпотентно поднимает текущие digests без автомиграций. Первый production cutover устранил fail-closed проблемы restore/secrets и readiness: bootstrap корректно читает root-only dump и подключает `pg_restore` ролью `meal_owner`, backend/migrate получают отдельный supplemental GID `29001`, а Pool сохраняет URI option `-c role=meal_app` при добавлении timezone/search_path; секреты не добавлялись.
+
 0.0.135 - 10.29.2026 | 10:13 - В repository deployment contract добавлен точный host-Nginx template для TLS edge: public origin проксирует API/health/frontend на loopback `3001/3000`, admin origin — API/backend и SPA container на `3002`; сертификаты, security headers и firewall boundary сохранены.
 
 0.0.134 - 10.29.2026 | 10:06 - Compose observation commands в production runbook синхронизированы с фактическим deployment layout: helper-файлы лежат в `/srv/meal/deployment`, non-secret settings читаются из `/etc/meal-planner/deploy.env`, а текущие digests — из root-owned `images.env`; runtime/API не изменялись.

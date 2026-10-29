@@ -4,19 +4,29 @@ import pg from 'pg';
 import { APP_CONFIG, type AppConfig } from '../../app/config.js';
 import type { DatabaseSchema } from './schema.generated.js';
 
+export function databasePoolConfig(connectionString: string) {
+    const url = new URL(connectionString);
+    const configuredOptions = url.searchParams.get('options')?.trim();
+    url.searchParams.delete('options');
+    return {
+        connectionString: url.toString(),
+        options: [configuredOptions, '-c timezone=UTC', '-c search_path=meal,public'].filter(Boolean).join(' '),
+    };
+}
+
 @Injectable()
 export class DatabaseService implements OnApplicationShutdown {
     readonly db: Kysely<DatabaseSchema> | undefined;
     constructor(@Inject(APP_CONFIG) config: AppConfig) {
         if (config.DATABASE_URL) {
+            const connection = databasePoolConfig(config.DATABASE_URL);
             const pool = new pg.Pool({
-                connectionString: config.DATABASE_URL,
+                ...connection,
                 max: config.DATABASE_POOL_SIZE,
                 connectionTimeoutMillis: 3000,
                 idleTimeoutMillis: 30000,
                 statement_timeout: 10000,
                 application_name: 'meal-planner-back',
-                options: '-c timezone=UTC -c search_path=meal,public',
             });
             // Never print raw PostgreSQL errors: they may contain SQL values.
             pool.on('error', () => console.error('PostgreSQL idle connection failed'));
