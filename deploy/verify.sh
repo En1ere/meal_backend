@@ -42,7 +42,8 @@ case "$component" in
 esac
 if [ "$component" = backend ] || [ "$component" = all ]; then
     backend_id=$(compose ps -q backend)
-    gateways=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{if .Gateway}}{{.Gateway}}{{"\n"}}{{end}}{{end}}' "$backend_id" | sort -u)
+    gateways=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{if .Gateway}}{{.Gateway}}{{"\n"}}{{end}}{{end}}' "$backend_id" \
+        | grep -E '^[0-9]{1,3}(\.[0-9]{1,3}){3}$' | sort -u)
     expected=$(printf '%s\n' "$gateways" | sed '/^$/d;s/$/\/32/' | sort | paste -sd, -)
     configured=$(printf '%s' "${TRUSTED_PROXY_CIDRS:-}" | tr ',' '\n' | sed '/^$/d' | sort | paste -sd, -)
     [ -n "$expected" ] && [ "$configured" = "$expected" ] || {

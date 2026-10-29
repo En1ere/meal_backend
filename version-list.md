@@ -1,5 +1,7 @@
 # Backend version-list
 
+0.0.138 - 10.29.2026 | 11:12 - Post-deploy verify адаптирован к Docker 29.9: служебное значение `invalid IP` у internal network больше не превращается в ложный trusted proxy gateway. Gate принимает только валидные IPv4, а production smoke зафиксировал единственный фактический Nginx source `172.31.0.1/32`; широкие сети и internal DB gateway не доверяются.
+
 0.0.137 - 10.29.2026 | 11:05 - Production readiness подтвердил, что точечные table grants не работают без schema traversal: `application-grants.sql` теперь явно выдаёт `meal_app` только `USAGE` на schema `meal`, сохраняя `CREATE=false`. Это синхронизирует фактические grants с ранее документированным least-privilege контрактом и позволяет readiness использовать разрешённую `schema_migrations`; публичные DTO и endpoint-ы не менялись.
 
 0.0.136 - 10.29.2026 | 10:17 - В deployment runbook добавлена краткая карта для человека и агента: `main`/GHCR digest, allowlisted helper, server paths, ports, health, first restore и rollback boundary. Добавлен `meal-planner-compose.service`, который после reboot идемпотентно поднимает текущие digests без автомиграций. Первый production cutover устранил fail-closed проблемы restore/secrets и readiness: bootstrap корректно читает root-only dump и подключает `pg_restore` ролью `meal_owner`, backend/migrate получают отдельный supplemental GID `29001`, а Pool сохраняет URI option `-c role=meal_app` при добавлении timezone/search_path; секреты не добавлялись.
