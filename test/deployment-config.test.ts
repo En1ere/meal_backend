@@ -155,7 +155,7 @@ void test('component deployment isolates UI rollout from database migration', as
     const proxySmoke = await text('deploy/proxy-smoke.sh');
     assert.match(proxySmoke, /X-Forwarded-For/);
     assert.match(proxySmoke, /Runtime proxy source verified by admin guard/);
-    assert.match(bootstrap, /29\/209\/483\/18/);
+    assert.match(bootstrap, /30\/212\/488\/18/);
     assert.match(bootstrap, /meal_runtime/);
     assert.match(bootstrap, /chown postgres:postgres "\$restore_path"/);
     assert.match(bootstrap, /chmod 0600 "\$restore_path"/);

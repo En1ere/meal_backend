@@ -186,7 +186,7 @@ void test('observability HTTP and SQL work have dedicated bounded execution limi
 void test('worker/provider projections preserve no-samples and do not count skipped overlap as a failure', async () => {
     const snapshot: ObservabilityRepositorySnapshot = {
         database: {
-            schemaVersion: 29,
+            schemaVersion: 30,
             databaseSizeBytes: 1,
             queryDurationMs: 1,
             pool: { max: 10, total: 1, idle: 1, waiting: 0 },
@@ -312,7 +312,7 @@ const publicFixture = () => ({
     database: {
         freshness: { state: 'fresh' as const, observedAt: now.toISOString(), ageSeconds: 0, staleAfterSeconds: 30 },
         queryDurationMs: 1,
-        schemaVersion: 29,
+        schemaVersion: 30,
         databaseSizeBytes: 1,
         backendPool: { max: 10, total: 1, idle: 1, waiting: 0 },
     },

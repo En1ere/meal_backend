@@ -72,7 +72,7 @@ export function openApiDocument(app: NestFastifyApplication) {
             new DocumentBuilder()
                 .setTitle('Meal Planner API')
                 .setDescription(
-                    'Backend-owned auth/account/privacy/legal-consent/export/profile/admin/inventory/products/recipes/preserves/shopping/receipts/meal-plan/support/AI and simulated paid Plus/Pro lifecycle including promotion, renewal, downgrade and family combination; private diary, finance, nutrition analytics and Pro export contract; database schema v29; external providers and approved legal evidence pending',
+                    'Backend-owned auth/account/privacy/legal-consent/export/profile/admin/inventory/products/recipes/preserves/shopping/receipts/meal-plan/support/AI and simulated paid Plus/Pro lifecycle including promotion, renewal, downgrade and family combination; private diary, finance, nutrition analytics and Pro export contract; database schema v30; external providers and approved legal evidence pending',
                 )
                 .setVersion('0.0.61')
                 .addCookieAuth('meal_user', { type: 'apiKey' }, 'meal_user')

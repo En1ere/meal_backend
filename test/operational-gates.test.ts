@@ -309,7 +309,7 @@ const recoverySet = {
     state: 'ready',
     database: 'meal_planner_postgres',
     postgresMajor: 18,
-    schemaVersion: 29,
+    schemaVersion: 30,
     migrationManifestChecksum: `sha256:${'a'.repeat(64)}`,
     snapshotAt: now,
     secrets: 'excluded',
@@ -318,8 +318,8 @@ const recoverySet = {
 const gates = {
     artifactHashes: true,
     schemaVersion: true,
-    tableCount209: true,
-    foreignKeyCount483: true,
+    tableCount212: true,
+    foreignKeyCount488: true,
     applicationRole: true,
     domainSmoke: true,
     mediaCoverage: true,
@@ -328,9 +328,9 @@ const gates = {
 void test('recovery set requires one encrypted immutable offsite artifact of every kind', () => {
     assert.equal(recoverySetSchema.safeParse(recoverySet).success, true);
     assert.equal(recoverySetSchema.safeParse({ ...recoverySet, contractVersion: 2 }).success, false);
-    assert.equal(recoverySetSchema.safeParse({ ...recoverySet, contractVersion: 3 }).success, false);
-    assert.equal(recoverySetSchema.safeParse({ ...recoverySet, schemaVersion: 28 }).success, false);
-    assert.equal(recoverySetSchema.safeParse({ ...recoverySet, schemaVersion: 30 }).success, false);
+    assert.equal(recoverySetSchema.safeParse({ ...recoverySet, contractVersion: 4 }).success, false);
+    assert.equal(recoverySetSchema.safeParse({ ...recoverySet, schemaVersion: 29 }).success, false);
+    assert.equal(recoverySetSchema.safeParse({ ...recoverySet, schemaVersion: 31 }).success, false);
     assert.equal(recoverySetSchema.safeParse({ ...recoverySet, artifacts: artifacts.slice(1) }).success, false);
     assert.equal(recoverySetSchema.safeParse({ ...recoverySet, secrets: 'included' }).success, false);
 });

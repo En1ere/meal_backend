@@ -14,28 +14,28 @@
 
 ## Адреса и сетевые границы
 
-| Компонент                         | Адрес                                           |
-| --------------------------------- | ----------------------------------------------- |
-| Пользовательское приложение       | `https://meal.royalexander.online`              |
-| Административное приложение       | `https://admin.meal.royalexander.online`        |
-| API через пользовательский origin | `https://meal.royalexander.online/api/v1`       |
-| Liveness                          | `https://meal.royalexander.online/health/live`  |
-| Readiness                         | `https://meal.royalexander.online/health/ready` |
+| Компонент                         | Текущий адрес                                             | Плановый адрес после DNS cutover                |
+| --------------------------------- | --------------------------------------------------------- | ----------------------------------------------- |
+| Пользовательское приложение       | `https://abstract-usable-gazebo.ruweb.place`              | `https://meal.royalexander.online`              |
+| Административное приложение       | `https://admin.abstract-usable-gazebo.ruweb.place`        | `https://admin.meal.royalexander.online`        |
+| API через пользовательский origin | `https://abstract-usable-gazebo.ruweb.place/api/v1`       | `https://meal.royalexander.online/api/v1`       |
+| Liveness                          | `https://abstract-usable-gazebo.ruweb.place/health/live`  | `https://meal.royalexander.online/health/live`  |
+| Readiness                         | `https://abstract-usable-gazebo.ruweb.place/health/ready` | `https://meal.royalexander.online/health/ready` |
 
 Оба интерфейса используют same-origin `/api`; прямые порты приложений и PostgreSQL из интернета недоступны. Backend опубликован только на `127.0.0.1:3001`, frontend — `127.0.0.1:3000`, admin — `127.0.0.1:3002`; PostgreSQL не имеет host publish. UFW разрешает только OpenSSH и `Nginx Full`. Админка вынесена на отдельный origin, потому что её абсолютные маршруты пересекаются с маршрутами пользовательского приложения.
 
-Корневой `royalexander.online` и `www.royalexander.online` принадлежат существующему GitHub Pages сайту и не входят в конфигурацию Meal Planner. Старые технические адреса временно возвращают `302` на соответствующий новый интерфейс с сохранением path/query. Старый `/api/` намеренно возвращает `410` без кеширования: host-only session cookies и CSRF origin нельзя безопасно перенести редиректом, поэтому после cutover пользователи входят заново.
+Корневой `royalexander.online` и `www.royalexander.online` принадлежат существующему GitHub Pages сайту и не входят в конфигурацию Meal Planner. На 29 октября 2026 года `meal.royalexander.online` и `admin.meal.royalexander.online` возвращают `NXDOMAIN`, поэтому технические адреса остаются действующими и отвечают `200`; полный custom-domain Nginx template ещё не установлен. Только после DNS/certificate cutover технические UI-адреса начнут временно возвращать `302`, а их `/api/` — `410` без кеширования: host-only session cookies и CSRF origin нельзя безопасно перенести редиректом, поэтому после cutover пользователи входят заново.
 
 ## Подтверждённый cutover baseline
 
 Таблица фиксирует проверенный baseline непосредственно после переключения на контейнеры. Текущие immutable digests после последующих автодеплоев всегда читаются из root-only `/var/lib/meal-planner/deployments/images.env`; это единственный источник истины для активного release.
 
-| Компонент | Активный release                                    | Версия на стенде             | Runtime                         |
-| --------- | --------------------------------------------------- | ---------------------------- | ------------------------------- |
-| Backend   | `ghcr.io/en1ere/meal_backend@sha256:0d2d11…b8e9b8`  | `0.0.138`                    | Docker, loopback `3001`         |
-| Frontend  | `ghcr.io/en1ere/meal_frontend@sha256:da978f…33a0aa` | root `0.0.38`, app `0.0.147` | Docker, loopback `3000`         |
-| Admin     | `ghcr.io/en1ere/meal_admin@sha256:3845a3…08e246`    | `0.0.122`                    | Docker/Nginx, loopback `3002`   |
-| Database  | `postgres:18-bookworm@sha256:5c4783…31a2c8`         | schema `v29`                 | private Docker network, no port |
+| Компонент | Последний проверенный source release | Runtime                         |
+| --------- | ------------------------------------ | ------------------------------- |
+| Backend   | `0.0.149`                            | Docker, loopback `3001`         |
+| Frontend  | root `0.0.40`, app `0.0.149`         | Docker, loopback `3000`         |
+| Admin     | `0.0.125`                            | Docker/Nginx, loopback `3002`   |
+| Database  | schema `v30`, migration 030          | private Docker network, no port |
 
 Source of truth активных immutable digests — root-owned `/var/lib/meal-planner/deployments/images.env`; каждый rollout сохраняет revision/evidence в отдельном каталоге рядом. Legacy release symlinks оставлены только для истории и не получают traffic. Candidate считается развёрнутым только после container health, component/public smoke и записи `passed`; backend additionally требует backup, migration/grants, exact proxy gateway и readiness.
 
@@ -52,7 +52,7 @@ Source of truth активных immutable digests — root-owned `/var/lib/meal
 - Baseline backup до первого deployment: `/var/backups/meal-planner/predeploy-20261027-0515.dump`, root-only.
 - Свежий backup непосредственно перед schema v29: `/var/backups/meal-planner/pre-migration029-20261028-0710.dump`, `2,114,768` bytes, SHA-256 `85b25e20540b759e0ec0f225a4f149dbc063a4f152afcc9b57222f9402da8ec4`, `root:root`, mode `0600`.
 
-Backend environment задаёт как минимум имена `NODE_ENV`, `PORT`, `HOST`, `FRONTEND_ORIGIN` и `ADMIN_FRONTEND_ORIGIN`. Для production-стенда четыре origin-переменные должны быть согласованы: `FRONTEND_ORIGIN=https://meal.royalexander.online`, `ADMIN_FRONTEND_ORIGIN=https://admin.meal.royalexander.online`, `PUBLIC_ORIGIN=https://meal.royalexander.online`, `ADMIN_PUBLIC_ORIGIN=https://admin.meal.royalexander.online`. Первые две задают разрешённые browser origins backend, вторые две включают public smoke в `deploy/verify.sh`; отсутствие любой из public-переменных запрещает считать внешний cutover проверенным. Секреты задаются либо прямыми `DATABASE_URL`, `SECURITY_KEY`, `MFA_ENCRYPTION_KEY`, либо взаимоисключающими абсолютными `DATABASE_URL_FILE`, `SECURITY_KEY_FILE`, `MFA_ENCRYPTION_KEY_FILE`. Значения проверяются на сервере без печати в терминал или журнал CI. Внешние provider-переменные остаются unset, пока соответствующий provider не принят; интеграции обязаны завершаться fail-closed.
+Backend environment задаёт как минимум имена `NODE_ENV`, `PORT`, `HOST`, `FRONTEND_ORIGIN` и `ADMIN_FRONTEND_ORIGIN`. До DNS cutover четыре origin-переменные указывают на текущие технические HTTPS origins. После подтверждённого DNS/certificate cutover они должны быть атомарно заменены на `FRONTEND_ORIGIN=https://meal.royalexander.online`, `ADMIN_FRONTEND_ORIGIN=https://admin.meal.royalexander.online`, `PUBLIC_ORIGIN=https://meal.royalexander.online`, `ADMIN_PUBLIC_ORIGIN=https://admin.meal.royalexander.online`. Первые две задают разрешённые browser origins backend, вторые две включают public smoke в `deploy/verify.sh`; отсутствие любой из public-переменных запрещает считать внешний cutover проверенным. Секреты задаются либо прямыми `DATABASE_URL`, `SECURITY_KEY`, `MFA_ENCRYPTION_KEY`, либо взаимоисключающими абсолютными `DATABASE_URL_FILE`, `SECURITY_KEY_FILE`, `MFA_ENCRYPTION_KEY_FILE`. Значения проверяются на сервере без печати в терминал или журнал CI. Внешние provider-переменные остаются unset, пока соответствующий provider не принят; интеграции обязаны завершаться fail-closed.
 
 ### Runtime-роли БД
 
@@ -108,7 +108,7 @@ Host Nginx приходит на published backend port через Docker bridge
 sh deploy/bootstrap-restore.sh --dump /approved/path/baseline.dump --sha256 <approved-lowercase-sha256>
 ```
 
-Скрипт отказывается работать с непустой schema, создаёт `meal_app NOLOGIN` и `meal_runtime LOGIN INHERIT`, восстанавливает dump в PostgreSQL 18 с `--no-owner`, применяет grants и до запуска application traffic требует `29/209/483/18` для migrations/tables/FK/PostgreSQL major. Runtime password читается из отдельного root-owned Docker secret. Backend URL также хранится отдельным secret и содержит URL-encoded connection option `-c role=meal_app`.
+Скрипт отказывается работать с непустой schema, создаёт `meal_app NOLOGIN` и `meal_runtime LOGIN INHERIT`, восстанавливает dump в PostgreSQL 18 с `--no-owner`, применяет grants и до запуска application traffic сверяет migration/table/FK/PostgreSQL-major counts с manifest проверяемого release. Для текущей schema v30 на VPS подтверждены `30/212/488/18`; исторический pre-container drill ниже остаётся evidence для исходной schema v29. Runtime password читается из отдельного root-owned Docker secret. Backend URL также хранится отдельным secret и содержит URL-encoded connection option `-c role=meal_app`.
 
 Проверенный pre-container backup: `/var/backups/meal-planner/pre-container-20261028T125808Z.dump`, `1,770,608` bytes, SHA-256 `b84bbfa3096e3f2f9faaf660a13070ab97f22e6a82b2192ed94019012a92c9fc`, `root:root`, mode `0600`. Restore drill выполнен pinned image `postgres@sha256:5c4783a8cc3f0074912164f94dfa1be4e043438f0f707cf968d7af9a0d31a2c8`: schema/history/tables/FK `29/209/483`, environment `test`, users `1`, MFA factors `1`, recipes `0`. Evidence `/var/backups/meal-planner/pre-container-20261028T125808Z.restore-drill.txt` имеет SHA-256 `e18578e25aa6c410249dde879eacea96b9e5c082f20807babcb1f9f067f7f1fa`, `root:root`, mode `0600`. Drill подтвердил, что PostgreSQL 18 отказывается от legacy mount `/var/lib/postgresql/data`; рабочий контракт использует единый volume `/var/lib/postgresql`.
 
@@ -120,7 +120,7 @@ sh /srv/meal/deployment/deploy.sh --component frontend --image registry/name@sha
 sh /srv/meal/deployment/deploy.sh --component admin --image registry/name@sha256:<digest> --revision <git-sha>
 ```
 
-Только backend rollout создаёт backup, останавливает backend и worker writers, запускает one-shot migration и повторно применяет grants. Затем backend и worker поднимаются одним backend digest; verification требует healthy worker даже при пустом allowlist. Frontend/admin rollout не подключается к БД и не перезапускает посторонние сервисы. Успешный digest атомарно сохраняется в root-owned `images.env`; failed UI candidate возвращает предыдущий digest компонента. Backend после применённой миграции fail-closed: application rollback разрешён только при `ALLOW_BACKEND_AUTO_ROLLBACK=true` и отдельном root-owned compatibility evidence file, содержащем точные `previous_image=...`, `candidate_image=...` и `schema_version=29`; БД никогда не восстанавливается автоматически. Все rollout-ы сериализованы общим `flock`.
+Только backend rollout создаёт backup, останавливает backend и worker writers, запускает one-shot migration и повторно применяет grants. Затем backend и worker поднимаются одним backend digest; verification требует healthy worker даже при пустом allowlist. Frontend/admin rollout не подключается к БД и не перезапускает посторонние сервисы. Успешный digest атомарно сохраняется в root-owned `images.env`; failed UI candidate возвращает предыдущий digest компонента. Backend после применённой миграции fail-closed: application rollback разрешён только при `ALLOW_BACKEND_AUTO_ROLLBACK=true` и отдельном root-owned compatibility evidence file, содержащем точные `previous_image=...`, `candidate_image=...` и фактический `schema_version`; БД никогда не восстанавливается автоматически. Все rollout-ы сериализованы общим `flock`.
 
 Root-owned `deploy/meal-deploy` устанавливается как `/usr/local/sbin/meal-deploy` mode `0755`, а `deploy/meal-deploy.sudoers` — через `visudo -cf` в `/etc/sudoers.d/meal-deploy` mode `0440`. Единственная группа `meal-deploy` получает право вызвать wrapper; он принимает ровно три positional аргумента, проверяет component, полный Git SHA и allowlisted GHCR repository, после чего передаёт значения flag-based helper без shell evaluation. Общий shell/root доступ CI user не выдаётся.
 
@@ -182,6 +182,14 @@ ufw status verbose
 - frontend root/app `0.0.38`/`0.0.147` подтверждён на login и `/recipes`: тестовый пользователь входит, защищённый маршрут открывается, все четыре темы переключаются и сохраняются после reload, browser console errors отсутствуют;
 - admin `0.0.122` подтверждён на root, login и защищённых HTML-route: парольный этап доходит до обязательной MFA-границы, все четыре темы переключаются и сохраняются после reload, browser console errors отсутствуют.
 
+### Evidence последующих автодеплоев 2026-10-29
+
+- backend `0.0.149` развёрнут из `main`; backend и worker используют один image id `7a07bb54e42c`, оба healthy, migration 030 применена с checksum `b55bb47bea5489cc7619e77d3e2b2f7ca68be7305f4b46b3cadfc3ab772db203`;
+- текущая PostgreSQL schema содержит 30 migration rows, 212 таблиц и 488 внешних ключей;
+- admin `0.0.125` развёрнут workflow `40867740006`; image id `43e8bd3b0551`, container healthy, `/admin/testing` отвечает `200`, а endpoint без сессии — контролируемым JSON `401`;
+- `deploy/verify.sh --component backend` и `--component admin` прошли; active immutable registry digests по-прежнему читаются только из root-owned `images.env`, а не из этого документа;
+- custom domains ещё не включены: оба имени Meal Planner находятся в `NXDOMAIN`, технические origins продолжают отвечать `200`.
+
 ## Rollback
 
 1. Запретить новые мутации или остановить backend, если целостность данных под вопросом.
@@ -213,7 +221,7 @@ certbot renew --dry-run
 
 На стенде есть один активный подтверждённый аккаунт с frontend email `admin@meal-planner.test`, admin login `admin`, отображаемым именем `Test Administrator` и обязательным admin TOTP. Секреты передаются владельцу отдельно; при утрате TOTP factor перевыпускается, а не отключается.
 
-Тестовые записи помечаются уникальным run namespace. После smoke удаляйте только записи этого namespace проверенным cleanup или восстанавливайте заранее снятый baseline после отдельного подтверждения. Затем сверяйте baseline counters, 29 migration rows, справочники, отсутствие временных ролей/БД/locks и чистый `db:plan`. Для v29 отдельно проверьте backfill `recipe_publications.recipe_id`, включённые `protect_identity`/compatibility triggers и отсутствие дублирующих active publications. Подробные сценарии: `docs/DATABASE_TESTING.md` и `docs/BACKEND_TESTING.md`.
+Тестовые записи помечаются уникальным run namespace. После smoke удаляйте только записи этого namespace проверенным cleanup или восстанавливайте заранее снятый baseline после отдельного подтверждения. Затем сверяйте baseline counters, 30 migration rows, справочники, отсутствие временных ролей/БД/locks и чистый `db:plan`. Для v29 отдельно проверьте backfill `recipe_publications.recipe_id`, включённые `protect_identity`/compatibility triggers и отсутствие дублирующих active publications; для v30 — acceptance run/result/event invariants и точный checksum migration 030. Подробные сценарии: `docs/DATABASE_TESTING.md` и `docs/BACKEND_TESTING.md`.
 
 ## Известные production gates
 

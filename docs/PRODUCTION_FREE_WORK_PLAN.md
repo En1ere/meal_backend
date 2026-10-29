@@ -93,10 +93,10 @@
 
 ## Уже закрыто
 
-Docker cutover, TLS/Nginx, schema v29, least-privilege DB role, main-to-digest autodeploy, container health/readiness, pre-rollout DB backup/restore drill, admin MFA и theme smoke не выполняются повторно без изменения соответствующего слоя.
+Docker cutover, TLS/Nginx на технических origins, schema v30, least-privilege DB role, main-to-digest autodeploy, container health/readiness, pre-rollout DB backup/restore drill, admin MFA и theme smoke не выполняются повторно без изменения соответствующего слоя. Custom-domain cutover остаётся отдельным pending шагом до публикации DNS A-записей.
 
 Legal checkpoint опубликован как явно неутверждённый draft-каталог: все 11 документов доступны для чтения, содержат единую заглушку `[Тут будут данные]`, закрыты от индексации и не используются как production acceptance evidence.
 
 Архитектурный checkpoint закрыт без изменения HTTP/API, DB schema, URL и wire payload: backend gate подтверждает 60 доменов без циклических групп и запрещает `modules -> app`; admin gate контролирует static/dynamic imports, public feature API и mock boundaries; frontend gate контролирует app/widgets public API и отдельный mock entry. Доказанно смешанные route/release/runtime модули декомпозированы с сохранением публичных экспортов и поведения.
 
-Observability checkpoint реализован в коде, но не считается полностью развёрнутым до VPS-приёмки host bootstrap, Docker mount, systemd collector и rollback evidence. Новый admin-only read endpoint транзакционно проверяет live admin/MFA/session и пишет audit; host/DB/queue/worker/provider данные имеют fixed enums, bounded cardinality и явные freshness states. Внешний alert channel остаётся выключенным до выбора владельцем канала, получателя, secret и порогов.
+Observability checkpoint полностью развёрнут и принят на VPS: host bootstrap, root-owned atomic snapshot, Docker read-only mount, systemd collector/timer, degraded partial state, rollback и real admin+MFA smoke подтверждены. Admin-only read endpoint транзакционно проверяет live admin/MFA/session и пишет audit; host/DB/queue/worker/provider данные имеют fixed enums, bounded cardinality и явные freshness states. Внешний alert channel остаётся выключенным до выбора владельцем канала, получателя, secret и порогов и не переоткрывает admin-only checkpoint.

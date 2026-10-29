@@ -1,5 +1,7 @@
 # Backend version-list
 
+0.0.150 - 10.29.2026 | 20:15 - Синхронизированы production runbook, OpenAPI metadata и readiness tracker с фактическими автодеплоями: schema v30/миграция 030, 30/212/488 migration/table/FK counts, backend 0.0.149 и admin 0.0.125 evidence, завершённая observability-приёмка. Recovery contract v5, bootstrap restore и reference-data gate теперь fail-closed требуют точную schema v30; технические origins явно отмечены как текущие, custom-domain cutover — pending до DNS. Публичный HTTP API не изменён.
+
 0.0.149 - 10.29.2026 | 17:05 - Добавлен versioned admin acceptance checklist для 83 кейсов БД/backend/admin/frontend: semantic catalog IDs и checksums, отдельный run на catalog version, CAS/idempotency, bounded comments, reset без удаления истории, append-only events и admin-only live MFA/session/role recheck. Миграция 030 добавляет три least-privilege таблицы; OpenAPI 0.0.61 расширен тремя согласованными endpoint-ами, manual test docs и regression coverage синхронизированы.
 
 0.0.148 - 10.29.2026 | 16:03 - Подготовлены канонические meal/admin origins: TLS-edge шаблон, временные 302 rollback aliases, public-origin verification и точный cutover/rollback runbook.

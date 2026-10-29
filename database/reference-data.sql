@@ -8,7 +8,7 @@ SELECT pg_advisory_xact_lock(73821641);
 DO $guard$ BEGIN
  IF current_database() <> 'meal_planner_postgres'
  OR NOT EXISTS(SELECT 1 FROM meal.environment WHERE name IN ('test','development'))
- OR (SELECT count(*) FROM meal.schema_migrations) <> 29
+ OR (SELECT count(*) FROM meal.schema_migrations) <> 30
  THEN RAISE EXCEPTION 'Reference-data target or migration history mismatch'; END IF;
 END $guard$;
 

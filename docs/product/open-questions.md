@@ -6,7 +6,7 @@
 
 Согласованный бесплатный execution tracker и список данных, которые потребуются от владельца, ведутся в [`docs/PRODUCTION_FREE_WORK_PLAN.md`](../PRODUCTION_FREE_WORK_PLAN.md). Платежи, ККТ, merchant secrets и финальное утверждение реквизитов вынесены за его пределы.
 
-Тестовый production-like стенд уже использует PostgreSQL 18/schema v29 и общий Docker Compose для БД, backend, frontend и admin. TLS/Nginx, digest-pinned GHCR images, `main`-autodeploy, backup перед backend rollout, restore drill, least-privilege runtime role, обязательный admin MFA и container health/readiness проверены. Legacy application/PostgreSQL systemd units отключены. Это закрывает инфраструктурный cutover тестового стенда, но не разрешает публичный коммерческий запуск.
+Тестовый production-like стенд уже использует PostgreSQL 18/schema v30 и общий Docker Compose для БД, backend, frontend и admin. TLS/Nginx на технических origins, digest-pinned GHCR images, `main`-autodeploy, backup перед backend rollout, restore drill, least-privilege runtime role, обязательный admin MFA и container health/readiness проверены. Legacy application/PostgreSQL systemd units отключены. Custom-domain cutover ожидает DNS. Это закрывает инфраструктурный cutover тестового стенда, но не разрешает публичный коммерческий запуск.
 
 Оставшиеся работы закрываются последовательно; следующий пункт не включается production-ключами, пока предыдущий не имеет contract tests, provider sandbox evidence, timeout/unknown/retry/reconciliation проверки, мониторинг и документированный rollback/disable switch:
 

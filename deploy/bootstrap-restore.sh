@@ -89,7 +89,7 @@ select
  (select count(*) from information_schema.tables where table_schema='meal' and table_type='BASE TABLE'),
  (select count(*) from pg_constraint c join pg_namespace n on n.oid=c.connamespace where n.nspname='meal' and c.contype='f'),
  current_setting('server_version_num')::int/10000;")
-[ "$facts" = "29/209/483/18" ] || { echo "Restored database invariant mismatch" >&2; exit 65; }
+[ "$facts" = "30/212/488/18" ] || { echo "Restored database invariant mismatch" >&2; exit 65; }
 role_facts=$(compose exec -T postgres psql --username "${POSTGRES_USER:-meal_owner}" \
     --dbname meal_planner_postgres --no-password --tuples-only --no-align --field-separator / --command "
 select app.rolcanlogin,app.rolinherit,runtime.rolcanlogin,runtime.rolinherit,
