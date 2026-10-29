@@ -8,6 +8,7 @@ RUN --mount=type=cache,target=/root/.npm npm ci
 COPY tsconfig.json ./
 COPY src ./src
 COPY test ./test
+COPY contracts ./contracts
 RUN npm run build
 
 FROM ${NODE_IMAGE} AS production-dependencies

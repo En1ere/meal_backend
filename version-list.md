@@ -1,5 +1,7 @@
 # Backend version-list
 
+0.0.133 - 10.29.2026 | 09:47 - Docker build context включает `contracts/http-cases.json`, который нужен TypeScript-сборке contract-теста; исправлен Linux-only container build failure без изменения runtime/API.
+
 0.0.132 - 10.28.2026 | 17:51 - Добавлена production Docker/Compose и GitHub Actions инфраструктура общего стека с immutable digest images, явными migration/backup/verify/rollback gates и hardening; Docker secrets поддержаны через безопасные `_FILE` переменные. Recovery contract синхронизирован со schema v29 / 483 FK, runtime-role документирован как `meal_runtime` login с effective `role=meal_app`, а runbook переведён с legacy systemd/symlink smoke на фактический Compose health/rollback/observation и фиксирует текущий legacy health-route blocker.
 
 0.0.131 - 28.10.2026 | 13:12 - Docs-only repository revision синхронизирует live admin `0.0.117` и immutable release `20261028-0757`: root/deep-link отвечают `200`, password → mandatory MFA и `coffee-light` / `nature-dark` smoke прошли без runtime errors. Deployed backend остаётся `0.0.128` / schema v29; runtime-код и публичные контракты не менялись.
