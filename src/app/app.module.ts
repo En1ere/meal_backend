@@ -98,6 +98,9 @@ import { AdminObservabilityController } from '../modules/admin-observability/adm
 import { AdminObservabilityRepository } from '../modules/admin-observability/admin-observability.repository.js';
 import { AdminObservabilityService } from '../modules/admin-observability/admin-observability.service.js';
 import { HostSnapshotReader } from '../modules/admin-observability/host-snapshot.reader.js';
+import { AdminAcceptanceTestsController } from '../modules/admin-acceptance-tests/admin-acceptance-tests.http.js';
+import { AdminAcceptanceTestsRepository } from '../modules/admin-acceptance-tests/admin-acceptance-tests.repository.js';
+import { AdminAcceptanceTestsService } from '../modules/admin-acceptance-tests/admin-acceptance-tests.service.js';
 import { AdminActionsController } from '../modules/admin-actions/admin-actions.http.js';
 import { AdminActionsService } from '../modules/admin-actions/admin-actions.service.js';
 import { AdminAuthController, AdminSessionGuard } from '../modules/admin-auth/admin-auth.http.js';
@@ -240,6 +243,7 @@ export class AppModule {
                 AdminAuthController,
                 AdminReadController,
                 AdminObservabilityController,
+                AdminAcceptanceTestsController,
                 AdminActionsController,
                 AccountController,
                 MailboxController,
@@ -343,6 +347,8 @@ export class AppModule {
                 AdminReadBoundary,
                 AdminObservabilityRepository,
                 AdminObservabilityService,
+                AdminAcceptanceTestsRepository,
+                AdminAcceptanceTestsService,
                 {
                     provide: HostSnapshotReader,
                     useFactory: () =>

@@ -88,13 +88,20 @@ void test('backend build uses the verified immutable Node base', async () => {
 
 void test('host Nginx keeps TLS at the edge and proxies only loopback application ports', async () => {
     const nginx = await text('deploy/nginx/meal-planner.conf');
+    assert.match(nginx, /server_name meal\.royalexander\.online;/);
+    assert.match(nginx, /server_name admin\.meal\.royalexander\.online;/);
     assert.match(nginx, /server_name abstract-usable-gazebo\.ruweb\.place;/);
     assert.match(nginx, /server_name admin\.abstract-usable-gazebo\.ruweb\.place;/);
+    assert.match(nginx, /live\/meal\.royalexander\.online\/fullchain\.pem/);
     assert.match(nginx, /proxy_pass http:\/\/127\.0\.0\.1:3000;/);
     assert.match(nginx, /proxy_pass http:\/\/127\.0\.0\.1:3001;/);
     assert.match(nginx, /proxy_pass http:\/\/127\.0\.0\.1:3002;/);
     assert.doesNotMatch(nginx, /root \/srv\/meal\/admin/);
     assert.match(nginx, /return 301 https:\/\/\$host\$request_uri;/);
+    assert.match(nginx, /return 302 https:\/\/meal\.royalexander\.online\$request_uri;/);
+    assert.match(nginx, /return 302 https:\/\/admin\.meal\.royalexander\.online\$request_uri;/);
+    assert.match(nginx, /location \^~ \/api\/ \{[\s\S]*?Cache-Control "no-store"[\s\S]*?return 410;/);
+    assert.doesNotMatch(nginx, /server_name (?:www\.)?royalexander\.online;/);
 });
 
 void test('component deployment isolates UI rollout from database migration', async () => {

@@ -1,4 +1,4 @@
-// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029 overlays.
+// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029/030 overlays.
 import type { ColumnType, Generated } from 'kysely';
 type Timestamp = ColumnType<Date, Date | string, Date | string>;
 type Int64 = ColumnType<string, string | number | bigint, string | number | bigint>;
@@ -6,6 +6,41 @@ type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string
 type OptionalInsert<T> =
     T extends ColumnType<infer S, infer I, infer U> ? ColumnType<S, I | undefined, U> : Generated<T>;
 export interface DatabaseSchema {
+    acceptance_test_runs: {
+        id: string;
+        catalog_version: string;
+        catalog_published_on: string;
+        created_by: string;
+        created_at: OptionalInsert<Timestamp>;
+        version: OptionalInsert<Int64>;
+    };
+    acceptance_test_results: {
+        run_id: string;
+        case_id: string;
+        source_checksum: string;
+        status: 'not_tested' | 'passed' | 'partial' | 'failed';
+        comment: OptionalInsert<string>;
+        checked_by: string | null;
+        checked_at: Timestamp | null;
+        updated_at: OptionalInsert<Timestamp>;
+        version: OptionalInsert<Int64>;
+    };
+    acceptance_test_events: {
+        id: string;
+        run_id: string;
+        case_id: string;
+        source_checksum: string;
+        action: 'updated' | 'reset';
+        before_status: 'not_tested' | 'passed' | 'partial' | 'failed';
+        after_status: 'not_tested' | 'passed' | 'partial' | 'failed';
+        before_comment_hash: string;
+        after_comment_hash: string;
+        result_version: Int64;
+        actor_id: string;
+        occurred_at: OptionalInsert<Timestamp>;
+        request_id: string;
+        idempotency_key: string;
+    };
     legal_document_publications: {
         document_id: string;
         content_release_id: string;

@@ -74,7 +74,7 @@ export function openApiDocument(app: NestFastifyApplication) {
                 .setDescription(
                     'Backend-owned auth/account/privacy/legal-consent/export/profile/admin/inventory/products/recipes/preserves/shopping/receipts/meal-plan/support/AI and simulated paid Plus/Pro lifecycle including promotion, renewal, downgrade and family combination; private diary, finance, nutrition analytics and Pro export contract; database schema v29; external providers and approved legal evidence pending',
                 )
-                .setVersion('0.0.60')
+                .setVersion('0.0.61')
                 .addCookieAuth('meal_user', { type: 'apiKey' }, 'meal_user')
                 .addCookieAuth('meal_staff', { type: 'apiKey' }, 'meal_staff')
                 .addCookieAuth('meal_admin', { type: 'apiKey' }, 'meal_admin')

@@ -122,6 +122,10 @@ import {
 } from '../../modules/admin/admin-read.contracts.js';
 import { adminObservabilitySchema } from '../../modules/admin-observability/admin-observability.contracts.js';
 import {
+    acceptanceMutationResultSchema,
+    acceptanceWorkspaceSchema,
+} from '../../modules/admin-acceptance-tests/admin-acceptance-tests.contracts.js';
+import {
     notificationSettingsSchema,
     supportCommandResultSchema,
     supportMessagesSchema,
@@ -362,6 +366,9 @@ export function documentResponses(document: OpenAPIObject): OpenAPIObject {
     accountSchemas['/api/v1/admin/{section}/{id}'] = adminDetailSchema;
     accountSchemas['/api/v1/admin/{section}/{id}/related/{collection}/search'] = adminRelatedPageSchema;
     accountSchemas['/api/v1/admin/observability'] = adminObservabilitySchema;
+    accountSchemas['/api/v1/admin/acceptance-tests'] = acceptanceWorkspaceSchema;
+    accountSchemas['/api/v1/admin/acceptance-tests/{caseId}'] = acceptanceMutationResultSchema;
+    accountSchemas['/api/v1/admin/acceptance-tests/{caseId}/reset'] = acceptanceMutationResultSchema;
     accountSchemas['/api/v1/admin/notification-preferences'] = notificationSettingsSchema;
     accountSchemas['/api/v1/admin/support/{id}/reply'] = supportCommandResultSchema;
     accountSchemas['/api/v1/admin/support/{id}/reopen'] = supportCommandResultSchema;

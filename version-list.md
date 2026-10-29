@@ -1,5 +1,9 @@
 # Backend version-list
 
+0.0.149 - 10.29.2026 | 17:05 - Добавлен versioned admin acceptance checklist для 83 кейсов БД/backend/admin/frontend: semantic catalog IDs и checksums, отдельный run на catalog version, CAS/idempotency, bounded comments, reset без удаления истории, append-only events и admin-only live MFA/session/role recheck. Миграция 030 добавляет три least-privilege таблицы; OpenAPI 0.0.61 расширен тремя согласованными endpoint-ами, manual test docs и regression coverage синхронизированы.
+
+0.0.148 - 10.29.2026 | 16:03 - Подготовлены канонические meal/admin origins: TLS-edge шаблон, временные 302 rollback aliases, public-origin verification и точный cutover/rollback runbook.
+
 0.0.147 - 10.29.2026 | 15:37 - Observability checkpoint закрыт после полной VPS-приёмки: hardened systemd collector/timer, exact file metadata, atomic и Docker-degraded partial сценарии, compose mount/socket verification, real admin+MFA snapshot и четыре темы админки подтверждены. Admin 0.0.124 прошёл CI/image/deploy runs 40857924493/40858092836; tracker и runbook синхронизированы без изменения API, БД или runtime backend.
 
 0.0.146 - 10.29.2026 | 15:01 - VPS bootstrap drill выявил отсутствие `/etc/sysusers.d` на чистом Ubuntu 24.04 до изменения Compose. Runbook теперь явно создаёт root-owned системные каталоги sysusers/tmpfiles вместе с libexec до установки artifacts; regression test фиксирует порядок. Удалён неработающий для `Type=oneshot` `RuntimeMaxSec`; bounded runtime остаётся на `TimeoutStartSec=30`. Приложение и БД при неуспешной попытке не затрагивались.

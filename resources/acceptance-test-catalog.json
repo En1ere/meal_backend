@@ -1,0 +1,1731 @@
+{
+    "schemaVersion": 1,
+    "catalogVersion": "2026-10-29.9daaff44037b",
+    "publishedOn": "2026-10-29",
+    "groups": [
+        {
+            "id": "database",
+            "title": "База данных",
+            "order": 1
+        },
+        {
+            "id": "backend",
+            "title": "Backend/API",
+            "order": 2
+        },
+        {
+            "id": "admin",
+            "title": "Админ-панель",
+            "order": 3
+        },
+        {
+            "id": "frontend",
+            "title": "Frontend",
+            "order": 4
+        }
+    ],
+    "cases": [
+        {
+            "id": "database.run-baseline",
+            "displayCode": "DB-01",
+            "group": "database",
+            "order": 1,
+            "title": "Предусловия и журнал запуска",
+            "steps": [
+                "Зафиксируйте в отчёте:",
+                "дату, исполнителя, hostname, версию ОС и SELECT version();",
+                "имя БД и владельца без вывода паролей/connection string;",
+                "commit/revision backend и версию приложения;",
+                "список миграций и checksum manifest;",
+                "размеры БД, схемы meal, количество таблиц и baseline-счётчики;",
+                "путь, размер и SHA-256 свежей backup-копии;",
+                "согласованный способ очистки и точку восстановления.",
+                "Перед мутациями снимите свежий custom-format backup, выполните pg_restore --list и убедитесь, что файл читается. Не используйте существование файла как доказательство возможности восстановления."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/DATABASE_TESTING.md",
+            "sourceAnchor": "1-предусловия-и-журнал-запуска",
+            "sourceChecksum": "2b73119f7f00fd06157b92e3cbbd30606b012be46c32943221d4a4d18d92a8e5"
+        },
+        {
+            "id": "database.infrastructure",
+            "displayCode": "DB-02",
+            "group": "database",
+            "order": 2,
+            "title": "Базовая инфраструктура PostgreSQL",
+            "steps": [
+                "PostgreSQL слушает только согласованные интерфейсы; на тестовом VPS production-like вариант — loopback.",
+                "В pg_hba.conf нет trust для TCP и широких внешних сетей; парольные подключения используют SCRAM.",
+                "SSL включён там, где соединение выходит за loopback.",
+                "pg_file_settings не содержит ошибок; последние логи PostgreSQL не показывают crash recovery, corruption или повторяющиеся FATAL.",
+                "Время БД и ОС синхронизировано; timezone приложения и timestamp-поля интерпретируются однозначно.",
+                "Есть автоматизированная backup-политика, off-host копия, retention и подтверждённый RPO/RTO. Если этого нет, публичный production-запуск заблокирован."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/DATABASE_TESTING.md",
+            "sourceAnchor": "2-базовая-инфраструктура-postgresql",
+            "sourceChecksum": "4204338437c9313640dce892399b11f18918cd37e03f2bda35d81d18a228450d"
+        },
+        {
+            "id": "database.roles",
+            "displayCode": "DB-03",
+            "group": "database",
+            "order": 3,
+            "title": "Роли и минимальные права",
+            "steps": [
+                "Проверить отдельно owner/migration role и runtime role.",
+                "Runtime-role имеет USAGE схемы, но не CREATE.",
+                "Runtime-role не владеет схемой/таблицами, не является superuser, не создаёт роли/БД и не имеет replication/bypass RLS.",
+                "DELETE, INSERT, UPDATE, SELECT, sequence и function grants совпадают с db/grants.sql и manifest.",
+                "Запрещённый DELETE на защищённой таблице возвращает permission denied и не меняет строки.",
+                "Разрешённые scheduled/maintenance-операции получают только необходимые права.",
+                "PUBLIC не имеет неожиданных прав на schema, tables, sequences или functions.",
+                "Новый объект после миграции получает ожидаемые default privileges.",
+                "После проверки перечитайте grants из системного каталога, а не только из migration SQL."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/DATABASE_TESTING.md",
+            "sourceAnchor": "3-роли-и-минимальные-права",
+            "sourceChecksum": "9c03f2650b79710f2cbcd53076240558460fcdc2a98ba865c16be47db11a4657"
+        },
+        {
+            "id": "database.migrations",
+            "displayCode": "DB-04",
+            "group": "database",
+            "order": 4,
+            "title": "Миграции",
+            "steps": [
+                "На пустой БД выполните npm run db:plan, затем npm run db:migrate.",
+                "Сверьте последовательность, количество и SHA-256 всех миграций с manifest.",
+                "Повторный db:plan не предлагает уже применённые шаги.",
+                "Повторный db:migrate идемпотентен и не меняет структуру/справочники.",
+                "Изменённая уже применённая миграция или неверный checksum останавливает запуск до DDL.",
+                "Искусственно оборванная миграция откатывает всю транзакцию и не оставляет частично созданные объекты.",
+                "Миграция не блокирует таблицы дольше согласованного окна; длительные операции и индексы имеют план отката.",
+                "Ожидаемый текущий baseline: 30 миграций, 212 таблиц схемы meal, 488 внешних ключей; конкретные значения перепроверьте по текущему manifest, а не переносите слепо между версиями."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/DATABASE_TESTING.md",
+            "sourceAnchor": "4-миграции",
+            "sourceChecksum": "d4eeb368d7a407ec019de23d019515cbdacac1742547e1c346f1c9cf66a6ab38"
+        },
+        {
+            "id": "database.structural-integrity",
+            "displayCode": "DB-05",
+            "group": "database",
+            "order": 5,
+            "title": "Структурная целостность",
+            "steps": [
+                "Проверить системными каталогами:",
+                "все primary/unique/check/foreign-key constraints валидированы;",
+                "все индексы indisvalid=true и indisready=true;",
+                "внешние ключи имеют ожидаемые ON DELETE/ON UPDATE действия;",
+                "обязательные tenant/user/family связи не допускают orphan rows;",
+                "enum/check-значения совпадают с API-моделями;",
+                "денежные значения хранятся в minor units/точном числовом типе, без float;",
+                "timestamp-поля имеют timezone там, где это момент времени;",
+                "optimistic version/revision поля изменяются предсказуемо;",
+                "idempotency/audit уникальности не допускают двойной эффект;",
+                "sensitive/provider payload отделён от безопасных проекций.",
+                "Для каждой критичной FK выполните одну успешную вставку и одну вставку с несуществующим родителем внутри тестового набора данных."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/DATABASE_TESTING.md",
+            "sourceAnchor": "5-структурная-целостность",
+            "sourceChecksum": "2c5324fdcb7822c61102f731388fbc1e293e664418b78580c305db8bed1a076f"
+        },
+        {
+            "id": "database.reference-data",
+            "displayCode": "DB-06",
+            "group": "database",
+            "order": 6,
+            "title": "Справочники и стартовые данные",
+            "steps": [
+                "На чистом baseline разрешены только канонические системные данные.",
+                "Единицы измерения: ровно семь актуальных записей с устойчивыми кодами и неизменными ID при повторном seed.",
+                "Billing products: free, plus, pro, без demo-подписок и пользовательских периодов.",
+                "Активная AI rule version и recipe policy присутствуют в согласованном количестве.",
+                "Нет пользователей, семей, рецептов, платежей, сессий и другого доменного demo-контента.",
+                "Seed конфликтующего стабильного кода с иным ID/смыслом завершает операцию ошибкой и rollback."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/DATABASE_TESTING.md",
+            "sourceAnchor": "6-справочники-и-стартовые-данные",
+            "sourceChecksum": "e5adaf14e7b6be8836ec4d854ecc642ccad40a3bff5e4431ab6b5a72438fc4d2"
+        },
+        {
+            "id": "database.test-personas",
+            "displayCode": "DB-07",
+            "group": "database",
+            "order": 7,
+            "title": "Тестовые персоны и изоляция данных",
+            "steps": [
+                "Создайте уникальный namespace запуска и минимум:",
+                "два независимых пользователя;",
+                "семью owner/member и отдельную вторую семью;",
+                "Free, Plus, Pro и former-Pro состояния;",
+                "администратора и модератора;",
+                "рецепты private, pending и public;",
+                "партии, планы, списки, дневник, подписку, уведомления и обращения.",
+                "Для каждого семейного/пользовательского объекта проверьте положительный доступ владельца и отрицательный доступ другой семьи. Попытка подставить чужой UUID не должна раскрывать ни существование, ни содержимое записи сверх контрактного ответа."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/DATABASE_TESTING.md",
+            "sourceAnchor": "7-тестовые-персоны-и-изоляция-данных",
+            "sourceChecksum": "a1920053fc7ca932cde1594f53624db1dd0be15743efefae716428f188a41c9b"
+        },
+        {
+            "id": "database.concurrency",
+            "displayCode": "DB-08",
+            "group": "database",
+            "order": 8,
+            "title": "Конкурентность и идемпотентность",
+            "steps": [
+                "Два параллельных update с одной base version: выигрывает один; второй получает conflict/precondition failure.",
+                "Повтор команды с тем же idempotency key возвращает тот же результат без второй записи эффекта.",
+                "Тот же key с другим payload отклоняется.",
+                "Две попытки принять одно приглашение, использовать recovery-код, завершить MFA или списать квоту дают одного победителя.",
+                "Параллельные движения запасов не создают отрицательное количество.",
+                "Параллельные изменения плана/заметки/notification settings сериализуются или возвращают явный конфликт.",
+                "После неизвестного сетевого исхода readback доказывает ноль или один эффект."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/DATABASE_TESTING.md",
+            "sourceAnchor": "8-конкурентность-и-идемпотентность",
+            "sourceChecksum": "c7462678b40cee491aa7c9b49476ed78ff63c34e3df6a04b18e27f1a7cf9178c"
+        },
+        {
+            "id": "database.domain-invariants",
+            "displayCode": "DB-09",
+            "group": "database",
+            "order": 9,
+            "title": "Доменные инварианты",
+            "steps": [
+                "Аккаунт и сессии",
+                "Нормализованный логин/email уникален.",
+                "Logout/revoke делают сессию недействительной сразу.",
+                "Удаление аккаунта блокируется до готового экспорта и одобренного review.",
+                "Soft/deleted/blocked записи не возвращаются обычным пользовательским запросом.",
+                "Семья и права",
+                "В семье ровно один действующий owner.",
+                "Передача владения атомарна.",
+                "Удаление/блокировка владельца не оставляет dangling family ownership.",
+                "Семейное Plus-покрытие вычисляется из действующих периодов, а не копируется навсегда.",
+                "Запасы, рецепты и планирование",
+                "Единицы/конверсии совместимы; округление не создаёт скрытой отрицательной массы.",
+                "Consumption и correction имеют историю движений.",
+                "Public recipe указывает только на одобренную revision; recipe_publications.recipe_id совпадает с revision, active publication ровно одна на recipe, а compatibility-trigger принимает старую вставку без recipe_id.",
+                "Recipe moderation case уникален для revision; kind='recipe' без revision отклоняется. Upgrade v28→v29 backfill и preflight rollback на несовместимых дублях проверяются отдельно.",
+                "Pending/rejected revision не уничтожает последнюю public revision.",
+                "План, покупки и партии изолированы семьёй.",
+                "Подписки и деньги",
+                "Периоды не дают необоснованное двойное покрытие.",
+                "Freeze сдвигает expiry только на фактическую длительность.",
+                "Refund без provider confirmation не меняет ledger.",
+                "Minor units сохраняются точно, включая ноль и большие допустимые значения.",
+                "Коммуникации и модерация",
+                "Public reply отделён от private note.",
+                "Notification acknowledgement идемпотентен.",
+                "Audit append-only и не содержит секретов.",
+                "Санкция/апелляция изменяет только целевую запись."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/DATABASE_TESTING.md",
+            "sourceAnchor": "9-доменные-инварианты",
+            "sourceChecksum": "ade92308fcd14e4a5d2e314d68326b7c9f4e3e002ec5fc4cf76fd36fce8aec11"
+        },
+        {
+            "id": "database.performance",
+            "displayCode": "DB-10",
+            "group": "database",
+            "order": 10,
+            "title": "Производительность и эксплуатационные запросы",
+            "steps": [
+                "Соберите EXPLAIN (ANALYZE, BUFFERS) на объёмах, близких к production-like:",
+                "cursor pagination списков;",
+                "home/overview агрегаты;",
+                "поиск каталога и дедупликация;",
+                "inventory batches и expiry;",
+                "recipe/community feed;",
+                "admin audit/jobs/incidents;",
+                "nutrition analytics и billing/quota readback.",
+                "Критерии: нет незапланированного полного scan крупной таблицы, сортировки не уходят в чрезмерный temp, cursor использует устойчивый индекс, запрос ограничен tenant/family predicate. Зафиксируйте p50/p95/p99 на сервере, а не только единичный локальный результат.",
+                "Дополнительно во время 30-минутного backend soak проверяйте pg_stat_activity, ожидания/долгие транзакции, temp bytes, dead tuples, рост WAL и pool waiters. После очистки тестовых данных выполните ANALYZE затронутых таблиц и убедитесь, что нет оставшихся idle-in-transaction sessions, advisory locks и временных объектов. Автоматический VACUUM FULL в работающем контуре не выполнять: необходимость обслуживания оценивается отдельно по bloat и доступному maintenance window."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/DATABASE_TESTING.md",
+            "sourceAnchor": "10-производительность-и-эксплуатационные-запросы",
+            "sourceChecksum": "7b6075a9ed56b02886faa2f8413dd8a69a9a4de752376dc3d64c713571f64969"
+        },
+        {
+            "id": "database.backup-restore",
+            "displayCode": "DB-11",
+            "group": "database",
+            "order": 11,
+            "title": "Backup и restore drill",
+            "steps": [
+                "Создайте изолированную target-БД, не связанную с работающим приложением.",
+                "Восстановите custom-format backup.",
+                "Выполните миграционный plan, структурные проверки, baseline-счётчики и выборочные доменные readback.",
+                "Запустите backend smoke против восстановленной БД runtime-ролью.",
+                "Зафиксируйте длительность backup/restore и сравните с RPO/RTO.",
+                "Никогда не считайте backup проверенным без успешного restore в отдельную БД."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/DATABASE_TESTING.md",
+            "sourceAnchor": "11-backup-и-restore-drill",
+            "sourceChecksum": "7fd26ea246a86851a31e6783457fd1f5d5d198bced616c395b98f8408689898a"
+        },
+        {
+            "id": "database.cleanup",
+            "displayCode": "DB-12",
+            "group": "database",
+            "order": 12,
+            "title": "Очистка после теста",
+            "steps": [
+                "Перед очисткой зафиксируйте количество тестовых строк по namespace и убедитесь, что оно не включает системные справочники. Предпочтительный способ — восстановление заранее снятого baseline после отдельного подтверждения destructive-операции. Альтернатива — проверенный cleanup-скрипт с точными predicates и readback.",
+                "После очистки подтвердите:",
+                "доменные таблицы вернулись к baseline-счётчикам;",
+                "сохранились 29 migration rows и канонические справочники;",
+                "нет тестовых ролей, активных подключений и временных БД;",
+                "checksum/размер baseline совпадают;",
+                "db:plan снова чист;",
+                "config/log checks не показывают ошибок."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/DATABASE_TESTING.md",
+            "sourceAnchor": "12-очистка-после-теста",
+            "sourceChecksum": "1ded1a0d3bb66bc977e0376b6dedbe61cc527f8d6c2793f1b2c9f4faebf839da"
+        },
+        {
+            "id": "database.production-gate",
+            "displayCode": "DB-13",
+            "group": "database",
+            "order": 13,
+            "title": "Текущий известный production gate",
+            "steps": [
+                "На тестовом VPS структурный baseline и локальные backup-файлы проверены; UFW активен и разрешает только OpenSSH и Nginx Full. Однако автоматическая/off-host backup-политика и план установки OS security updates с согласованным reboot window должны быть закрыты до публичного production-запуска. На VPS настроен swap, но это не заменяет capacity evidence: перед совместным размещением PostgreSQL, API и OCR/image workers нужен отдельный capacity/oom drill, лимиты worker-процессов и обоснованный предел соединений (кластер сейчас допускает 100). Эти инфраструктурные пункты нельзя считать исправленными тестами приложения."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/DATABASE_TESTING.md",
+            "sourceAnchor": "13-текущий-известный-production-gate",
+            "sourceChecksum": "82e5c76a2e0b0caa9e3d87bdc2c1bd24a7e5a1435ef2e0b09d7955639a8b55ef"
+        },
+        {
+            "id": "backend.observability",
+            "displayCode": "API-01",
+            "group": "backend",
+            "order": 1,
+            "title": "Admin observability",
+            "steps": [
+                "Без admin cookie, с user/staff/moderator cookie и с отозванной admin-session GET /api/v1/admin/observability обязан вернуть 401/403 без данных. Сразу после revoke role/TOTP/session повторить запрос: live transactional recheck должен отказать.",
+                "Активный admin с MFA получает строгий envelope, Cache-Control: no-store и ровно host/database/queue/10 workers/8 providers. После успеха существует один audit event admin.observability.read; секреты, IDs, raw errors, paths и provider payloads отсутствуют.",
+                "Остановить collector: до 150 секунд host остаётся fresh, затем stale. Удалённый snapshot даёт missing; выключенные env — disabled; symlink, non-root/group-writable, >64 KiB, future timestamp/mtime, extra keys или дубликаты дают только safe invalid/clock_skew.",
+                "Для нового provider/worker без telemetry ожидается no_samples, а не green. Искусственно устаревший sample даёт stale; очередь и pool остаются bounded aggregates без job/session identifiers.",
+                "Проверить deploy/verify.sh: Docker socket отсутствует во всех пяти containers; observability directory смонтирован read-only только backend; snapshot является bounded regular file. Linux-host отдельно проверяет hardened systemd unit/timer и atomic update во время повторных чтений.",
+                "Admin acceptance checklist",
+                "GET /api/v1/admin/acceptance-tests без admin cookie, с user/moderator/staff cookie, отозванной admin-session, отозванной ролью или TOTP возвращает 401/403. Успешный ответ имеет Cache-Control: no-store, четыре группы и ровно 83 versioned case; чтение не создаёт run, result или audit row.",
+                "Первый PUT /api/v1/admin/acceptance-tests/{caseId} атомарно создаёт run текущей версии каталога и один result/event/audit. Повтор с тем же idempotency key и payload возвращает тот же response без второго эффекта; тот же key с другим payload возвращает 409.",
+                "Два администратора сохраняют один expectedVersion: выигрывает один, второй получает 409 ACCEPTANCE_RESULT_CHANGED, перечитывает workspace и не теряет свой локальный комментарий. Комментарий длиннее 1000 символов и неизвестный case ID отклоняются до mutation.",
+                "POST .../{caseId}/reset переводит проверенный кейс в not_tested, сохраняет текущий комментарий и immutable event history. Reset для ещё не проверенного кейса возвращает 409 и ничего не создаёт.",
+                "Изменение исходного раздела меняет checksum и catalogVersion: новый run начинается с нулевого progress, старый run/events остаются в БД. Runtime и CI валидируют committed catalog без соседних репозиториев; maintainer generator читает четыре manual-документа только при явном обновлении каталога."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "admin-observability",
+            "sourceChecksum": "439dbeaf1b7d3843bf0cddd6e8108f7bd97225ecac081e6d62aa7ce70a63d081"
+        },
+        {
+            "id": "backend.prerequisites",
+            "displayCode": "API-02",
+            "group": "backend",
+            "order": 2,
+            "title": "Входные условия",
+            "steps": [
+                "PostgreSQL прошёл docs/DATABASE_TESTING.md.",
+                "Backend собран production-командой; npm run check, npm run openapi, live PostgreSQL acceptance и dependency audit зелёные.",
+                "Runtime использует отдельную роль с минимальными правами.",
+                "Настроены разрешённые HTTPS origins; неизвестный Origin запрещён.",
+                "Для внешних providers известен режим: подключённый sandbox либо явный fail-closed.",
+                "У каждого запуска уникальные логины, UUID, idempotency keys и маркировка тестовых данных.",
+                "Для каждого теста фиксируйте method/path, роль/план, HTTP-код, безопасное тело, requestId, idempotency key, изменения БД и audit/readback."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "1-входные-условия",
+            "sourceChecksum": "b8342509784a4d7722cb0db4b437e89cb1134c2e6e76412a06b8e04214906d11"
+        },
+        {
+            "id": "backend.http-contract",
+            "displayCode": "API-03",
+            "group": "backend",
+            "order": 3,
+            "title": "Общий HTTP-контракт",
+            "steps": [
+                "Для каждой операции из OpenAPI проверить:",
+                "Валидный запрос возвращает описанный status/envelope.",
+                "Отсутствующее обязательное поле, лишнее поле, неверный enum/UUID/дата/размер возвращают согласованный 4xx до mutation.",
+                "Неверный content type, malformed JSON и превышение body limit различаются.",
+                "Неизвестный маршрут/метод не маскируется generic handler.",
+                "Response проходит сгенерированную схему и не содержит незадокументированных private-полей.",
+                "Cursor связан с route, page size, tenant/session и не принимается в другом контексте.",
+                "Ошибка содержит безопасный code/message/requestId, но не stack, SQL, secret, provider payload или персональные данные."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "2-общий-http-контракт",
+            "sourceChecksum": "1f42d54d58eabce1ee51f9344b171727711720ddeb014a66a27c85c9c7ff0cae"
+        },
+        {
+            "id": "backend.security",
+            "displayCode": "API-04",
+            "group": "backend",
+            "order": 4,
+            "title": "Security middleware",
+            "steps": [
+                "CSRF обязателен для state-changing cookie-auth запросов и проверяется до БД mutation.",
+                "Same-origin/Origin/Sec-Fetch-Site защищают browser-контур.",
+                "Cookie имеют HttpOnly/Secure/SameSite/Path/expiry согласно контексту.",
+                "Admin, moderator и user sessions не взаимозаменяемы.",
+                "Rate limits разделены по чувствительным действиям и переживают новый экземпляр API при production storage.",
+                "Helmet/security headers присутствуют; CORS не отражает произвольный origin.",
+                "В логах и telemetry нет паролей, TOTP secrets, recovery codes, cookies, CSRF, provider tokens и полных payload."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "3-security-middleware",
+            "sourceChecksum": "b25b8300e68d012010f7637fb757b1d87fac2f238d4a04261f6c7455f3b515c3"
+        },
+        {
+            "id": "backend.auth-sessions",
+            "displayCode": "API-05",
+            "group": "backend",
+            "order": 5,
+            "title": "Регистрация, вход, MFA и сессии",
+            "steps": [
+                "Регистрация/вход",
+                "Зарегистрируйте пользователя с нормализуемым логином/email.",
+                "Повтор с другой раскладкой регистра/пробелами не создаёт дубль.",
+                "Неверные логин и пароль дают нейтральный ответ без enumeration.",
+                "Проверьте absolute/session expiry, logout и revoke other sessions.",
+                "MFA",
+                "Enrollment выдаёт случайный secret, принимает только допустимое временное окно и создаёт десять одноразовых recovery codes.",
+                "Один challenge завершается ровно один раз; истёкший/заменённый challenge запрещён.",
+                "Пять неверных попыток сохраняются конкурентно и применяют политику блокировки.",
+                "Recovery-код не может сам создать factor и повторно не принимается.",
+                "Staff/admin",
+                "Обычный пользователь не получает staff/admin контекст.",
+                "Moderator имеет только выданные permission.",
+                "Admin critical window требует MFA, привязан к сессии, ограничен 30 минутами и абсолютным expiry.",
+                "Последнего администратора нельзя отозвать/заблокировать до mutation."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "4-регистрация-вход-mfa-и-сессии",
+            "sourceChecksum": "b13f722feffd89a22b3f1d503d32bcba5df6778acd4e9e6c47e8faa6930d7c8a"
+        },
+        {
+            "id": "backend.profile-lifecycle",
+            "displayCode": "API-06",
+            "group": "backend",
+            "order": 6,
+            "title": "Профиль, настройки и lifecycle аккаунта",
+            "steps": [
+                "Профиль читает/меняет только разрешённые поля с optimistic version.",
+                "Смена логина/email обрабатывает уникальность и повторную верификацию.",
+                "Notification/privacy/security settings сохраняются атомарно.",
+                "Export request имеет реальный lifecycle и не выдаёт URL без storage/provider result.",
+                "Account deletion проходит request → review/blockers → ready export → finalization; export_not_ready хранится и аудируется.",
+                "Повтор finalization идемпотентен; параллельный stale review получает 412/409."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "5-профиль-настройки-и-lifecycle-аккаунта",
+            "sourceChecksum": "5f425c15c280467d14d824dd73a6b0b86316cb26f28b213a11bcc0a7e0e97089"
+        },
+        {
+            "id": "backend.family",
+            "displayCode": "API-07",
+            "group": "backend",
+            "order": 7,
+            "title": "Семья и приглашения",
+            "steps": [
+                "Создайте семью, пригласите пользователя и примите invitation.",
+                "Проверьте два параллельных accept: один участник, один эффект.",
+                "Добавьте family member без аккаунта, измените его допустимые данные.",
+                "Проверьте роли owner/member, передачу владения и выход.",
+                "Запретите доступ пользователю другой семьи ко всем ID."
+            ],
+            "expectedResult": "Ожидается: семья всегда имеет допустимого owner; Plus/Pro покрытие вычисляется актуально; смена владельца, ban или deletion не теряют данные и не повышают права.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "6-семья-и-приглашения",
+            "sourceChecksum": "f9a75423df4081ff8b1c7932e3f7e08040078881a40615093c205649a8f68355"
+        },
+        {
+            "id": "backend.catalog",
+            "displayCode": "API-08",
+            "group": "backend",
+            "order": 8,
+            "title": "Каталог, аллергены, единицы и импорт",
+            "steps": [
+                "Списки/поиск/фильтры используют cursor pagination и стабильную сортировку.",
+                "Product, variant, category, attribute, density и unit conversion проходят строгую схему.",
+                "Конверсия несовместимых единиц отклоняется; округление соответствует продуктовым правилам.",
+                "Allergen mapping хранит тип, статус, источник и optimistic version.",
+                "Merge duplicate требует полного preview/critical confirmation, сохраняет variants, source IDs и историю.",
+                "Повтор merge идемпотентен; изменившаяся composition блокирует устаревший preview.",
+                "Media/import без scanner/storage остаётся fail-closed; не создаётся доверенный asset до проверки."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "7-каталог-аллергены-единицы-и-импорт",
+            "sourceChecksum": "3928c90dc3246db524db6a860f495f7a4790dd1886337c52c2b5f122f580f485"
+        },
+        {
+            "id": "backend.inventory",
+            "displayCode": "API-09",
+            "group": "backend",
+            "order": 9,
+            "title": "Запасы и партии",
+            "steps": [
+                "Создайте партии в разных местах хранения, включая expiry.",
+                "Выполните receipt, consumption, correction, transfer и archive.",
+                "Проверьте частичное списание, ноль, превышение остатка и параллельное списание.",
+                "Перечитайте ledger и итоговый balance после каждого шага."
+            ],
+            "expectedResult": "Ожидается: отрицательный остаток невозможен, движения append-only/аудируемы, повтор команды не удваивает эффект, чужая семья не видит партию.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "8-запасы-и-партии",
+            "sourceChecksum": "27ab8d7039673d8a870c7b8ee271a03d0def3f1638afb7d90f5faac5a339013e"
+        },
+        {
+            "id": "backend.recipes-cooking",
+            "displayCode": "API-10",
+            "group": "backend",
+            "order": 10,
+            "title": "Рецепты, revisions, готовка и заготовки",
+            "steps": [
+                "Рецепт",
+                "Создание проверяет минимальные поля, ингредиенты, шаги, порции и автора.",
+                "Draft/private видит только допустимый контекст.",
+                "Submit создаёт pending revision, не заменяя публичную.",
+                "Approve атомарно переключает public revision; reject сохраняет предыдущую.",
+                "Edit после публикации создаёт новую revision; stale update получает conflict.",
+                "Готовка",
+                "Start/resume/finish/abandon имеют корректный state machine.",
+                "Таймер шага не позволяет недопустимые переходы и сохраняет readback.",
+                "Portion/count/time statistics не удваиваются при retry.",
+                "Остатки/заготовки и QR ссылаются на существующие сущности и корректно истекают."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "9-рецепты-revisions-готовка-и-заготовки",
+            "sourceChecksum": "a661db0629c2e739603ef93770335a3572bee28eba6c9fc8145500e81300337e"
+        },
+        {
+            "id": "backend.planning-shopping",
+            "displayCode": "API-11",
+            "group": "backend",
+            "order": 11,
+            "title": "Планирование и покупки",
+            "steps": [
+                "План на неделю изолирован семьёй; права owner/member соблюдаются.",
+                "Параллельное редактирование дня/приёма пищи возвращает конфликт или объединяет только согласованные поля.",
+                "Shopping list генерируется из актуального плана, учитывает запасы и не создаёт дублей при retry.",
+                "Item toggle/quantity/note readback устойчив к reload.",
+                "Receipt import/OCR без provider/scanner fail-closed; подтверждение создаёт движения/цены ровно один раз.",
+                "Деньги хранятся и возвращаются в minor units без float-ошибки."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "10-планирование-и-покупки",
+            "sourceChecksum": "69d6ad39429f27a6debbedf602aef52758ae8ab4a00fc2a9eb1839d85da3514a"
+        },
+        {
+            "id": "backend.nutrition",
+            "displayCode": "API-12",
+            "group": "backend",
+            "order": 12,
+            "title": "Дневник питания, ограничения и аналитика",
+            "steps": [
+                "Diary entry привязан к пользователю/дате/meal и корректной portion assignment.",
+                "Archive исключает запись из активной аналитики только после успешной команды.",
+                "Nutrition analytics учитывает диапазон, timezone, empty-state и большие значения.",
+                "Аллергии/ограничения/оборудование влияют на подбор, но не раскрываются другому пользователю.",
+                "Параллельная запись/архивация не приводит к двойному учёту."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "11-дневник-питания-ограничения-и-аналитика",
+            "sourceChecksum": "cbae58b0a6c0768fd1c86e25de73b206244fa7b56f201f686b31b4f06bde1eb1"
+        },
+        {
+            "id": "backend.ai",
+            "displayCode": "API-13",
+            "group": "backend",
+            "order": 13,
+            "title": "AI",
+            "steps": [
+                "Проверить Free, Plus, Pro и former-Pro.",
+                "Effective plan определяет доступный bucket/модель/лимит.",
+                "Reservation → provider call → commit/release квоты атомарны.",
+                "Timeout/ошибка provider освобождает reservation либо переводит её в явное recoverable состояние.",
+                "Повтор результата не списывает квоту дважды.",
+                "Prompt/context ограничен, очищен от лишних private-данных и проходит policy.",
+                "Safety refusal не маскируется как success.",
+                "Внешний AI provider без конфигурации fail-closed."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "12-ai",
+            "sourceChecksum": "f3da1aeb665ea5e2343ead9d6484a7961d3ecab34293fb68b29e37546caa6b39"
+        },
+        {
+            "id": "backend.billing",
+            "displayCode": "API-14",
+            "group": "backend",
+            "order": 14,
+            "title": "Подписки, квоты и платежи",
+            "steps": [
+                "Free/Plus/Pro entitlements совпадают с продуктовой матрицей.",
+                "Gift нельзя наложить на активный оплаченный период вопреки правилам.",
+                "Revoke gift сохраняет paid period; freeze сдвигает expiry только на duration.",
+                "Family coverage обновляется после grant/revoke/ban/owner transfer.",
+                "Payment order/attempt/webhook имеют подпись, replay protection и idempotency.",
+                "Неизвестный или неверно подписанный webhook не меняет ledger/subscription.",
+                "Refund без реального provider result не меняет деньги и статус."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "13-подписки-квоты-и-платежи",
+            "sourceChecksum": "4e440c5c00ed2055fdf15c9a7e55922d9d1810f08b0a9810278239eec500f787"
+        },
+        {
+            "id": "backend.community",
+            "displayCode": "API-15",
+            "group": "backend",
+            "order": 15,
+            "title": "Сообщество, подписки на авторов и достижения",
+            "steps": [
+                "Public feed показывает только approved/public revision.",
+                "Bookmark/follow/comment/reaction/helpful idempotent и изолированы пользователем.",
+                "Жалоба создаётся один раз на target/revision и попадает в moderation queue.",
+                "Достижение начисляется по server-side condition; secret скрывает условие до получения.",
+                "Reputation scale и achievement catalog меняются только опубликованным content release.",
+                "Антифрод/санкция не удаляют исторический факт без audit."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "14-сообщество-подписки-на-авторов-и-достижения",
+            "sourceChecksum": "063b8986833f9d55eeab14d151c40ede58a732aef86383dc90b428eb3859b98c"
+        },
+        {
+            "id": "backend.moderation",
+            "displayCode": "API-16",
+            "group": "backend",
+            "order": 16,
+            "title": "Модерация",
+            "steps": [
+                "Frontend отправляет новую revision.",
+                "Moderator/admin получает точную pending revision.",
+                "Approve, reject, hide и unpublish проверяются на отдельных фикстурах.",
+                "Причина обязательна, где это предусмотрено.",
+                "Конфликт двух решений имеет одного победителя.",
+                "Неизвестный исход повторяется тем же command key и даёт один audit/effect."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "15-модерация",
+            "sourceChecksum": "44fdbbd76521e35934d92a4c61b2ea754a470751db36d3bfb682d6859da0eaaf"
+        },
+        {
+            "id": "backend.communication-support",
+            "displayCode": "API-17",
+            "group": "backend",
+            "order": 17,
+            "title": "Чат, семейные заметки и поддержка",
+            "steps": [
+                "Chat message, reply, reaction, mention, draft и pagination не смешивают семьи.",
+                "Удаление разрешено только контрактом и не уничтожает audit/history неожиданно.",
+                "Family note поддерживает версии, совместное редактирование, conflict и readback.",
+                "Support ticket: create, assign, private note, public reply, close/reopen.",
+                "Private note никогда не возвращается user endpoint.",
+                "Attachment без storage/scanner fail-closed."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "16-чат-семейные-заметки-и-поддержка",
+            "sourceChecksum": "23748571c4bf6e97670b6b8df66fe0881e44326d4ec3ca76a0ccfc20f7130564"
+        },
+        {
+            "id": "backend.notifications-news",
+            "displayCode": "API-18",
+            "group": "backend",
+            "order": 18,
+            "title": "Уведомления и новости",
+            "steps": [
+                "Каналы default-off; email требует верифицированного адреса.",
+                "Quiet hours корректны через полночь и timezone; security bypass ограничен scheduling.",
+                "Acknowledge идемпотентен и не меняет соседнее уведомление.",
+                "News audience: OR внутри фильтра, AND между фильтрами; неизвестные даты и отсутствие consent исключают пользователя.",
+                "Scheduled campaign можно отменить только до отправки.",
+                "Push/email без провайдера не помечаются delivered."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "17-уведомления-и-новости",
+            "sourceChecksum": "6485664b89a683d8437452c7f772f4f30eabbbe3ea4cf44e8d214078adc478b5"
+        },
+        {
+            "id": "backend.admin-operations",
+            "displayCode": "API-19",
+            "group": "backend",
+            "order": 19,
+            "title": "Admin operations, incidents, legal и rollback",
+            "steps": [
+                "Job inspect/preview/execute различает safe/unsafe/running/financial operations.",
+                "Retry/cancel требуют допустимого статуса и command idempotency.",
+                "Incident source immutable; workflow lifecycle хранит actor/reason/version.",
+                "Ignore требует причину и будущий expiry.",
+                "Legal preview показывает blockers, но не создаёт архив/удаление сам по себе.",
+                "Rollback применяет только ready items и сохраняет поздние чужие изменения.",
+                "Все критичные действия требуют permission + MFA critical window + audit."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "18-admin-operations-incidents-legal-и-rollback",
+            "sourceChecksum": "75f07a0c174baa69ce021fd75222acd282dea15c758d484ea1f5fba1e238d806"
+        },
+        {
+            "id": "backend.workers",
+            "displayCode": "API-20",
+            "group": "backend",
+            "order": 20,
+            "title": "Workers и расписание",
+            "steps": [
+                "Для news, incidents, retention, sanctions и diary-portions:",
+                "Запустите worker в одиночном режиме и при пустой очереди.",
+                "Добавьте due, future, stale, revoked и malformed задания.",
+                "Запустите два экземпляра конкурентно.",
+                "Проверьте lease/claim, retry/backoff, dead-letter/incident и метрики.",
+                "Перезапустите процесс посередине выполнения."
+            ],
+            "expectedResult": "Ожидается: одно задание имеет одного исполнителя/эффект; lease не остаётся вечным; production использует shared lease backend. In-memory координация допустима только локально.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "19-workers-и-расписание",
+            "sourceChecksum": "a9a0ae61218853f0f78ea34b4483243a985af3c07992b095ed0d0b3f7961e4d1"
+        },
+        {
+            "id": "backend.reliability",
+            "displayCode": "API-21",
+            "group": "backend",
+            "order": 21,
+            "title": "Надёжность и сбои",
+            "steps": [
+                "БД недоступна: live может оставаться живым, ready падает, mutations не притворяются успешными.",
+                "Медленный/оборванный клиент отменяет работу, когда это безопасно; поздний ответ не затирает новую сессию.",
+                "Provider timeout/retry не создаёт двойной платёж, уведомление, списание квоты или публикацию.",
+                "Shutdown перестаёт принимать новые запросы и завершает/освобождает активные работы.",
+                "10k+ тестовые наборы подтверждают pagination/index behavior без неограниченного ответа."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "20-надёжность-и-сбои",
+            "sourceChecksum": "cf7bb1ede73d1e99c31e8642ea620119a1ef5665ff535d6c790114d04d1b7433"
+        },
+        {
+            "id": "backend.performance",
+            "displayCode": "API-22",
+            "group": "backend",
+            "order": 22,
+            "title": "Производительность и утечки ресурсов",
+            "steps": [
+                "Isolated PostgreSQL acceptance должен выполнить latency pack, 40 параллельных запросов и forced-GC heap guard. Рост heap bounded request pack не превышает 96 МБ; p95 каждого локального operation budget остаётся внутри зафиксированного порога. Для диагностического замера через WAN/SSH допускается ACCEPTANCE_REMOTE_LATENCY_MULTIPLIER от 1 до 10. Если API и БД намеренно разделены WAN-туннелем, ACCEPTANCE_REMOTE_FUNCTIONAL_ONLY=true оставляет schema/SQL-plan/полный функциональный проход, но явно пропускает request-level latency/burst/heap pack. Ни один удалённый режим не заменяет локальный gate со значениями по умолчанию; режим и топология обязаны попасть в отчёт.",
+                "Проведите 30-минутный soak с постоянной смесью read/mutation, keep-alive и отменённых запросов. Каждую минуту фиксируйте process RSS/heap/external, event-loop lag, active handles, pool total/idle/waiting и PostgreSQL sessions. После прогрева метрики должны выйти на плато, а не расти линейно.",
+                "Повторите connect/disconnect, multipart abort, OCR/import timeout, provider timeout и graceful shutdown не менее 100 раз. Ожидается: streams/workers/timers/AbortSignal listeners освобождаются, временные buffers недостижимы после GC, соединения возвращаются в pool.",
+                "На high-cardinality fixtures снимите EXPLAIN (ANALYZE, BUFFERS) для shopping, family notes/chat, moderator queues, search и analytics. N+1, неограниченные выборки и сортировки с выходом в temp — FAIL.",
+                "Проверьте backpressure: при исчерпанном pool новые запросы ограниченно ждут/падают контролируемо, readiness отражает проблему, а восстановление БД возвращает сервис без перезапуска и без накопленной очереди обещаний."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "21-производительность-и-утечки-ресурсов",
+            "sourceChecksum": "90fd6d044508bfad4b78034249323813004ae673dac92cc0d1687e2ddef5374b"
+        },
+        {
+            "id": "backend.observability-runtime",
+            "displayCode": "API-23",
+            "group": "backend",
+            "order": 23,
+            "title": "Наблюдаемость",
+            "steps": [
+                "Каждый запрос имеет bounded request/correlation ID.",
+                "Метрики различают status/classification без high-cardinality user IDs.",
+                "Логи достаточны для диагностики, но не содержат private payload.",
+                "Alert sink и telemetry sink реально подключены в production; отсутствие является release gate.",
+                "Audit и operational incident связываются с запросом без раскрытия секрета."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "22-наблюдаемость",
+            "sourceChecksum": "b0d7e9c381ae84fe271c29400f1452ec6d62d1f02124fafcc482f59c9a703dca"
+        },
+        {
+            "id": "backend.cross-service",
+            "displayCode": "API-24",
+            "group": "backend",
+            "order": 24,
+            "title": "Сквозные сценарии",
+            "steps": [
+                "После отдельных проверок admin/frontend пройти:",
+                "Recipe submit → moderator approve → publish либо full-admin approve с немедленной публикацией; reject сохраняет старую публикацию, replace закрывает её, hide закрывает рецепт глобально, unpublish снимает только active publication. Любая full-admin moderation mutation (approve/reject/hide/unpublish) требует действующие x-admin-unlock и critical MFA-window до idempotency replay. Затем проверить frontend и admin-content readback по независимым review/publication: для active r1 + rejected r2 review указывает r2 и sanitized publicReason, publication — r1; internal notes не входят в эти оси, stale revision=409.",
+                "Support create → admin private/public actions → user readback.",
+                "Family invite/accept → shared plan/inventory/note → role/owner change.",
+                "Plus/Pro grant/freeze/revoke → quotas/AI/family coverage.",
+                "Content release → achievement/reputation publication → rollback.",
+                "News campaign → audience selection → exactly-once notification.",
+                "Account export/deletion lifecycle → blockers → finalization."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "23-сквозные-сценарии",
+            "sourceChecksum": "342c52bd11284f84d25ba91066128426c0ec8479bb8edb92baf539d4d5eb42c1"
+        },
+        {
+            "id": "backend.completion",
+            "displayCode": "API-25",
+            "group": "backend",
+            "order": 25,
+            "title": "Критерии завершения",
+            "steps": [
+                "Каждая OpenAPI operation привязана к test case и имеет positive/negative/auth/idempotency evidence.",
+                "Модели ответа совпадают с текущим OpenAPI; frontend/admin snapshots синхронизированы.",
+                "Все mutation подтверждены readback, БД и audit там, где он обязателен.",
+                "Внешние интеграции либо проверены в sandbox, либо явно fail-closed.",
+                "npm run check, isolated PostgreSQL acceptance, production build/start smoke и dependency audit зелёные.",
+                "Latency/concurrency/heap guard, SQL optimization pack и длительный resource soak не показывают линейного роста памяти, handles, listeners, pool waiters или PostgreSQL sessions.",
+                "Production blockers из npm run ops:readiness, ops:topology и legal:readiness закрыты или явно приняты владельцем до запуска.",
+                "Тестовые данные удалены, база возвращена к baseline."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_backend/docs/BACKEND_TESTING.md",
+            "sourceAnchor": "24-критерии-завершения",
+            "sourceChecksum": "d55b1a936a494319695e4181d4cd1af9a5832fb3a50f6cd63c9a490c2c6b0655"
+        },
+        {
+            "id": "admin.prerequisites",
+            "displayCode": "ADMIN-01",
+            "group": "admin",
+            "order": 1,
+            "title": "Подготовка стенда",
+            "steps": [
+                "Предусловия",
+                "Backend запущен в production-конфигурации и отвечает на /health/live и /health/ready.",
+                "Админка запущена с VITE_API_MODE=real, а /api проксируется на backend.",
+                "В тестовой базе есть:",
+                "один действующий администратор с настроенным MFA;",
+                "один модератор;",
+                "обычный пользователь без служебных ролей;",
+                "пользователи Free, Plus и Pro;",
+                "семья минимум из владельца и участника;",
+                "черновик и ожидающая модерации редакция рецепта;",
+                "обращение поддержки, платёж/подписка, фоновая операция и диагностический инцидент.",
+                "Для destructive-сценариев подготовлены одноразовые записи, которые разрешено менять или удалять.",
+                "Открыты инструменты разработчика: во время каждого блока фиксируйте HTTP-код, requestId, отсутствие ошибок в console и отсутствие секретов в payload/UI.",
+                "Общие критерии для каждого экрана",
+                "Нет горизонтальной прокрутки при 390×844 и при desktop-ширине 1440×1000.",
+                "Заголовок страницы и активный пункт меню соответствуют URL; прямой deep link после reload остаётся на той же сущности.",
+                "Loading, empty, error и success-состояния объясняют результат и предлагают уместное следующее действие.",
+                "Tab проходит по интерактивным элементам в логичном порядке; фокус заметен; Enter/Space выполняют доступное действие.",
+                "Ошибка сети или 5xx не стирает введённые данные. Повтор выполняется явно и не создаёт двойной эффект.",
+                "401 завершает приватный контекст; обычный 403 показывает отказ, не выдавая лишние данные.",
+                "Значения, которых нет в контракте, не подменяются красивыми, но неверными подписями."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "1-подготовка-стенда",
+            "sourceChecksum": "283cfe3ea889e0d17bbb082e2ea9fd9bc992725c9ab3249113372bfd191e682e"
+        },
+        {
+            "id": "admin.themes-responsive",
+            "displayCode": "ADMIN-02",
+            "group": "admin",
+            "order": 2,
+            "title": "Темы и адаптивность",
+            "steps": [
+                "Проверить до входа и после входа в боковом меню.",
+                "Откройте переключатель «Тема интерфейса».",
+                "Последовательно выберите:",
+                "Кофе · светлая;",
+                "Кофе · тёмная;",
+                "Зелёная · светлая;",
+                "Зелёная · тёмная.",
+                "Для каждой темы проверьте фон, поверхности, текст, muted-текст, границы, primary/secondary-кнопки, ссылки, фокус, warning/error/success-состояния.",
+                "Перезагрузите страницу и откройте прямой URL другого раздела."
+            ],
+            "expectedResult": "Ожидается: выбранная тема применяется сразу, сохраняется после reload и устанавливается до первого видимого кадра. Не должно быть вспышки другой темы. В прикладных стилях нет случайных синих/красных/жёлтых цветов: цвет отражает только семантику дизайн-системы. На мобильной ширине переключатель находится внутри «Меню», меню закрывается кнопкой, Escape и после выбора раздела.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "2-темы-и-адаптивность",
+            "sourceChecksum": "db59e41877849f14c1cab8a233a826afedd711f5483a27daf999eba7ecfa23e8"
+        },
+        {
+            "id": "admin.auth-mfa",
+            "displayCode": "ADMIN-03",
+            "group": "admin",
+            "order": 3,
+            "title": "Вход администратора и MFA",
+            "steps": [
+                "Валидный вход",
+                "Введите логин и пароль администратора.",
+                "Для первого входа добавьте показанный TOTP-секрет в аутентификатор.",
+                "Введите актуальный шестизначный код.",
+                "Сохраните десять резервных кодов и подтвердите сохранение.",
+                "Негативные сценарии",
+                "Неверный пароль, обычный пользователь и модератор не начинают admin MFA.",
+                "Пять неверных кодов приводят к серверному ограничению согласно политике, а не только к клиентской блокировке.",
+                "Истёкший или заменённый MFA-челлендж не принимается.",
+                "Возврат назад и повторный переход вперёд не восстанавливают покинутый enrollment.",
+                "Небезопасный returnTo не уводит на внешний домен или в чужой auth-контекст.",
+                "Сессии и повторный вход",
+                "Перезагрузите активную вкладку — она должна остаться разблокированной.",
+                "Откройте новую вкладку с приватным URL — она должна запросить повторный TOTP/recovery-код.",
+                "Завершите другие сессии и проверьте их фактическую недействительность.",
+                "Выйдите и убедитесь, что приватный cache и tab-proof очищены."
+            ],
+            "expectedResult": "Ожидается: пароль очищается после неудачи; TOTP-челлендж имеет срок жизни; после успеха показывается экран служебной сессии. Резервные коды показываются один раз и каждый используется один раз.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "3-вход-администратора-и-mfa",
+            "sourceChecksum": "40dded2ac4d566a41b74be9df90149a3481d4164861a65692fe3445eba1e494b"
+        },
+        {
+            "id": "admin.critical-confirmation",
+            "displayCode": "ADMIN-04",
+            "group": "admin",
+            "order": 4,
+            "title": "Подтверждение критичных действий",
+            "steps": [
+                "На экране сессии введите TOTP в блоке критичных действий.",
+                "Выполните одну критичную команду, затем вторую в пределах окна подтверждения.",
+                "Перезагрузите страницу, затем проверьте истечение окна через 30 минут."
+            ],
+            "expectedResult": "Ожидается: подтверждение привязано к сессии, переживает reload, не продлевает абсолютный срок сессии и не требуется для обычного чтения. Approve/publish, reject, hide и unpublish требуют свежего подтверждения как в UI, так и на backend. После истечения команда снова требует TOTP. Recovery-код одноразовый.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "4-подтверждение-критичных-действий",
+            "sourceChecksum": "6b1b5c9b1f61125d4aa8e76de7e010fa5470e70aa7fbfd986ac866d1a33d443c"
+        },
+        {
+            "id": "admin.overview",
+            "displayCode": "ADMIN-05",
+            "group": "admin",
+            "order": 5,
+            "title": "Обзор",
+            "steps": [
+                "Сверьте «Требуют внимания», «Назначено мне», «Система» и «Платежи» с исходными списками.",
+                "Перейдите по каждой кнопке карточки.",
+                "Воспроизведите частичный 503 одного источника и нажмите «Обновить данные»."
+            ],
+            "expectedResult": "Ожидается: счётчики основаны на сохранённых данных и явно поясняют включение завершённых назначений; частичный сбой не скрывает успешные блоки; повтор восстанавливает только ошибочный источник.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "5-обзор",
+            "sourceChecksum": "7f6885953847deec32bd1b35fde948345df0fe13752c1ea6062e1464712ae10d"
+        },
+        {
+            "id": "admin.recipe-moderation",
+            "displayCode": "ADMIN-06",
+            "group": "admin",
+            "order": 6,
+            "title": "Очередь рецептов и модерация",
+            "steps": [
+                "Откройте рецепт, у которого revision 1 уже опубликована, а revision 2 отправлена на проверку. Сверьте две независимые колонки: «Активная публичная редакция» = r1 и «Редакция текущей проверки» = r2.",
+                "До critical confirmation все четыре команды должны быть недоступны. Подтвердите действие через TOTP/recovery и убедитесь, что сервер принимает команду только с действующим подтверждением.",
+                "Отклоните r2: заполните отдельные поля «Внутренний комментарий» и «Причина для автора». После reload r2 остаётся видима как отклонённая проверка с санитизированной публичной причиной, а r1 остаётся активной публикацией. Служебный комментарий виден только во «Внутренней истории решений» и нигде не подписан как причина для автора.",
+                "На отдельной фикстуре одобрите r2 полным администратором. Ожидается атомарная замена публикации: r2 получает статус published, прежняя r1 закрыта, активна ровно одна публикация. Для moderator-потока отдельно подтвердите двухшаговое approve → publish в пользовательском/backend тест-кейсе; admin-кнопка выполняет немедленную публикацию.",
+                "После публикации проверьте hide: рецепт скрывается целиком. На новой фикстуре проверьте unpublish: снимается только активная публикация, возможность автора продолжать редактирование сохраняется. Команда с review revision, не совпадающей с active publication revision, получает 409 и ничего не закрывает.",
+                "Проверьте пустую причину на уровне API: backend возвращает безопасный публичный текст по умолчанию для reject/hide/unpublish. Строка с управляющими символами и повторными пробелами возвращается нормализованной, не длиннее 500 символов; внутренний текст в неё не попадает.",
+                "Корнер-кейсы: loading, empty, 404 и временный 503 различимы и дают уместный следующий шаг. 409/412 сохраняет оба поля причины, очищает stale attempt и только после readback разрешает новую команду. Неизвестный статус показывается без выдуманного перехода, а сервер остаётся источником доступности действий. При network/5xx автоматический polling приостанавливается, изменённые action/reason/version блокируются, а отдельная кнопка «Повторить прежнюю команду» отправляет тот же полный command и idempotency key даже после readback. History и audit получают ровно по одной записи."
+            ],
+            "expectedResult": "Ожидается: решение применяется к точной revision; review и publication не смешиваются; reject не уничтожает старую публикацию. Full admin approve сразу публикует новую редакцию, hide действует на рецепт глобально, unpublish снимает активную публикацию без запрета редактирования.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "6-очередь-рецептов-и-модерация",
+            "sourceChecksum": "4434fccc83c79d1c70633bc6955e5f6af000f16bf804d327252e5db8cb4e04f1"
+        },
+        {
+            "id": "admin.support",
+            "displayCode": "ADMIN-07",
+            "group": "admin",
+            "order": 7,
+            "title": "Поддержка",
+            "steps": [
+                "Найдите обращение и назначьте его себе/другому сотруднику.",
+                "Добавьте приватную заметку — она не должна попадать пользователю.",
+                "Отправьте публичный ответ и проверьте его во frontend/пользовательском канале.",
+                "Закройте обращение и затем переоткройте.",
+                "Проверьте редактирование только собственного сообщения и историю редакций."
+            ],
+            "expectedResult": "Ожидается: заметка, назначение, ответ и статус читаются после reload. Повтор команды не дублирует ответ. Вложения без подключённых storage+scanner недоступны fail-closed и не получают синтетический download URL.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "7-поддержка",
+            "sourceChecksum": "8379f5a682764b8ae46da240f7721bf5d3628bd3214042a9e04b04d30dcc57f2"
+        },
+        {
+            "id": "admin.users-access",
+            "displayCode": "ADMIN-08",
+            "group": "admin",
+            "order": 8,
+            "title": "Пользователи, роли и санкции",
+            "steps": [
+                "Пользователь",
+                "Поиск принимает точный UUID или логин, не смешивает похожие записи.",
+                "Деталь показывает только безопасные поля, связанные сессии, роли, подписки и историю постранично.",
+                "Неизвестный ID даёт явное «не найдено» и возврат к списку.",
+                "Служебный доступ",
+                "Выдайте тестовому пользователю роль модератора с ограниченным сроком/набором прав.",
+                "Найдите роль в «Доступе» и проверьте фактические разрешения.",
+                "Отзовите роль.",
+                "Санкции и апелляции",
+                "Санкция требует категорию, основание, срок и critical confirmation.",
+                "Scheduled-санкция активируется один раз в момент старта; отозванная заранее не активируется.",
+                "Принятая апелляция снимает только связанную санкцию; отклонённая сохраняет ограничение и публичный ответ.",
+                "Блокировка владельца семьи требует безопасно обработать владение/семейное Plus-покрытие."
+            ],
+            "expectedResult": "Ожидается: роль не повышает пользователя до администратора; отзываются только служебные сессии; последнего администратора удалить нельзя до отправки запроса.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "8-пользователи-роли-и-санкции",
+            "sourceChecksum": "e428bbfb1acf85f1326d8a0d9d3c13d24bd0b687a2934783f257ef322f17a936"
+        },
+        {
+            "id": "admin.billing-family",
+            "displayCode": "ADMIN-09",
+            "group": "admin",
+            "order": 9,
+            "title": "Подписки, семьи и платежи",
+            "steps": [
+                "Подарочные периоды",
+                "Из детали Free-пользователя выдайте Plus, затем на другой фикстуре Pro.",
+                "Проверьте preview, TOTP, сохранение, effective plan, квоты и историю после reload.",
+                "Попробуйте второй бесплатный grant при активном платном периоде.",
+                "Во время команды воспроизведите 503/network: изменённый запрос должен блокироваться, а точный повтор — использовать прежний idempotency key и после readback создать ровно один эффект.",
+                "Воспроизведите 409: preview и подтверждения должны сброситься только после перечитывания актуального состояния.",
+                "Семья",
+                "Состав, владелец и семейное покрытие соответствуют backend.",
+                "Смена/утрата владельца не оставляет семью без допустимого owner и не выдаёт лишний план.",
+                "Связанные списки не показывают записи другой семьи.",
+                "Платежи",
+                "Денежные значения совпадают с minor units, включая ноль.",
+                "Поле суммы принимает 1–16 цифр без знака; payer без значения показывается как «не указан».",
+                "Неизвестный статус отображается буквально; некорректный или отрицательный доступный остаток не роняет экран, а блокирует возврат до сверки ledger.",
+                "Refund без реального платёжного провайдера завершается fail-closed и не меняет ledger."
+            ],
+            "expectedResult": "Ожидается: дублирующий grant и невозможные для текущего состояния extend/freeze/unfreeze/revoke блокируются до mutation; отзыв подарка не уничтожает платный период; freeze сохраняет квоты и сдвигает окончание ровно на длительность заморозки. История без операций имеет явное пустое состояние.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "9-подписки-семьи-и-платежи",
+            "sourceChecksum": "e1b8ae59adf57b09983df99f4b9bf2599a6b1f0e90c4feab8ccc29e0b38948e4"
+        },
+        {
+            "id": "admin.catalog-allergens",
+            "displayCode": "ADMIN-10",
+            "group": "admin",
+            "order": 10,
+            "title": "Каталог и аллергены",
+            "steps": [
+                "Проверьте поиск, фильтрацию, пагинацию и дедупликацию каталога.",
+                "Откройте потенциальный дубль и сравните состав, варианты, источники и историю.",
+                "Меняйте кандидата, canonical card и выбор каждого конфликтного поля: любое изменение должно сбросить старый preview.",
+                "Выполните merge только после полного preview и critical confirmation; проверьте, что старый ID стал alias, а canonical ID сохранился.",
+                "На другой паре выберите «Это не дубли». Повтор с тем же ключом должен вернуть прежний результат, а новый ключ для уже закрытой пары текущих версий — 409 без второй history/audit записи. После изменения версии карточки pair разрешается сравнить заново.",
+                "Воспроизведите network/5xx после фактической записи merge/not-duplicate. Изменённый candidate/canonical/choice/reason и новый compare блокируются; точный повтор использует исходные versions, preview и key. Затем проверьте один эффект после reload.",
+                "После неизвестного исхода merge дождитесь истечения critical confirmation (или сбросьте его на тестовом стенде) и нажмите exact retry. Ожидается 403, но кнопка точного повтора и frozen command остаются. Повторно подтвердите действие TOTP/recovery-кодом и снова нажмите exact retry: применяется прежний результат, а merge/history/audit/idempotency journal содержат ровно по одной записи.",
+                "При активном critical confirmation воспроизведите обычный 403 роли/permission. Интерфейс должен явно сказать, что новый TOTP не поможет, сохранить exact command/key на текущем экране и оставить «Обновить данные»/выход из процесса. После восстановления роли точный повтор использует прежний key. Protected 401 проверяется отдельно: auth recovery может размонтировать экран, поэтому после входа обязателен readback и ручная сверка исхода, а сохранение frozen command между remount не предполагается.",
+                "Подмените route ID на карточку вне выбранной пары: backend должен вернуть 409; merge с несовпадающим/неподтверждённым составом остаётся заблокированным.",
+                "Для аллергена добавьте и удалите связь variant/may_contain, перечитайте карточку."
+            ],
+            "expectedResult": "Ожидается: merge сохраняет варианты, source IDs и исторические таблицы; replay identity привязан к actor + operation + route target + idempotency key, поэтому одинаковый UUID на другом target/operation независим. Тот же composite key с другим payload получает 409. Иконка допускает PNG/WebP до 1 МБ только для локального preview; production-загрузка без storage+scanner закрыта. Двухвкладочный 412/409 сохраняет локальный черновик и предлагает перечитать серверную версию.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "10-каталог-и-аллергены",
+            "sourceChecksum": "a9ee7cb16c1ce982dc5e3f07a9226a52034c15902fe7f381f6157f1044b2ba47"
+        },
+        {
+            "id": "admin.achievements-releases",
+            "displayCode": "ADMIN-11",
+            "group": "admin",
+            "order": 11,
+            "title": "Достижения, репутация и контент-релизы",
+            "steps": [
+                "Создайте release draft.",
+                "Создайте достижение: уникальный стабильный код, заголовок, описание, категория, иконка, условие и secret-флаг.",
+                "Добавьте изменение достижения в draft.",
+                "Измените шкалу репутации и добавьте её в тот же draft.",
+                "Проверьте состав, версии и итоги релиза.",
+                "Запустите validation, опубликуйте после critical confirmation, проверьте frontend.",
+                "Создайте новую редакцию и отдельно проверьте rollback опубликованного релиза в durable draft."
+            ],
+            "expectedResult": "Ожидается: изменения становятся публичными только атомарно после publish. Legacy-условие достижения нельзя публиковать без миграции. Конфликт двух вкладок не затирает серверную версию и предлагает явный выбор. Refresh не теряет autosave.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "11-достижения-репутация-и-контент-релизы",
+            "sourceChecksum": "4d47a4aca66b04b7b9c4dd5376417c80f35058cd127b8bf8364dd76bbaf828c8"
+        },
+        {
+            "id": "admin.news-notifications",
+            "displayCode": "ADMIN-12",
+            "group": "admin",
+            "order": 12,
+            "title": "Новости и уведомления",
+            "steps": [
+                "Новости",
+                "Создайте черновик, задайте аудиторию и in-app канал, запланируйте и отмените до отправки.",
+                "Фильтры аудитории работают как OR внутри группы и AND между группами.",
+                "Невалидные даты, небезопасные ссылки и неподтверждённый email отклоняются.",
+                "Email/push без провайдеров остаются fail-closed и не создают ложную доставку.",
+                "Центр и настройки уведомлений",
+                "Прочтение уведомления идемпотентно и не меняет соседнее.",
+                "Каналы по умолчанию выключены; email нельзя включить без подтверждённого адреса.",
+                "Quiet hours корректны через полночь в выбранной timezone; security-событие обходит только отложенную доставку.",
+                "Два параллельных изменения либо сериализуются, либо показывают конфликт; после reload серверное состояние сохранено."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "12-новости-и-уведомления",
+            "sourceChecksum": "3d573da29ba72068ffbcc94c4d3df6e395cecff75d2a593d173de61e86e4d8cc"
+        },
+        {
+            "id": "admin.legal-audit-rollback",
+            "displayCode": "ADMIN-13",
+            "group": "admin",
+            "order": 13,
+            "title": "Правовые запросы, аудит и откат",
+            "steps": [
+                "Экспорт/удаление аккаунта",
+                "Откройте review удаления и проверьте blocker-ы.",
+                "На разных фикстурах approve и reject review.",
+                "Проверьте, что UI не заявляет о завершённом удалении до реальной фоновой операции.",
+                "Форма решения доступна только в состояниях requested, retention_wait и blocked. Для ready, cancelled, rejected, finalized, отсутствующего или неизвестного статуса раздел остаётся read-only и явно показывает причину недоступности; pending не считается допустимым алиасом.",
+                "Корнер-кейс: после 5xx/network исход review считается неизвестным. Интерфейс перечитывает запись и сбрасывает подтверждение, но сохраняет полный исходный command. Изменённые решение или причина блокируются; точный повтор отправляет прежние expectedVersion и idempotencyKey и не создаёт второй review-step/audit. После подтверждённого success оператор может выполнить новую осознанную проверку состояния retention_wait/blocked только с новым ключом операции.",
+                "Аудит и rollback",
+                "Каждая критичная/служебная команда имеет одну audit-запись с исходным requestId, субъектом и безопасной классификацией.",
+                "Секреты, provider payload и auth-данные отсутствуют.",
+                "Rollback preview разделяет ready/conflict; выполнение применяет только ready и не перезаписывает более поздние чужие изменения.",
+                "После неизвестного исхода разрешён только точный повтор полного frozen command с прежними version, preview key и idempotency key; новый preview или изменённая причина блокируются.",
+                "409/412 перечитывает агрегат, сбрасывает stale preview и требует новый preview. Повтор той же команды не создаёт второй эффект."
+            ],
+            "expectedResult": "Ожидается: archive без storage fail-closed; preview не создаёт синтетический архив; stale decision получает 412 и сохраняет контекст.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "13-правовые-запросы-аудит-и-откат",
+            "sourceChecksum": "47bce9138d26b5cd3cd94298e7cb88b8eea5610e46e1331103a53c63326d27e0"
+        },
+        {
+            "id": "admin.operations-metrics",
+            "displayCode": "ADMIN-14",
+            "group": "admin",
+            "order": 14,
+            "title": "Операции, ошибки и метрики",
+            "steps": [
+                "Для безопасного import-job выполните preview, retry и cancel, затем reload.",
+                "Running/финансовую/неизвестную задачу попытайтесь отменить или повторить.",
+                "Для инцидента пройдите полный lifecycle: acknowledge → investigating → resolved/ignored; укажите причину и срок, где требуется.",
+                "Сверьте метрики с исходными списками и временным диапазоном."
+            ],
+            "expectedResult": "Ожидается: опасная операция блокируется сервером, а не только скрытой кнопкой. Источник инцидента неизменяем; меняется только workflow-состояние. Malformed cursor не ломает приватную оболочку. Ошибки не показывают stack trace или персональные данные.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "14-операции-ошибки-и-метрики",
+            "sourceChecksum": "791acf4bbe8ab0490ac4e82c7b163464f5e699b3bc90ccbe182c69aee48f20a3"
+        },
+        {
+            "id": "admin.performance",
+            "displayCode": "ADMIN-15",
+            "group": "admin",
+            "order": 15,
+            "title": "Производительность, рендеринг и утечки",
+            "steps": [
+                "Выполните production-сборку и npm run test:performance:budget с QA_OUTPUT_DIR внутри разрешённого временного каталога. Ожидается: не более 20 JS chunks, 500 КБ raw/100 КБ gzip на крупнейший chunk и 1,1 МБ raw/240 КБ gzip суммарно; server-only маркеры в браузерный код не попадают.",
+                "В DevTools Performance запишите переходы по всем разделам через боковую навигацию. Ожидается: оболочка не размонтируется целиком, длинные задачи не повторяются на каждом переходе, таблицы и фильтры не вызывают циклических запросов.",
+                "В течение 30 минут повторяйте overview → queue → detail → back, переключая светлую/тёмную тему и desktop/mobile viewport. Снимите heap/DOM/listener baseline после прогрева и после forced GC. Ожидается: документы не накапливаются, heap возвращается к ограниченному плато, число listeners не растёт линейно с переходами.",
+                "Откройте/закройте MFA, critical confirmation, release autosave и support-вложения не менее 20 раз. Ожидается: интервалы, debounce-таймеры, BroadcastChannel, object URL и media metadata handlers освобождаются; после ухода со страницы фоновые mutations не продолжаются.",
+                "При slow 4G + 4× CPU проверьте auth и ключевые очереди. Ожидается: видимы loading/error/retry-состояния, layout не скачет, ввод остаётся отзывчивым, повторная команда не создаёт второй эффект."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "15-производительность-рендеринг-и-утечки",
+            "sourceChecksum": "015fabb08f85efa4dc0d0c8921b6d261777bc763c774baa02151b267c879fccb"
+        },
+        {
+            "id": "admin.cross-service",
+            "displayCode": "ADMIN-16",
+            "group": "admin",
+            "order": 16,
+            "title": "Обязательные сквозные сценарии с frontend",
+            "steps": [
+                "Эти сценарии выполняются после отдельных проходов admin и frontend.",
+                "Рецепт: frontend создаёт и отправляет редакцию → admin видит точную revision → approve → frontend показывает опубликованную версию → hide/unpublish убирает её без удаления истории автора.",
+                "Поддержка: frontend создаёт обращение → admin назначает, пишет private note и публичный ответ → frontend видит только публичный ответ → закрытие/переоткрытие синхронизируется.",
+                "Подписка/семья: admin выдаёт Plus/Pro или применяет санкцию → frontend обновляет effective plan, квоты и семейное покрытие после повторного чтения.",
+                "Контент-релиз: admin публикует достижение/репутацию → frontend получает новый контент одной опубликованной версией; rollback возвращает согласованное состояние.",
+                "Новости/уведомления: admin запускает in-app кампанию → подходящий пользователь получает ровно одно уведомление → неподходящая аудитория не получает его."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "16-обязательные-сквозные-сценарии-с-frontend",
+            "sourceChecksum": "61c4ef11fb8300e15e0cd9cbe21054833bfa4df70d413b3080b9674ecdbe597c"
+        },
+        {
+            "id": "admin.completion",
+            "displayCode": "ADMIN-17",
+            "group": "admin",
+            "order": 17,
+            "title": "Критерии завершения",
+            "steps": [
+                "Приёмочный чек-лист /admin/testing",
+                "Каталог и навигация",
+                "Войти администратором с MFA и открыть /admin/testing прямой ссылкой и через «Система → Тестирование».",
+                "Убедиться, что загружены все четыре группы: БД, Backend/API, админка и frontend. Количество кейсов и общий прогресс должны совпадать с ответом backend.",
+                "Проверить поиск по коду, названию и тексту шага; последовательно применить каждый фильтр статуса. «Сбросить фильтры» возвращает полный список.",
+                "Свернуть и раскрыть каждую группу. Выбранный кейс имеет aria-current, а кнопка группы — корректный aria-expanded.",
+                "«Назад» и «Сохранить и далее» работают в порядке текущего видимого списка. На последнем/первом элементе переход не создаёт ошибку и не теряет черновик.",
+                "Фиксация результата",
+                "Для непроверенного кейса выбрать «Пройдено», добавить комментарий и нажать «Сохранить». До подтверждения backend общий прогресс не меняется.",
+                "Перезагрузить страницу: статус, комментарий, версия, проверивший администратор и время должны сохраниться.",
+                "Повторить для «Частично» и «Не пройдено». Комментарий ограничен 1000 символами; лишний текст не отправляется.",
+                "Нажать «Вернуть на проверку»: статус становится «Не проверено», комментарий остаётся, а audit/history не удаляются.",
+                "На исходно непроверенном кейсе изменить draft и нажать «Отменить изменения»: серверная mutation не выполняется.",
+                "Конкурентность и восстановление",
+                "Открыть один кейс двумя администраторами. Сохранить в первой вкладке, затем во второй: stale version возвращает 409/412, серверное состояние перечитывается, локальный draft второй вкладки остаётся.",
+                "Имитировать обрыв после отправки mutation. Если readback подтверждает тот же status/comment и новую version, UI считает операцию завершённой; иначе предлагает только точный повтор прежнего payload/idempotency key.",
+                "При 403 показать отсутствие права без предложения повторять. При initial GET error — retry; при background refetch error — сохранить stale UI с предупреждением.",
+                "Изменить текст кейса/его source checksum в тестовом каталоге: прежний результат не должен считаться актуальным, но история остаётся в БД.",
+                "Визуал и доступность",
+                "Проверить coffee-light, coffee-dark, nature-light, nature-dark: поверхности, границы, selected/status states и CTA используют только semantic tokens дизайн-системы.",
+                "На desktop сравнить двухпанельную композицию с утверждённым вариантом 2. При 390×844 список и детали располагаются последовательно, status cards — в одну колонку, горизонтальной прокрутки нет.",
+                "Пройти экран клавиатурой: поиск, фильтр, группы, кейсы, radios, textarea и actions доступны в логичном порядке с заметным focus.",
+                "Проверить loading, empty, no-filter-results, stale, forbidden, conflict и unknown-outcome состояния; каждое объясняет последствия и следующий шаг.",
+                "Итоговая фиксация",
+                "Все блоки пройдены в desktop и mobile хотя бы в одной светлой и одной тёмной теме.",
+                "Нет необъяснимых 4xx/5xx, ошибок console, двойных mutations и потери введённых данных.",
+                "Все destructive-команды выполнены только на одноразовых фикстурах и подтверждены readback/audit.",
+                "Внешние интеграции без настроенных провайдеров явно fail-closed.",
+                "После теста стенд очищен или восстановлен до зафиксированного baseline."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_admin/ADMIN_TESTING.md",
+            "sourceAnchor": "17-критерии-завершения",
+            "sourceChecksum": "fac33b30afedc8d4c52ceab9b9ae0d661d5c669a16a9f8c8df6101b64d19f2b5"
+        },
+        {
+            "id": "frontend.prerequisites",
+            "displayCode": "FRONTEND-01",
+            "group": "frontend",
+            "order": 1,
+            "title": "Подготовка стенда",
+            "steps": [
+                "Для автономной проверки запустите NEXT_PUBLIC_API_MODE=mock npm run dev. Для интеграционной — backend на :3001, клиент на :3000, NEXT_PUBLIC_API_MODE=real и BACKEND_ORIGIN=http://127.0.0.1:3001.",
+                "Перед real-прогоном убедитесь, что /health/live и /health/ready возвращают успешный статус, миграции актуальны, а браузер не использует старый mock service worker.",
+                "Проверьте Chromium desktop (не уже 1280 px), mobile 412×915 и клавиатурную навигацию. Критичные блоки повторите в поддерживаемых Firefox/WebKit.",
+                "Выполните сценарии в четырёх темах: coffee-light, coffee-dark, nature-light, nature-dark.",
+                "В mock-режиме пароль всех fixtures — 1: user1/user2 (Free), plus1/plus2 (Plus), pro1/pro2 (Pro), moderator, admin с доменом @meal-planner.test.",
+                "Для каждого мутационного кейса проверяйте: блокировку двойного submit, понятный pending, один итоговый эффект, повтор после network timeout, отсутствие потери введённых данных и явное восстановление после ошибки."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "1-подготовка-стенда",
+            "sourceChecksum": "cacbf8aaa9026710e57f01088ce69c3427bd3d83bafd5e8a32cc7af5fd363e1b"
+        },
+        {
+            "id": "frontend.shell-controls",
+            "displayCode": "FRONTEND-02",
+            "group": "frontend",
+            "order": 2,
+            "title": "Общая оболочка и каждый интерактивный элемент",
+            "steps": [
+                "Откройте каждую доступную страницу из навигации и прямой ссылкой. Ожидание: нет пустого экрана, Application error, 404 для существующего маршрута, API 5xx или бесконечного «Проверяем сессию…».",
+                "На каждой странице последовательно обойдите клавишей Tab все ссылки, кнопки, поля, select, вкладки, раскрывающиеся блоки и диалоги. Ожидание: видимый focus, логичный порядок, доступное имя, Enter/Space выполняют заявленное действие.",
+                "Для каждого контрола проверьте normal, hover, focus, active, disabled, loading, success и error, если состояния применимы. Disabled-контрол не должен отправлять запрос.",
+                "Для каждой ссылки проверьте назначение, Back/Forward и открытие прямого URL. Ссылка не должна быть пустой, javascript: или терять выбранные фильтры без причины.",
+                "На mobile откройте нижнюю навигацию и меню «Ещё». Контент не должен уходить за viewport или перекрываться нижней панелью; drawer закрывается кнопкой, Escape и нажатием на фон.",
+                "Увеличьте масштаб до 200%. Текст и действия остаются доступны без горизонтальной прокрутки страницы; таблицы/графики используют собственный предусмотренный scroll.",
+                "На страницах с загрузкой, пустым набором и ошибкой сообщение объясняет последствие и предлагает уместный следующий шаг: повторить, создать, изменить фильтр или вернуться."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "2-общая-оболочка-и-каждый-интерактивный-элемент",
+            "sourceChecksum": "fb9f04dac9871149f70f839be60462cb0a3f17a26c3aabe7c9ed24f7af682614"
+        },
+        {
+            "id": "frontend.themes",
+            "displayCode": "FRONTEND-03",
+            "group": "frontend",
+            "order": 3,
+            "title": "Темы",
+            "steps": [
+                "До входа смените последовательно все четыре темы в переключателе. Ожидание: меняются фон, поверхности, текст, границы, CTA и semantic success/warning/danger/info; случайных синих/красных/белых элементов нет.",
+                "Перезагрузите страницу после каждой темы. Выбор восстанавливается до появления интерфейса, без вспышки coffee-light.",
+                "Войдите на desktop и повторите в header/sidebar. На mobile откройте «Ещё» и повторите через переключатель в footer drawer.",
+                "Перейдите по 5–7 разным маршрутам, выйдите и войдите снова. Тема сохраняется.",
+                "Очистите localStorage и задайте неизвестное значение meal-theme. Приложение безопасно использует coffee-light.",
+                "В тёмных темах проверьте контраст focus, placeholder, disabled, modal overlay, графиков и статусных сообщений."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "3-темы",
+            "sourceChecksum": "7ab0517365fe04032634a5ea6418c7b5afb73ca323db4ec36790fe529f784bba"
+        },
+        {
+            "id": "frontend.registration-email",
+            "displayCode": "FRONTEND-04",
+            "group": "frontend",
+            "order": 4,
+            "title": "Регистрация и подтверждение email",
+            "steps": [
+                "/auth/sign-up: проверьте обязательные поля, email с пробелами/регистром, уникальность username, требования пароля, подтверждение пароля и юридические согласия.",
+                "Невалидная форма не отправляется; ошибки привязаны к полям и читаются screen reader.",
+                "Успешная регистрация создаёт ровно один аккаунт, нормализует identity, не авторизует до подтверждения и показывает следующий шаг.",
+                "Откройте письмо в тестовом mailbox, проверьте verify-ссылку один раз, повторно, после истечения и после resend. Старый токен после resend недействителен.",
+                "Resend имеет rate limit и нейтральный ответ, не раскрывающий существование чужого email."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "4-регистрация-и-подтверждение-email",
+            "sourceChecksum": "88842c78dcfbc9bf61570d4dabd8d8c8b03a8b7664df16e425e89fb201b5da92"
+        },
+        {
+            "id": "frontend.auth-recovery-mfa",
+            "displayCode": "FRONTEND-05",
+            "group": "frontend",
+            "order": 5,
+            "title": "Вход, выход, восстановление пароля и MFA",
+            "steps": [
+                "/auth: войдите по email и username; пробелы и регистр нормализуются. Неверные данные дают нейтральную ошибку.",
+                "Проверяйте безопасный returnTo: внутренний маршрут восстанавливается, внешний origin, auth-loop и staff URL отклоняются.",
+                "Logout завершает текущую сессию, очищает приватный cache и не меняет тему.",
+                "Recovery: запрос для существующего/несуществующего email выглядит одинаково. Check reset-ссылки не расходует её; успешный reset одноразовый, отзывает сессии и PIN.",
+                "PIN доверенного устройства привязан к браузеру. Пять неверных попыток отключают PIN, но пароль остаётся доступен.",
+                "Подключите TOTP, сохраните recovery codes, войдите обычным кодом и соседним допустимым временным шагом. Повтор кода и шестая удалённая временная зона отклоняются.",
+                "Используйте recovery code дважды — второй раз должен быть отклонён. Регенерация делает старый набор недействительным.",
+                "Замена/удаление фактора требует актуальной re-auth; конкурирующий enrollment и challenge другой сессии не принимаются."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "5-вход-выход-восстановление-пароля-и-mfa",
+            "sourceChecksum": "69965d1c2e72751860bb3a1026d5c96c0b85bb482e34dc7fc607c915df3e6859"
+        },
+        {
+            "id": "frontend.profile-sessions",
+            "displayCode": "FRONTEND-06",
+            "group": "frontend",
+            "order": 6,
+            "title": "Профиль, предпочтения и сессии",
+            "steps": [
+                "/profile: измените display name и публичные поля, перезагрузите, откройте public profile. Email и приватные поля не публикуются.",
+                "/settings/preferences: измените предпочтения питания и тему. Параллельно откройте вторую вкладку и создайте конфликт версии; устаревшая запись не должна перетереть новую.",
+                "/settings/account: смена пароля требует текущий пароль и отзывает остальные user/staff sessions.",
+                "Смена email: подтвердите новый адрес, отмените со старого, проверьте задержку применения 24 часа и отмену pending change при reset пароля.",
+                "Список сессий показывает текущую. «Завершить остальные» не завершает текущую и не влияет на чужого пользователя."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "6-профиль-предпочтения-и-сессии",
+            "sourceChecksum": "5b127d4c2e5e01de9205cb9e841a9df6225a4c44529e7c413c52769173e58bdc"
+        },
+        {
+            "id": "frontend.account-lifecycle",
+            "displayCode": "FRONTEND-07",
+            "group": "frontend",
+            "order": 7,
+            "title": "Архивация и удаление аккаунта",
+            "steps": [
+                "/settings/account/lifecycle: архивирование требует re-auth, отзывает сессию; последующий login восстанавливает аккаунт.",
+                "Risk hold блокирует архивирование с понятным объяснением.",
+                "Удаление требует готовый свежий export и re-auth не старше 10 минут. Отмена не меняет аккаунт.",
+                "При timeout повтор не создаёт вторую заявку. Finalize остаётся fail-closed, пока export/retention gates не готовы."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "7-архивация-и-удаление-аккаунта",
+            "sourceChecksum": "013e1a1893b5e698d28579652c0d113c094721ec8244beb23161a55d10025c6c"
+        },
+        {
+            "id": "frontend.home-search-public",
+            "displayCode": "FRONTEND-08",
+            "group": "frontend",
+            "order": 8,
+            "title": "Главная, onboarding, поиск и публичные страницы",
+            "steps": [
+                "/onboarding: пройдите короткий, подробный и демонстрационный сценарии; Back не теряет введённые данные.",
+                "/: каждый CTA ведёт в заявленный модуль; персональные карточки отражают тариф и данные пользователя.",
+                "/search: пустой запрос, Unicode, пробелы, нет результатов, пагинация и переход в продукт/рецепт/автора.",
+                "/about, /help, /pricing и /legal доступны без входа, имеют header/footer и корректные auth CTA.",
+                "Каталог /legal содержит ровно 11 предварительных документов. Проверить прямые ссылки /legal/terms, /legal/privacy, /legal/personal-data-consent, /legal/special-category-consent, /legal/dissemination-consent, /legal/ai-consent, /legal/marketing-consent, /legal/cookies, /legal/community-rules, /legal/subscription-rules, /legal/child-profile-consent.",
+                "На каждой legal-странице видна маркировка предварительного текста и [Тут будут данные]; неизвестный slug возвращает 404, а controls юридически значимого принятия отсутствуют.",
+                "/authors/[username], achievements/reputation: inactive/unknown дают корректный not-found; нулевые значения не заменяются на «нет данных»."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "8-главная-onboarding-поиск-и-публичные-страницы",
+            "sourceChecksum": "ae07d4b7743d016f77104658d828271fc4ef0964865144becb6fe2dde315c2fd"
+        },
+        {
+            "id": "frontend.inventory",
+            "displayCode": "FRONTEND-09",
+            "group": "frontend",
+            "order": 9,
+            "title": "Запасы",
+            "steps": [
+                "/inventory: проверьте personal/family scope, поиск, фильтры, пагинацию, пустое состояние и карточки партий.",
+                "Создайте партию с минимальными/максимальными и дробными количествами, сроком, местом и продуктом. Нулевые/отрицательные/несовместимые единицы отклоняются.",
+                "Откройте /inventory/batches/[id], измените с актуальным If-Match, затем имитируйте stale version. UI предлагает обновить данные и не теряет безопасный черновик.",
+                "Consumption выполняется один раз; повтор idempotency key не списывает повторно. История фильтруется до пагинации.",
+                "Locations: создание, редактирование, удаление используемого места; destructive действие должно объяснять ограничение.",
+                "/inventory/import: CSV/TSV/XLSX — preview до commit, ошибки строк, дубликаты, неизвестные единицы, полный rollback при одной невалидной строке.",
+                "/inventory/scan: разрешение камеры, отказ, отсутствующая камера, неверный/неизвестный barcode, ручной fallback. Никакой записи до подтверждения."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "9-запасы",
+            "sourceChecksum": "9834ad02becef02e3801dba90360328880fd6a91104777f64c451f4389976f9b"
+        },
+        {
+            "id": "frontend.products",
+            "displayCode": "FRONTEND-10",
+            "group": "frontend",
+            "order": 10,
+            "title": "Каталог продуктов",
+            "steps": [
+                "Откройте продукт прямым URL с tab/variant/SKU; неизвестный query безопасно сбрасывается.",
+                "/products/new: предложение продукта валидирует barcode checksum, категорию, allergens, label basis и package unit.",
+                "Повтор submit возвращает ту же заявку; изменённый payload с прежним ключом и collision barcode отклоняются.",
+                "Pending-продукт видит только автор до модерации. После approve он появляется в поиске; reject показывает решение без внутренних staff-полей."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "10-каталог-продуктов",
+            "sourceChecksum": "4af7057b5fb4b9cdc9e9fb16f0145e280d08f1c06d43e53ddcf92c154fc389d1"
+        },
+        {
+            "id": "frontend.recipes-cooking",
+            "displayCode": "FRONTEND-11",
+            "group": "frontend",
+            "order": 11,
+            "title": "Рецепты и приготовление",
+            "steps": [
+                "/recipes: фильтры, pagination, bookmarks, inventory readiness 80%, optional/unknown ingredients и deep-link состояния.",
+                "/recipes/new и edit: minimum применяется при submit, reorder сохраняет identity ингредиентов, черновик сохраняется, stale conflict не затирается.",
+                "Submit на модерацию доступен только допустимому автору/тарифу; double submit создаёт одну заявку, лимит и ban объясняются.",
+                "/recipes/[id]: public detail не содержит personal projection; скрытый рецепт нельзя готовить, оценивать или использовать в shopping preview.",
+                "Cooking: start не списывает; progress сохраняет deadline; complete списывает подтверждённые inputs и создаёт prepared stock один раз.",
+                "Failed/cancelled cooking не создаёт output; частичная порция сохраняет физически корректное количество. Валидационная ошибка любого input/output откатывает всю операцию.",
+                "Rating/comment/report доступны только при выполненных предусловиях. Critical report скрывает рецепт, личная история report остаётся приватной.",
+                "/recipes/offline: сохраните два рецепта, отключите сеть, откройте их. Cache изолирован по пользователю, очищается при logout и имеет expiry."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "11-рецепты-и-приготовление",
+            "sourceChecksum": "0bae428ec1b42c359f09ed454f25c9cf4e522c807e2ec8931734a2e7284bd87b"
+        },
+        {
+            "id": "frontend.meal-plans",
+            "displayCode": "FRONTEND-12",
+            "group": "frontend",
+            "order": 12,
+            "title": "План питания и назначения",
+            "steps": [
+                "/plan: Free не получает long-range/automation; Plus видит range plan; Pro — calendar/optimization.",
+                "Меняйте даты через переход DST; выбранный календарный день не смещается.",
+                "Plus automation preview read-only, commit требует подтверждения и idempotent.",
+                "Pro optimization ранжирует только полноценно рассчитанные варианты и ротирует кандидатов предсказуемо.",
+                "Назначьте prepared portion участнику: stock списывается один раз; получатель подтверждает или отменяет; через 24 часа действует auto-confirm."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "12-план-питания-и-назначения",
+            "sourceChecksum": "e7a90d01b6005de13e23c5d8a9a34485ce5c2811929eb99909c9a3eeab9df5a8"
+        },
+        {
+            "id": "frontend.shopping-receipts",
+            "displayCode": "FRONTEND-13",
+            "group": "frontend",
+            "order": 13,
+            "title": "Список покупок, чеки и покупки",
+            "steps": [
+                "Shopping preview ничего не пишет. Созданный список сохраняет ручные правки и purchased state.",
+                "Смена SKU/variant заменяет identity; чужой или несовместимый SKU отклоняется.",
+                "/receipts/new: загрузка/ручной ввод, preview, commit, timeout/retry. Запас меняется только после commit.",
+                "/receipts/[id] и /purchases/[id]: direct URL, чужой owner, unknown ID, сохранённые суммы/единицы.",
+                "Для Pro электронный чек создаёт private finance records; Free/Plus не получают скрытую Pro-функцию."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "13-список-покупок-чеки-и-покупки",
+            "sourceChecksum": "35b13944e4372accc2d461ce906dd43377e8a40c1dc5fe5d01db707a1fe6ba03"
+        },
+        {
+            "id": "frontend.preserves",
+            "displayCode": "FRONTEND-14",
+            "group": "frontend",
+            "order": 14,
+            "title": "Заготовки",
+            "steps": [
+                "/preserves: create/edit/archive/detail, валидные количество/срок/место и идемпотентный submit.",
+                "QR label доступен по тарифу, содержит минимальный offline payload и при повторе не создаёт новую сущность.",
+                "Family preserve виден активным участникам; personal preserve не пересекает владельцев."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "14-заготовки",
+            "sourceChecksum": "37cf9e7b827e7b3deb165229ecc7abd16391437b33776e06d2c61df9c520472d"
+        },
+        {
+            "id": "frontend.family",
+            "displayCode": "FRONTEND-15",
+            "group": "frontend",
+            "order": 15,
+            "title": "Семья",
+            "steps": [
+                "/family/setup: Plus/Pro создаёт семью с trim имени; Free получает upgrade CTA; повтор не создаёт вторую семью.",
+                "Invite привязан к точному login, действует один раз и только для адресата. Expired/used/wrong-user показывают разные безопасные состояния.",
+                "Member proposal требует owner approval до accept.",
+                "/family/members: owner удаляет участника; обычный member не может. История membership сохраняется архивно.",
+                "Owner leave автоматически передаёт ownership по правилу и создаёт одно важное уведомление. /family/ownership/requests/[token] защищён от повторов/чужого пользователя.",
+                "После выхода/удаления закрываются family inventory, recipes, plan, shopping, receipts, purchases, preserves, notes и chat; personal данные остаются.",
+                "Во всех family-модулях сравните два браузерных контекста plus1/plus2: совместные данные синхронизируются, personal scope не смешивается."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "15-семья",
+            "sourceChecksum": "8aafbed7806a50af48122b9b952cb58bbeb6ab9e983bdbb08505339563285192"
+        },
+        {
+            "id": "frontend.family-chat-notes",
+            "displayCode": "FRONTEND-16",
+            "group": "frontend",
+            "order": 16,
+            "title": "Семейные заметки и чат",
+            "steps": [
+                "Notes: text/checklist, create/edit/archive; редактирует автор, checklist отмечают участники совместно.",
+                "Прямая ссылка на archived/foreign note не раскрывает данные. Double submit создаёт одну заметку.",
+                "Chat: отправка, reply, mentions только активных участников, reactions, pin/unpin, personal hide.",
+                "Удалённое сообщение сохраняет tombstone для reply. История нового участника начинается с даты membership.",
+                "Cursor pagination стабильна; read receipt движется только вперёд; повтор send не дублирует сообщение."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "16-семейные-заметки-и-чат",
+            "sourceChecksum": "2ac066d05a9a170b52044d2c307c0aa9be526d93c5c374e1d471d4e8db5eaa3d"
+        },
+        {
+            "id": "frontend.billing",
+            "displayCode": "FRONTEND-17",
+            "group": "frontend",
+            "order": 17,
+            "title": "Подписка и тарифы",
+            "steps": [
+                "/pricing: точные month/year суммы и promotion; выбранный период сохраняется через login.",
+                "Free → Pro показывает promotional сейчас и regular renewal. Plus → Pro показывает immediate credit или schedule at period end.",
+                "Pro renewal/downgrade всегда имеет preview-confirm. После 503 выбранный период и preview сохраняются для явного retry.",
+                "Family Plus требует согласие двух owners; доступ действует до более поздней даты окончания.",
+                "Отключённое продление действительно завершает personal plan, а не оставляет вечный доступ."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "17-подписка-и-тарифы",
+            "sourceChecksum": "bcdb45bb0b57281706263f55d0c75f449f75ca325355db8fc5fff4b75824739c"
+        },
+        {
+            "id": "frontend.ai",
+            "displayCode": "FRONTEND-18",
+            "group": "frontend",
+            "order": 18,
+            "title": "AI",
+            "steps": [
+                "/ai: каталог всех задач и capability по тарифу; malformed capability response закрывает действие и предлагает retry.",
+                "Обычный prompt работает без special-category consent; персональный контекст требует актуальное юридическое согласие.",
+                "Два бесплатных уточнения не списывают баланс; следующее списывает один десятиминутный интервал. Параллельные вкладки не списывают дважды.",
+                "Отзыв согласия между preview и run не списывает средства и сохраняет draft.",
+                "Archive conflict требует refresh; чужая conversation недоступна.",
+                "Appeal после 503 сохраняет объяснение и отправляется только по явному retry; appeal detail приватен.",
+                "Ошибка/невалидный ответ внешнего провайдера fail-closed и не расходует квоту."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "18-ai",
+            "sourceChecksum": "a9cf7ea552df806ee359828c98a48f27c237b7a543588f583ad4c8f91d653db0"
+        },
+        {
+            "id": "frontend.pro-data",
+            "displayCode": "FRONTEND-19",
+            "group": "frontend",
+            "order": 19,
+            "title": "Дневник, питание, финансы и exports (Pro)",
+            "steps": [
+                "Diary: запись вручную/из stock/assigned portion, unknown nutrition остаётся unknown, а не нулём; retry не списывает повторно.",
+                "Former Pro читает сохранённую историю, но не создаёт/редактирует; never-Pro получает upgrade state.",
+                "Nutrition profile/targets используют optimistic concurrency; analytics сравнивает только сопоставимые данные и честно показывает incomplete.",
+                "Finance: expense create/edit, точные денежные значения, непересекающиеся budget periods, price history и forecast только при достаточной истории.",
+                "/exports: JSON/CSV/XLSX manifest версионирован; создание требует active Pro, история доступна former Pro.",
+                "Ready export истекает на месте; download/storage failure не выдаёт ложный success; чужой пользователь export не видит."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "19-дневник-питание-финансы-и-exports-pro",
+            "sourceChecksum": "ea20f997760a9dcee6831d9d90ca17bc3b01cb4a158b2a2714a95b576f38e887"
+        },
+        {
+            "id": "frontend.community-news",
+            "displayCode": "FRONTEND-20",
+            "group": "frontend",
+            "order": 20,
+            "title": "Community, достижения, новости и уведомления",
+            "steps": [
+                "Community/author: follow/unfollow, bookmarks, achievement/reputation direct URL и privacy inactive account.",
+                "News list/detail: read state, unknown/archived item, modal/overlay закрытие клавиатурой.",
+                "Notifications: pagination, read one/read all, important family notice ровно один раз, deep link ведёт в разрешённый объект.",
+                "Настройки уведомлений сохраняются и не дают отправлять недоступный channel без явного статуса."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "20-community-достижения-новости-и-уведомления",
+            "sourceChecksum": "ac063f1853e5b34028d6560132b2662c602b4ca38b206b4bf1b344b54440b118"
+        },
+        {
+            "id": "frontend.support-reports",
+            "displayCode": "FRONTEND-21",
+            "group": "frontend",
+            "order": 21,
+            "title": "Support и reports",
+            "steps": [
+                "Support create/detail/reply/edit/reopen: closed ticket блокирует reply/edit до reopen; внутренние userId/staff notes не показываются.",
+                "Network timeout не создаёт дубль. Чужой тикет недоступен.",
+                "Report create/history/detail: причины валидируются, critical effect отображается, appeal/решение приходят через заявленный канал."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "21-support-и-reports",
+            "sourceChecksum": "7f1914b290bdaf7ff2417d2933b016b98917b8bd7f84ebcf205969ab6a5dc722"
+        },
+        {
+            "id": "frontend.offline-resilience",
+            "displayCode": "FRONTEND-22",
+            "group": "frontend",
+            "order": 22,
+            "title": "Offline и устойчивость",
+            "steps": [
+                "/settings/offline: данные изолированы по owner; stale owner после logout не виден.",
+                "Сымитируйте offline во время чтения и мутации. Разрешённое cached чтение работает; неподдерживаемая запись не показывает ложный success.",
+                "Конфликт sync отображает обе версии и блокирует destructive clear до разрешения.",
+                "Ошибка регистрации service worker не должна ломать online-приложение.",
+                "Верните сеть: повтор выполняется один раз, UI обновляется, несинхронизированный draft не исчезает."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "22-offline-и-устойчивость",
+            "sourceChecksum": "15e687deeeb09359452c3614a166d1760f5cdaebfc34fc68268ea5130cdde713"
+        },
+        {
+            "id": "frontend.staff-routes",
+            "displayCode": "FRONTEND-23",
+            "group": "frontend",
+            "order": 23,
+            "title": "Staff-маршруты внутри клиента",
+            "steps": [
+                "/moderation/sign-in использует отдельный staff-контекст; обычная user session не даёт staff access.",
+                "Первичный MFA enrollment, подтверждение сохранения recovery codes, повторный login и revoke staff sessions.",
+                "Проверьте /moderation, все queues и item/support detail. Unknown queue возвращает явный 404, а не вечную загрузку.",
+                "Assignment, допустимые переходы статуса, reopen closed ticket и потеря роли/factor немедленно закрывают доступ."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "23-staff-маршруты-внутри-клиента",
+            "sourceChecksum": "a344f62644f4e1552fab51e7c85b70f67f441e7880d3f3d0425071a6b022aa8c"
+        },
+        {
+            "id": "frontend.cross-service",
+            "displayCode": "FRONTEND-24",
+            "group": "frontend",
+            "order": 24,
+            "title": "Сквозные frontend → admin сценарии",
+            "steps": [
+                "Frontend: автор создаёт продукт/рецепт и отправляет на модерацию. До решения заявка приватна и имеет pending status.",
+                "Admin: модератор назначает заявку, сравнивает данные, approve/reject/request changes.",
+                "Frontend: после обновления решение и комментарий видны автору; approved сущность появляется публично, rejected не появляется.",
+                "Frontend: пользователь создаёт support ticket/report/AI appeal. Admin обрабатывает; клиент показывает статус/ответ без внутренних полей.",
+                "Admin ограничивает аккаунт/скрывает рецепт. Уже открытая клиентская вкладка после следующего запроса теряет write-доступ; чтение остаётся только там, где разрешено контрактом.",
+                "Проверяйте requestId, audit trail и отсутствие двойного эффекта при retry на обеих сторонах."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "24-сквозные-frontend-admin-сценарии",
+            "sourceChecksum": "d58d80d7429f183b2316c343b70354644d9bec8ef4b394b6237831233bcdc2b9"
+        },
+        {
+            "id": "frontend.visual-matrix",
+            "displayCode": "FRONTEND-25",
+            "group": "frontend",
+            "order": 25,
+            "title": "Финальная визуальная матрица",
+            "steps": [
+                "Для главной, auth, inventory, recipe detail/cook, plan, family, chat, subscription, AI, diary, finance, settings, moderation и каждого modal снимите desktop/mobile в светлой и тёмной теме. Сверьте:",
+                "используются только конечные токены дизайн-системы; цвет отражает тему или семантику статуса;",
+                "типографика, radius, spacing, тени и focus единообразны;",
+                "нет обрезки русского текста, наложений, скачков layout и пустых декоративных блоков;",
+                "skeleton совпадает по геометрии с контентом;",
+                "success/warning/danger/info различимы не только цветом;",
+                "каждый оставленный блок помогает выполнить действие, понять состояние или восстановиться после ошибки."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "25-финальная-визуальная-матрица",
+            "sourceChecksum": "0c4fb5291c5547601f35c0da39261c948a56125d44a9e3d0b5845c8ce2ea28ad"
+        },
+        {
+            "id": "frontend.performance",
+            "displayCode": "FRONTEND-26",
+            "group": "frontend",
+            "order": 26,
+            "title": "Производительность, рендеринг и утечки",
+            "steps": [
+                "Запустите полный mock E2E командой npm run test:e2e:front с QA_OUTPUT_DIR внутри разрешённого временного каталога. Runner обязан давать свежий Next-процесс каждому browser-проекту, route-heavy кейсы выполнять пакетами не более четырёх логических сценариев, а каждый chunk полной route matrix — в отдельном процессе; рост памяти единого dev compiler graph не считается клиентской утечкой, но каждый пакет должен завершаться освобождением процесса.",
+                "Выполните npm run test:e2e:front:production: /dev/mailbox и /dev/ui возвращают 404 на desktop/mobile. Затем npm run test:performance:budget. Gate обязан подтвердить: не более 196 JS-файлов и 170 уникальных SHA-256 payloads; 900 КБ raw/140 КБ gzip на крупнейший файл; 3,8 МБ raw/1 МБ gzip суммарно; не более 28 JS requests и 390 000 gzip bytes для любого app page; server-only маркеры отсутствуют. Per-route расчёт должен охватывать все page paths из Next app-paths-manifest и использовать union build-manifest.rootMainFiles с chunk paths соответствующего client-reference manifest. Baseline после route-group консолидации: 192/166 файлов, максимум 26 requests и 374 521 gzip bytes; thresholds дают небольшой headroom и не заменяют byte caps.",
+                "В production build на Slow 4G + 4× CPU измерьте /about, /pricing и auth: p75 LCP ≤2,5 с, FCP ≤2 с, CLS ≤0,1, DCL ≤2,5 с. Ошибки ресурсов, console/page errors и повторные бесконечные запросы недопустимы.",
+                "После UI-login выполните не менее 24 переходов home ↔ inventory и отдельный 30-минутный цикл home/inventory/AI на desktop/mobile. После прогрева и forced GC сравните JS heap, DOM nodes, documents и listeners. Допустимо ограниченное плато; линейный рост, удержанные documents и рост listeners на каждый переход — FAIL.",
+                "Не менее 20 раз откройте/закройте cooking timer, notifications, offline status, auth/MFA, import/scan и exports. Ожидается: интервалы, timeout, BroadcastChannel, worker, object URL, service-worker и window/document listeners освобождаются или остаются единственным глобальным обработчиком по контракту.",
+                "В React DevTools Profiler проверьте ввод в search/editor/chat и смену темы. Ожидается: ввод перерисовывает затронутую ветку, а не все 117 маршрутов; тема меняет токены без дублирования запросов; тяжёлые OCR/XLSX/barcode модули загружаются только на import/scan routes."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "26-производительность-рендеринг-и-утечки",
+            "sourceChecksum": "fd8e583e219062ca4e6cfd07380bece43a629576515fddf6f34b4ad844dbb7ef"
+        },
+        {
+            "id": "frontend.recipe-revisions",
+            "displayCode": "FRONTEND-27",
+            "group": "frontend",
+            "order": 27,
+            "title": "Revision-aware рецепты: сквозной тест",
+            "steps": [
+                "Создайте валидную редакцию r1 и отправьте её на модерацию. До решения review.status=pending, review.revisionId=r1, publication=null; публичной ссылки нет. Повторная отправка той же редакции недоступна.",
+                "Одобрите r1 в админке. После readback клиент показывает опубликованную текущую редакцию и публичную ссылку. Ссылка определяется только publication != null, не legacy-полем status.",
+                "Измените рецепт, создав r2, и отправьте его. Пока r2 pending или rejected, публичная r1 остаётся доступна; карточка автора явно разделяет текущую редактируемую и активную публичную редакции.",
+                "Отклоните r2 с публичной причиной. Автор видит только publicReason; internal notes, actor ids и служебные поля отсутствуют. Неизменённую rejected r2 повторно отправить нельзя — сначала требуется новая редакция.",
+                "Создайте r3 и одобрите её. publication.revisionId меняется на r3, причина r2 исчезает из актуального review, публичная карточка показывает r3.",
+                "Выполните hide и unpublish. После обязательного readback publication=null, публичная ссылка исчезает, прямой публичный URL не раскрывает скрытую редакцию.",
+                "Архивируйте опубликованный рецепт и восстановите его. Архивирование закрывает публикацию; восстановление возвращает рецепт только в workspace и не публикует автоматически.",
+                "Для submit проверьте 409/412: клиент перечитывает workspace до следующей попытки. Для 503/timeout сохраняется тот же idempotency key и предлагается точный retry без двойного эффекта.",
+                "Повторите основной сценарий на desktop и mobile во всех четырёх темах. Focus, alert/status, контраст и отсутствие случайных цветов обязательны.",
+                "Во время совместимого rollout старый ответ без обеих осей безопасно отображается без выдуманной причины/даты публикации. Ответ только с одной осью или смешанный список старых/новых элементов завершается fail-closed error; старый offline snapshot мигрирует тем же правилом без изменения сетевой capability."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "27-revision-aware-рецепты-сквозной-тест",
+            "sourceChecksum": "5068f0305f7f229d185e44db51dee628b0424ddc16e187026d194ba9077c0cd8"
+        },
+        {
+            "id": "frontend.completion",
+            "displayCode": "FRONTEND-28",
+            "group": "frontend",
+            "order": 28,
+            "title": "Критерий завершения",
+            "steps": [
+                "Приёмка считается успешной, когда все применимые кейсы PASS на mock и обязательные интеграционные кейсы PASS с real backend; нет console errors, неожиданных 4xx/5xx, дублей, утечки памяти или чужих данных, линейного роста DOM/listeners, необъяснённых расхождений контрактов, недоступных контролов, случайных цветов и горизонтального overflow. Все BLOCKED должны иметь владельца, причину и условие разблокировки."
+            ],
+            "expectedResult": "Все перечисленные проверки завершены с ожидаемым результатом; отклонения зафиксированы в комментарии.",
+            "sourceFile": "meal_frontend/FRONTEND_TESTING.md",
+            "sourceAnchor": "28-критерий-завершения",
+            "sourceChecksum": "21eb325e0934042bdcfbff4bc46fd03a27565d67ea1fd2503392513d8236ee14"
+        }
+    ]
+}

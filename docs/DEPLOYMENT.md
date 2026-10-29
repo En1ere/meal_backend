@@ -14,15 +14,17 @@
 
 ## Адреса и сетевые границы
 
-| Компонент                         | Адрес                                                     |
-| --------------------------------- | --------------------------------------------------------- |
-| Пользовательское приложение       | `https://abstract-usable-gazebo.ruweb.place`              |
-| Административное приложение       | `https://admin.abstract-usable-gazebo.ruweb.place`        |
-| API через пользовательский origin | `https://abstract-usable-gazebo.ruweb.place/api/v1`       |
-| Liveness                          | `https://abstract-usable-gazebo.ruweb.place/health/live`  |
-| Readiness                         | `https://abstract-usable-gazebo.ruweb.place/health/ready` |
+| Компонент                         | Адрес                                           |
+| --------------------------------- | ----------------------------------------------- |
+| Пользовательское приложение       | `https://meal.royalexander.online`              |
+| Административное приложение       | `https://admin.meal.royalexander.online`        |
+| API через пользовательский origin | `https://meal.royalexander.online/api/v1`       |
+| Liveness                          | `https://meal.royalexander.online/health/live`  |
+| Readiness                         | `https://meal.royalexander.online/health/ready` |
 
 Оба интерфейса используют same-origin `/api`; прямые порты приложений и PostgreSQL из интернета недоступны. Backend опубликован только на `127.0.0.1:3001`, frontend — `127.0.0.1:3000`, admin — `127.0.0.1:3002`; PostgreSQL не имеет host publish. UFW разрешает только OpenSSH и `Nginx Full`. Админка вынесена на отдельный origin, потому что её абсолютные маршруты пересекаются с маршрутами пользовательского приложения.
+
+Корневой `royalexander.online` и `www.royalexander.online` принадлежат существующему GitHub Pages сайту и не входят в конфигурацию Meal Planner. Старые технические адреса временно возвращают `302` на соответствующий новый интерфейс с сохранением path/query. Старый `/api/` намеренно возвращает `410` без кеширования: host-only session cookies и CSRF origin нельзя безопасно перенести редиректом, поэтому после cutover пользователи входят заново.
 
 ## Подтверждённый cutover baseline
 
@@ -50,7 +52,7 @@ Source of truth активных immutable digests — root-owned `/var/lib/meal
 - Baseline backup до первого deployment: `/var/backups/meal-planner/predeploy-20261027-0515.dump`, root-only.
 - Свежий backup непосредственно перед schema v29: `/var/backups/meal-planner/pre-migration029-20261028-0710.dump`, `2,114,768` bytes, SHA-256 `85b25e20540b759e0ec0f225a4f149dbc063a4f152afcc9b57222f9402da8ec4`, `root:root`, mode `0600`.
 
-Backend environment задаёт как минимум имена `NODE_ENV`, `PORT`, `HOST`, `FRONTEND_ORIGIN` и `ADMIN_FRONTEND_ORIGIN`. Секреты задаются либо прямыми `DATABASE_URL`, `SECURITY_KEY`, `MFA_ENCRYPTION_KEY`, либо взаимоисключающими абсолютными `DATABASE_URL_FILE`, `SECURITY_KEY_FILE`, `MFA_ENCRYPTION_KEY_FILE`. Значения проверяются на сервере без печати в терминал или журнал CI. Внешние provider-переменные остаются unset, пока соответствующий provider не принят; интеграции обязаны завершаться fail-closed.
+Backend environment задаёт как минимум имена `NODE_ENV`, `PORT`, `HOST`, `FRONTEND_ORIGIN` и `ADMIN_FRONTEND_ORIGIN`. Для production-стенда четыре origin-переменные должны быть согласованы: `FRONTEND_ORIGIN=https://meal.royalexander.online`, `ADMIN_FRONTEND_ORIGIN=https://admin.meal.royalexander.online`, `PUBLIC_ORIGIN=https://meal.royalexander.online`, `ADMIN_PUBLIC_ORIGIN=https://admin.meal.royalexander.online`. Первые две задают разрешённые browser origins backend, вторые две включают public smoke в `deploy/verify.sh`; отсутствие любой из public-переменных запрещает считать внешний cutover проверенным. Секреты задаются либо прямыми `DATABASE_URL`, `SECURITY_KEY`, `MFA_ENCRYPTION_KEY`, либо взаимоисключающими абсолютными `DATABASE_URL_FILE`, `SECURITY_KEY_FILE`, `MFA_ENCRYPTION_KEY_FILE`. Значения проверяются на сервере без печати в терминал или журнал CI. Внешние provider-переменные остаются unset, пока соответствующий provider не принят; интеграции обязаны завершаться fail-closed.
 
 ### Runtime-роли БД
 
@@ -80,6 +82,19 @@ npm audit --omit=dev --audit-level=high
 ```
 
 Artifact должен включать `dist`, production manifests/lock и файлы, необходимые `npm ci --omit=dev`; `.env`, `.local`, test reports, coverage, локальные backups и credentials исключаются. До отправки вычислите SHA-256 архива, после загрузки пересчитайте его на VPS и сравните. Release directory создаётся новым; существующий release не перезаписывается.
+
+## Cutover на `meal.royalexander.online`
+
+До начала должны существовать DNS A-записи `meal.royalexander.online` и `admin.meal.royalexander.online` на `91.201.42.153`; корневые записи домена не менять. С обоих независимых resolver-ов подтвердить один и тот же IP. Пока DNS не опубликован, полный `deploy/nginx/meal-planner.conf` устанавливать нельзя: сертификата для новых имён ещё нет.
+
+1. Создать root-only backup `/var/backups/meal-planner/domain-cutover-<UTC>/` для `/etc/nginx/sites-available/meal-planner`, `/etc/meal-planner/deploy.env` и `/srv/meal/deployment`, записать SHA-256 и проверить читаемость копий.
+2. Установить временный HTTP-only vhost только для двух новых имён с ACME challenge, выполнить `nginx -t` и reload. Выпустить один ECDSA SAN-сертификат: `certbot certonly --nginx --cert-name meal.royalexander.online -d meal.royalexander.online -d admin.meal.royalexander.online --key-type ecdsa`. Проверить SAN и `certbot renew --dry-run`.
+3. Установить из проверенной revision полный `deploy/nginx/meal-planner.conf`, но ещё не reload. В `/etc/meal-planner/deploy.env` атомарно заменить все четыре origin-переменные значениями из раздела «Размещение и конфигурация»; не менять secrets или image digests.
+4. Выполнить `nginx -t`, затем atomically reload Nginx и `docker compose -f /srv/meal/deployment/compose.production.yml up -d --no-deps --force-recreate backend worker`. Это применяет CORS/CSRF allowlist без миграции БД.
+5. Выполнить `sh /srv/meal/deployment/verify.sh --component all`, local health, оба новых HTTPS origin, same-origin `/api/v1`, login/logout frontend и admin password → MFA. Убедиться, что технические UI URL дают `302`, а их `/api/` — `410` с `Cache-Control: no-store`. Проверить отсутствие root-домена в `nginx -T`.
+6. Оставить старый сертификат и `302` aliases на согласованное окно наблюдения (минимум 48 часов). Не заменять их permanent redirect, пока клиенты и внешние ссылки не проверены.
+
+Rollback выполняется целиком: остановить новые проверки, восстановить из одного backup прежние Nginx site и `deploy.env`, выполнить `nginx -t`, reload и `docker compose -f /srv/meal/deployment/compose.production.yml up -d --no-deps --force-recreate backend worker`, затем проверить старые public origins, login и readiness. DNS новых имён и новый сертификат можно оставить: они не должны указывать на частично переключённый runtime. Не откатывать БД и не удалять данные — этот cutover не меняет schema.
 
 ## Docker Compose cutover и автодеплой
 
@@ -140,10 +155,13 @@ curl --fail --silent http://127.0.0.1:3001/health/live
 curl --fail --silent http://127.0.0.1:3001/health/ready
 curl --fail --silent http://127.0.0.1:3000/healthz
 curl --fail --silent http://127.0.0.1:3002/healthz
-curl --fail --silent https://abstract-usable-gazebo.ruweb.place/health/live
-curl --fail --silent https://abstract-usable-gazebo.ruweb.place/health/ready
-curl --fail --silent --output /dev/null https://abstract-usable-gazebo.ruweb.place/
-curl --fail --silent --output /dev/null https://admin.abstract-usable-gazebo.ruweb.place/
+curl --fail --silent https://meal.royalexander.online/health/live
+curl --fail --silent https://meal.royalexander.online/health/ready
+curl --fail --silent --output /dev/null https://meal.royalexander.online/
+curl --fail --silent --output /dev/null https://admin.meal.royalexander.online/
+test "$(curl --silent --output /dev/null --write-out '%{http_code}' https://abstract-usable-gazebo.ruweb.place/)" = 302
+test "$(curl --silent --output /dev/null --write-out '%{http_code}' https://admin.abstract-usable-gazebo.ruweb.place/)" = 302
+test "$(curl --silent --output /dev/null --write-out '%{http_code}' https://abstract-usable-gazebo.ruweb.place/api/v1/session)" = 410
 docker compose -f /srv/meal/deployment/compose.production.yml logs --since 15m
 nginx -t
 ufw status verbose

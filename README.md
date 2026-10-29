@@ -26,6 +26,7 @@ npm run openapi
 - Телеметрия не содержит токены, содержимое документов и чувствительные payloads; правила — `docs/telemetry.md`.
 - Worker topology и maintenance-команды описаны в `docs/operational-maintenance.md`.
 - Admin-only observability snapshot и host collector описаны в `docs/observability-runbook.md`; приложение не получает Docker socket.
+- Versioned admin acceptance checklist хранит текущий результат, CAS/idempotency и append-only history для 83 кейсов из четырёх manual test-документов; committed catalog находится в `resources/acceptance-test-catalog.json`.
 
 Полная ручная и API-приёмка находится в `docs/TESTs.md`. Развёрнутый тестовый production-стенд, адреса, сервисы и эксплуатационные команды описаны в `docs/DEPLOYMENT.md`. Юридический пакет — `docs/legal/`; он остаётся `draft_blocked` до заполнения реальных данных и утверждения.
 

@@ -10,6 +10,14 @@
 4. Для нового provider/worker без telemetry ожидается `no_samples`, а не green. Искусственно устаревший sample даёт `stale`; очередь и pool остаются bounded aggregates без job/session identifiers.
 5. Проверить `deploy/verify.sh`: Docker socket отсутствует во всех пяти containers; observability directory смонтирован read-only только backend; snapshot является bounded regular file. Linux-host отдельно проверяет hardened systemd unit/timer и atomic update во время повторных чтений.
 
+### Admin acceptance checklist
+
+1. `GET /api/v1/admin/acceptance-tests` без admin cookie, с user/moderator/staff cookie, отозванной admin-session, отозванной ролью или TOTP возвращает `401/403`. Успешный ответ имеет `Cache-Control: no-store`, четыре группы и ровно 83 versioned case; чтение не создаёт run, result или audit row.
+2. Первый `PUT /api/v1/admin/acceptance-tests/{caseId}` атомарно создаёт run текущей версии каталога и один result/event/audit. Повтор с тем же idempotency key и payload возвращает тот же response без второго эффекта; тот же key с другим payload возвращает `409`.
+3. Два администратора сохраняют один `expectedVersion`: выигрывает один, второй получает `409 ACCEPTANCE_RESULT_CHANGED`, перечитывает workspace и не теряет свой локальный комментарий. Комментарий длиннее 1000 символов и неизвестный case ID отклоняются до mutation.
+4. `POST .../{caseId}/reset` переводит проверенный кейс в `not_tested`, сохраняет текущий комментарий и immutable event history. Reset для ещё не проверенного кейса возвращает `409` и ничего не создаёт.
+5. Изменение исходного раздела меняет checksum и `catalogVersion`: новый run начинается с нулевого progress, старый run/events остаются в БД. Runtime и CI валидируют committed catalog без соседних репозиториев; maintainer generator читает четыре manual-документа только при явном обновлении каталога.
+
 ## 1. Входные условия
 
 - PostgreSQL прошёл `docs/DATABASE_TESTING.md`.

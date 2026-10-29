@@ -285,4 +285,8 @@ GRANT UPDATE(status,result,version) ON meal.payment_reconciliations TO meal_app;
 GRANT UPDATE(status,provider_ref,provider_event_id,consequence_applied_at,version) ON meal.payment_refunds TO meal_app;
 GRANT UPDATE(status,accepted_at,version) ON meal.billing_orders TO meal_app;
 GRANT UPDATE(granted,balance_projection,reserved_projection,version) ON meal.ai_buckets TO meal_app;
+-- v30 administrator acceptance checklist. Events are append-only and old catalog runs remain immutable history.
+GRANT SELECT,INSERT ON meal.acceptance_test_runs,meal.acceptance_test_results,meal.acceptance_test_events TO meal_app;
+GRANT UPDATE(source_checksum,status,comment,checked_by,checked_at,updated_at,version)
+ ON meal.acceptance_test_results TO meal_app;
 COMMIT;
