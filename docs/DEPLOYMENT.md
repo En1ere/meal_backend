@@ -33,7 +33,7 @@
 - Frontend: `/srv/meal/frontend/current`, сервис `meal-frontend.service`.
 - Admin: `/srv/meal/admin/current/build`, статическая выдача Nginx со SPA fallback.
 - Backend env: `/etc/meal-planner/backend.env`, владелец `root:meal`, mode `0640`.
-- Nginx site: `/etc/nginx/sites-available/meal-planner`.
+- Nginx site: `/etc/nginx/sites-available/meal-planner`, source template `deploy/nginx/meal-planner.conf`.
 - TLS: Let's Encrypt для основного и admin-домена, продление Certbot.
 - Baseline backup до первого deployment: `/var/backups/meal-planner/predeploy-20261027-0515.dump`, root-only.
 - Свежий backup непосредственно перед schema v29: `/var/backups/meal-planner/pre-migration029-20261028-0710.dump`, `2,114,768` bytes, SHA-256 `85b25e20540b759e0ec0f225a4f149dbc063a4f152afcc9b57222f9402da8ec4`, `root:root`, mode `0600`.

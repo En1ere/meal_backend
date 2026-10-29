@@ -1,5 +1,7 @@
 # Backend version-list
 
+0.0.135 - 10.29.2026 | 10:13 - В repository deployment contract добавлен точный host-Nginx template для TLS edge: public origin проксирует API/health/frontend на loopback `3001/3000`, admin origin — API/backend и SPA container на `3002`; сертификаты, security headers и firewall boundary сохранены.
+
 0.0.134 - 10.29.2026 | 10:06 - Compose observation commands в production runbook синхронизированы с фактическим deployment layout: helper-файлы лежат в `/srv/meal/deployment`, non-secret settings читаются из `/etc/meal-planner/deploy.env`, а текущие digests — из root-owned `images.env`; runtime/API не изменялись.
 
 0.0.133 - 10.29.2026 | 09:47 - Docker build context включает `contracts/http-cases.json`, который нужен TypeScript-сборке contract-теста; исправлен Linux-only container build failure без изменения runtime/API.

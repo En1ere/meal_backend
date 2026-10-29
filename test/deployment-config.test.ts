@@ -31,6 +31,18 @@ void test('backend build uses the verified immutable Node base', async () => {
         /node:24\.19\.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df/,
     );
     assert.equal([...dockerfile.matchAll(/FROM \$\{NODE_IMAGE\}/g)].length, 3);
+    assert.match(dockerfile, /COPY contracts \.\/contracts/);
+});
+
+void test('host Nginx keeps TLS at the edge and proxies only loopback application ports', async () => {
+    const nginx = await text('deploy/nginx/meal-planner.conf');
+    assert.match(nginx, /server_name abstract-usable-gazebo\.ruweb\.place;/);
+    assert.match(nginx, /server_name admin\.abstract-usable-gazebo\.ruweb\.place;/);
+    assert.match(nginx, /proxy_pass http:\/\/127\.0\.0\.1:3000;/);
+    assert.match(nginx, /proxy_pass http:\/\/127\.0\.0\.1:3001;/);
+    assert.match(nginx, /proxy_pass http:\/\/127\.0\.0\.1:3002;/);
+    assert.doesNotMatch(nginx, /root \/srv\/meal\/admin/);
+    assert.match(nginx, /return 301 https:\/\/\$host\$request_uri;/);
 });
 
 void test('component deployment isolates UI rollout from database migration', async () => {
