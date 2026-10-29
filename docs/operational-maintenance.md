@@ -1,6 +1,6 @@
 # Operational maintenance entrypoints
 
-Этот срез закрывает серверные entrypoint-ы, но не запускает scheduler и не применяет PostgreSQL.
+Этот документ описывает server entrypoint-ы и отдельный production scheduler container; scheduler не применяет миграции PostgreSQL и не открывает HTTP ingress.
 
 ## Worker topology
 
@@ -19,6 +19,22 @@ Offline `npm run ops:readiness` отмечает PostgreSQL lease и этот te
 `executeEmbeddedWorker` предоставляет ту же shared-lease/deadline/observation границу для `ai-reconciliation` и `cooking-lifecycle`; оба application service подключены к ней. До применения v24 их activation flags остаются выключенными. В production включение также требует стабильного `WORKER_OWNER_ID`.
 
 Owner lease по умолчанию равен локальному `worker-<pid>`. Deployment scheduler может задать безопасный неперсональный `WORKER_OWNER_ID` по шаблону `[a-z][a-z0-9-]{2,63}`; значение используется только для владения lease и не попадает в observation/alert.
+
+## Production scheduler container
+
+`scripts/run-worker-scheduler.mjs` — единственный long-running scheduler. Он запускается отдельным non-root/read-only контейнером на том же immutable backend image, имеет только `meal-db`, не публикует порт и получает только `backend_database_url`. Полный `AppModule`, auth/MFA secrets и provider credentials worker-у не передаются; one-shot child использует минимальный `WorkerModule`.
+
+По умолчанию `WORKER_SCHEDULE_ALLOWLIST` пуст: контейнер пишет heartbeat, но не выполняет мутации. Разрешены только `scheduled-news`, `incident-ignore-expiry`, `scheduled-sanctions`, `diary-portions`, `cooking-lifecycle`. Email, exports, retention, account retention и AI отклоняются parser-ом независимо от interval-переменных. API container обязан явно держать `AI_RECONCILIATION_ENABLED=false` и `COOKING_LIFECYCLE_ENABLED=false`; scheduler также отказывается стартовать при включённом embedded mode.
+
+Каждый запуск выполняется в отдельном child process через `scripts/run-scheduled-task.mjs`. Внутри child `WorkerRuntimeFactory` получает PostgreSQL lease/fencing и admin+JSON telemetry; scheduler держит глобальную concurrency `1`, а DB pool первого cutover ограничен двумя соединениями. Первый запуск каждой задачи наступает только после полного interval+jitter, поэтому restart не создаёт стартовый burst. Следующий interval/backoff отсчитывается от фактического завершения child, без немедленного catch-up после долгой работы. Hard deadline равен topology timeout плюс 10 секунд: сначала child получает `SIGTERM`, через 5 секунд — `SIGKILL`. Незавершённый lease остаётся до TTL, поэтому restart/kill не создаёт overlap. `skipped_overlap` переносит следующий запуск, но не сбрасывает историю ошибок и poison state; timeout, lease unavailable/lost, partial и failure получают exponential backoff. После трёх последовательных ошибок только этот task изолируется на 15 минут, остальные продолжают работу.
+
+Health evidence атомарно пишется в tmpfs `/run/meal-worker/health.json`: только fixed task id, timestamps, outcome, bounded failure count и poison deadline. Payload, URL, credentials, owner id и domain identifiers запрещены. Healthcheck требует свежий heartbeat и состояния `idle|running`; во время долгого child-run heartbeat обновляется независимо.
+
+Безопасные минимальные интервалы: news/sanctions/diary/cooking — 60 секунд, incidents — 300 секунд. Override принимается только целым числом не меньше topology minimum; jitter 0–30 секунд, maximum backoff 60–3600 секунд, poison threshold 1–10 и shutdown grace 5–120 секунд.
+
+Emergency disable без смены image: установить `WORKER_SCHEDULE_ALLOWLIST=` и пересоздать только worker. Для полной остановки: `docker compose ... stop --timeout 45 worker`. Lease не удалять вручную; дождаться TTL и проверить health/telemetry. Повторное включение выполняется по одному task id после проверки предыдущего outcome. Rollback backend digest атомарно возвращает одновременно backend и worker, так как они используют один image.
+
+`account-retention` не входит в scheduler allowlist. Даже ручной `--apply` теперь дополнительно требует `WORKER_OWNER_ID`, `--approval-ticket=...` и `--approval-policy-version=...`, проходящие versioned destructive planner.
 
 ## Запланированные новости
 

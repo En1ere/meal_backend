@@ -31,11 +31,11 @@ printf '%s\n' "$candidate_image" >"$state_dir/candidate.image"
 printf '%s\n' "${revision:-unknown}" >"$state_dir/revision"
 
 compose config --quiet
-compose pull "$component"
+if [ "$component" = backend ]; then compose pull backend worker; else compose pull "$component"; fi
 if [ "$component" = backend ]; then
     # Only backend releases own schema changes. UI-only releases never touch PostgreSQL.
     MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/backup.sh" >"$state_dir/backup.path"
-    compose stop backend
+    compose stop backend worker
     compose --profile tools run --rm migrate
     compose --profile tools run --rm --no-deps --entrypoint cat migrate database/application-grants.sql \
         | compose exec -T postgres psql --username "${POSTGRES_USER:-meal_owner}" \
@@ -43,7 +43,7 @@ if [ "$component" = backend ]; then
     MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/proxy-smoke.sh" >"$state_dir/proxy-smoke.txt"
 fi
 
-compose up -d --no-deps "$component"
+if [ "$component" = backend ]; then compose up -d --no-deps backend worker; else compose up -d --no-deps "$component"; fi
 if ! MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/verify.sh" --component "$component"; then
     printf '%s\n' failed >"$state_dir/status"
     if [ "$component" = backend ] && {
@@ -58,8 +58,13 @@ if ! MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/verify.sh" --component "$component"; then
         exit 1
     fi
     set_component_image "$component" "$previous_image"
-    compose pull "$component"
-    compose up -d --no-deps "$component"
+    if [ "$component" = backend ]; then
+        compose pull backend worker
+        compose up -d --no-deps backend worker
+    else
+        compose pull "$component"
+        compose up -d --no-deps "$component"
+    fi
     if ! MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/verify.sh" --component "$component"; then
         printf '%s\n' rollback-failed >"$state_dir/rollback-status"
         echo "Candidate and previous $component images failed verification; database was not rolled back" >&2

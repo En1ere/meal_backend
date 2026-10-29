@@ -22,7 +22,7 @@ void test('production compose keeps database private and every image digest-pinn
     assert.match(compose, /127\.0\.0\.1:3000:3000/);
     assert.match(compose, /127\.0\.0\.1:3002:8080/);
     assert.match(compose, /profiles: \[(?:"|')?tools(?:"|')?\]/);
-    assert.equal([...compose.matchAll(/group_add: \['\$\{MEAL_SECRETS_GID:-29001\}'\]/g)].length, 2);
+    assert.equal([...compose.matchAll(/group_add: \['\$\{MEAL_SECRETS_GID:-29001\}'\]/g)].length, 3);
 });
 
 void test('backend build uses the verified immutable Node base', async () => {
@@ -33,6 +33,9 @@ void test('backend build uses the verified immutable Node base', async () => {
     );
     assert.equal([...dockerfile.matchAll(/FROM \$\{NODE_IMAGE\}/g)].length, 3);
     assert.match(dockerfile, /COPY contracts \.\/contracts/);
+    assert.match(dockerfile, /scripts\/run-worker-scheduler\.mjs/);
+    assert.match(dockerfile, /scripts\/run-scheduled-task\.mjs/);
+    assert.match(dockerfile, /scripts\/check-worker-health\.mjs/);
 });
 
 void test('host Nginx keeps TLS at the edge and proxies only loopback application ports', async () => {
@@ -50,6 +53,8 @@ void test('component deployment isolates UI rollout from database migration', as
     const deploy = await text('deploy/deploy.sh');
     assert.match(deploy, /--component/);
     assert.match(deploy, /if \[ "\$component" = backend \]; then/);
+    assert.match(deploy, /compose pull backend worker/);
+    assert.match(deploy, /compose up -d --no-deps backend worker/);
     assert.match(deploy, /persist_images/);
     assert.match(deploy, /compose up -d --no-deps "\$component"/);
     assert.match(deploy, /ALLOW_BACKEND_AUTO_ROLLBACK/);
@@ -70,6 +75,7 @@ void test('component deployment isolates UI rollout from database migration', as
     assert.match(bootstrap, /systemctl is-active/);
     assert.match(bootstrap, /validate_network_route meal-egress/);
     const verify = await text('deploy/verify.sh');
+    assert.match(verify, /require_healthy worker/);
     assert.match(verify, /TRUSTED_PROXY_CIDRS must equal the exact Docker gateway \/32 addresses/);
     assert.match(verify, /grep -E '\^\[0-9\]\{1,3\}/);
     const proxySmoke = await text('deploy/proxy-smoke.sh');

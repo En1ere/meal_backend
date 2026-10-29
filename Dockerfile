@@ -28,6 +28,7 @@ COPY --from=build --chown=node:node /app/dist/src ./dist/src
 COPY --chown=node:node resources ./resources
 COPY --chown=node:node database ./database
 COPY --chown=node:node scripts/migrate.mjs ./scripts/migrate.mjs
+COPY --chown=node:node scripts/run-worker-scheduler.mjs scripts/run-scheduled-task.mjs scripts/check-worker-health.mjs ./scripts/
 
 USER node
 EXPOSE 3001

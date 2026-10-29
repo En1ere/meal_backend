@@ -25,16 +25,23 @@ require_running() {
         echo "$1 container is not running" >&2; exit 1;
     }
 }
+require_healthy() {
+    require_running "$1"
+    container_id=$(compose ps -q "$1")
+    test "$(docker inspect --format '{{.State.Health.Status}}' "$container_id")" = healthy || {
+        echo "$1 container is not healthy" >&2; exit 1;
+    }
+}
 
 case "$component" in
     backend)
-        require_running postgres; require_running backend
+        require_running postgres; require_running backend; require_healthy worker
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready ;;
     frontend) require_running frontend; wait_http frontend http://127.0.0.1:3000/healthz ;;
     admin) require_running admin; wait_http admin http://127.0.0.1:3002/healthz ;;
     all)
-        require_running postgres; require_running backend; require_running frontend; require_running admin
+        require_running postgres; require_running backend; require_healthy worker; require_running frontend; require_running admin
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready
         wait_http frontend http://127.0.0.1:3000/healthz

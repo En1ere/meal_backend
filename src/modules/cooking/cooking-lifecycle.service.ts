@@ -67,6 +67,9 @@ export class CookingLifecycleService implements OnModuleInit, OnApplicationShutd
             (result) => result,
         );
     }
+    runScheduledBatch() {
+        return this.tick();
+    }
     private async preferencesRow(tx: WorkflowTx, userId: string) {
         const row = (
             await sql<{

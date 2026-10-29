@@ -72,6 +72,56 @@ services:
         stop_grace_period: 120s
         networks: [meal-db, meal-egress]
 
+    worker:
+        <<: *application-hardening
+        image: ${BACKEND_IMAGE:?immutable backend digest reference is required}
+        user: node
+        read_only: true
+        cap_drop: [ALL]
+        security_opt: [no-new-privileges:true]
+        group_add: ['${MEAL_SECRETS_GID:-29001}']
+        pids_limit: 64
+        environment:
+            NODE_ENV: production
+            APP_VERSION: ${BACKEND_VERSION:?backend version is required}
+            FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?frontend HTTPS origin is required}
+            ADMIN_FRONTEND_ORIGIN: ${ADMIN_FRONTEND_ORIGIN:?admin HTTPS origin is required}
+            DATABASE_URL_FILE: /run/secrets/backend_database_url
+            WORKER_DATABASE_POOL_SIZE: ${WORKER_DATABASE_POOL_SIZE:-2}
+            LOG_LEVEL: ${WORKER_LOG_LEVEL:-info}
+            WORKER_OWNER_ID: ${WORKER_OWNER_ID:-worker-primary}
+            WORKER_SCHEDULE_ALLOWLIST: ${WORKER_SCHEDULE_ALLOWLIST:-}
+            WORKER_SCHEDULE_NEWS_SECONDS: ${WORKER_SCHEDULE_NEWS_SECONDS:-60}
+            WORKER_SCHEDULE_INCIDENTS_SECONDS: ${WORKER_SCHEDULE_INCIDENTS_SECONDS:-300}
+            WORKER_SCHEDULE_SANCTIONS_SECONDS: ${WORKER_SCHEDULE_SANCTIONS_SECONDS:-60}
+            WORKER_SCHEDULE_DIARY_PORTIONS_SECONDS: ${WORKER_SCHEDULE_DIARY_PORTIONS_SECONDS:-60}
+            WORKER_SCHEDULE_COOKING_SECONDS: ${WORKER_SCHEDULE_COOKING_SECONDS:-60}
+            WORKER_SCHEDULER_JITTER_SECONDS: ${WORKER_SCHEDULER_JITTER_SECONDS:-5}
+            WORKER_SCHEDULER_MAX_BACKOFF_SECONDS: ${WORKER_SCHEDULER_MAX_BACKOFF_SECONDS:-900}
+            WORKER_SCHEDULER_POISON_FAILURES: ${WORKER_SCHEDULER_POISON_FAILURES:-3}
+            WORKER_SCHEDULER_POISON_COOLDOWN_SECONDS: ${WORKER_SCHEDULER_POISON_COOLDOWN_SECONDS:-900}
+            WORKER_SCHEDULER_HEARTBEAT_SECONDS: ${WORKER_SCHEDULER_HEARTBEAT_SECONDS:-15}
+            WORKER_SCHEDULER_SHUTDOWN_GRACE_SECONDS: ${WORKER_SCHEDULER_SHUTDOWN_GRACE_SECONDS:-30}
+            WORKER_STATE_FILE: /run/meal-worker/health.json
+            AI_RECONCILIATION_ENABLED: 'false'
+            COOKING_LIFECYCLE_ENABLED: 'false'
+        secrets: [backend_database_url]
+        tmpfs:
+            - '/tmp:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=0700,size=32m'
+            - '/run/meal-worker:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=0700,size=4m'
+        depends_on:
+            postgres:
+                condition: service_healthy
+        healthcheck:
+            test: [CMD, node, scripts/check-worker-health.mjs, /run/meal-worker/health.json, '60']
+            interval: 15s
+            timeout: 3s
+            retries: 4
+            start_period: 20s
+        stop_grace_period: 45s
+        networks: [meal-db]
+        command: [node, scripts/run-worker-scheduler.mjs]
+
     frontend:
         <<: *application-hardening
         image: ${FRONTEND_IMAGE:?immutable frontend digest reference is required}
