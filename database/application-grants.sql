@@ -2,6 +2,7 @@
 BEGIN ISOLATION LEVEL SERIALIZABLE;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='30s';
+GRANT USAGE ON SCHEMA meal TO meal_app;
 GRANT SELECT,INSERT ON meal.admin_session_unlocks TO meal_app;
 GRANT SELECT ON meal.schema_migrations,meal.environment,meal.users,meal.password_credentials,
  meal.user_settings,meal.sessions,meal.auth_challenges,meal.mfa_factors,meal.mfa_recovery_codes,

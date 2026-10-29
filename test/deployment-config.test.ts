@@ -64,6 +64,8 @@ void test('component deployment isolates UI rollout from database migration', as
     assert.equal([...workflow.matchAll(/Reject stale main tip/g)].length, 3);
     assert.match(workflow, /\/usr\/local\/sbin\/meal-deploy backend/);
     const bootstrap = await text('deploy/bootstrap-restore.sh');
+    const grants = await text('database/application-grants.sql');
+    assert.match(grants, /GRANT USAGE ON SCHEMA meal TO meal_app;/);
     assert.match(bootstrap, /Target volume is not empty; restore refused/);
     assert.match(bootstrap, /systemctl is-active/);
     assert.match(bootstrap, /validate_network_route meal-egress/);

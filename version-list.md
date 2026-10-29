@@ -1,5 +1,7 @@
 # Backend version-list
 
+0.0.137 - 10.29.2026 | 11:05 - Production readiness подтвердил, что точечные table grants не работают без schema traversal: `application-grants.sql` теперь явно выдаёт `meal_app` только `USAGE` на schema `meal`, сохраняя `CREATE=false`. Это синхронизирует фактические grants с ранее документированным least-privilege контрактом и позволяет readiness использовать разрешённую `schema_migrations`; публичные DTO и endpoint-ы не менялись.
+
 0.0.136 - 10.29.2026 | 10:17 - В deployment runbook добавлена краткая карта для человека и агента: `main`/GHCR digest, allowlisted helper, server paths, ports, health, first restore и rollback boundary. Добавлен `meal-planner-compose.service`, который после reboot идемпотентно поднимает текущие digests без автомиграций. Первый production cutover устранил fail-closed проблемы restore/secrets и readiness: bootstrap корректно читает root-only dump и подключает `pg_restore` ролью `meal_owner`, backend/migrate получают отдельный supplemental GID `29001`, а Pool сохраняет URI option `-c role=meal_app` при добавлении timezone/search_path; секреты не добавлялись.
 
 0.0.135 - 10.29.2026 | 10:13 - В repository deployment contract добавлен точный host-Nginx template для TLS edge: public origin проксирует API/health/frontend на loopback `3001/3000`, admin origin — API/backend и SPA container на `3002`; сертификаты, security headers и firewall boundary сохранены.
