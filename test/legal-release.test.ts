@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { test } from 'node:test';
 import { ServiceUnavailableException } from '@nestjs/common';
 import {
@@ -220,4 +222,24 @@ void test('invalid or absent external input fails closed with bounded blockers',
         new DisabledLegalEvidenceProvider().load(target.targetFingerprint),
         ServiceUnavailableException,
     );
+});
+
+void test('user-facing legal drafts use only the agreed placeholder and remain publication-blocked', () => {
+    const root = path.resolve(process.cwd(), 'docs', 'legal');
+    const manifest = JSON.parse(readFileSync(path.join(root, 'package-manifest.json'), 'utf8')) as {
+        packageStatus: string;
+        publicationEligible: boolean;
+        documents: Array<{ file: string; status: string; publicationEligible: boolean }>;
+    };
+    assert.equal(manifest.documents.length, 11);
+    assert.equal(manifest.packageStatus, 'draft_blocked');
+    assert.equal(manifest.publicationEligible, false);
+    for (const document of manifest.documents) {
+        assert.equal(document.status, 'draft_blocked');
+        assert.equal(document.publicationEligible, false);
+        const source = readFileSync(path.join(root, document.file), 'utf8');
+        const markers = source.match(/\[[^\]]+\]/g) ?? [];
+        assert.ok(source.includes('[Тут будут данные]'));
+        assert.ok(markers.every((marker) => marker === '[Тут будут данные]' || marker === '[ ]'));
+    }
 });

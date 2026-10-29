@@ -1,5 +1,7 @@
 # Backend version-list
 
+0.0.140 - 10.29.2026 | 12:06 - Синхронизированы 11 пользовательских legal draft-текстов с согласованной заглушкой `[Тут будут данные]` при сохранении `draft_blocked`/`publicationEligible:false`; добавлен regression-test, исключающий случайную публикацию. Зафиксирован последовательный бесплатный production tracker и точный owner-input checklist для observability, email, storage/scanner, OCR, push, backup и будущего AI; API, схема БД и consent evidence не менялись.
+
 0.0.139 - 10.29.2026 | 11:23 - Актуализированы live Docker inventory и единый production TODO по данным read-only legacy root и текущего operational-readiness: отдельно отмечен закрытый Docker/schema v29 cutover тестового стенда и зафиксирован последовательный план внешних gates — legal/data processing, off-host backup/observability, email, storage/scanner, OCR, payments/receipts/refunds, push, AI, workers/shared lease и финальная физическая приёмка. Provider credentials и публичные контракты не добавлялись.
 
 0.0.138 - 10.29.2026 | 11:12 - Post-deploy verify адаптирован к Docker 29.9: служебное значение `invalid IP` у internal network больше не превращается в ложный trusted proxy gateway. Gate принимает только валидные IPv4, а production smoke зафиксировал единственный фактический Nginx source `172.31.0.1/32`; широкие сети и internal DB gateway не доверяются.
