@@ -25,6 +25,7 @@ npm run openapi
 - Вложения и OCR ограничены размером/типом, проходят безопасную обработку и ручное подтверждение; provenance runtime — `resources/ocr/README.md`.
 - Телеметрия не содержит токены, содержимое документов и чувствительные payloads; правила — `docs/telemetry.md`.
 - Worker topology и maintenance-команды описаны в `docs/operational-maintenance.md`.
+- Admin-only observability snapshot и host collector описаны в `docs/observability-runbook.md`; приложение не получает Docker socket.
 
 Полная ручная и API-приёмка находится в `docs/TESTs.md`. Развёрнутый тестовый production-стенд, адреса, сервисы и эксплуатационные команды описаны в `docs/DEPLOYMENT.md`. Юридический пакет — `docs/legal/`; он остаётся `draft_blocked` до заполнения реальных данных и утверждения.
 

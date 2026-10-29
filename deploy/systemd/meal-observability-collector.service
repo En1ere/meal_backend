@@ -1,0 +1,44 @@
+[Unit]
+Description=Meal Planner bounded host observability collector
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+SupplementaryGroups=meal-observability
+UMask=0027
+ExecStart=/usr/bin/python3 /usr/local/libexec/meal-planner/host-observability-collector.py
+TimeoutStartSec=30
+RuntimeMaxSec=30
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=true
+PrivateDevices=true
+PrivateNetwork=true
+IPAddressDeny=any
+DevicePolicy=closed
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_UNIX
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+ReadWritePaths=/var/lib/meal-planner/observability
+InaccessiblePaths=/etc/meal-planner/secrets /var/lib/meal-planner/deployments
+TasksMax=32
+MemoryMax=128M
+CPUQuota=20%
+IOSchedulingClass=idle
+Nice=10
+

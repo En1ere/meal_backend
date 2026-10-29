@@ -59,6 +59,40 @@ case "$component" in
 esac
 if [ "$component" = backend ] || [ "$component" = all ]; then
     backend_id=$(compose ps -q backend)
+    backend_mounts=$(docker inspect --format '{{range .Mounts}}{{println .Source .Destination .RW}}{{end}}' "$backend_id")
+    observability_mount='/var/lib/meal-planner/observability /run/meal-observability false'
+    [ "$(printf '%s\n' "$backend_mounts" | grep -Fxc "$observability_mount" || true)" -eq 1 ] || {
+        echo "Backend observability directory must have one exact read-only mount" >&2
+        exit 77
+    }
+    [ -d /var/lib/meal-planner/observability ] && [ ! -L /var/lib/meal-planner/observability ] && \
+        [ "$(stat -c '%u %g %a' /var/lib/meal-planner/observability)" = '0 29002 2750' ] || {
+        echo "Host observability directory metadata is unsafe; bootstrap it before rollout" >&2
+        exit 77
+    }
+    for application_service in backend worker frontend admin postgres; do
+        application_id=$(compose ps -q "$application_service")
+        [ -z "$application_id" ] && continue
+        application_mounts=$(docker inspect --format '{{range .Mounts}}{{println .Source .Destination .RW}}{{end}}' "$application_id")
+        if printf '%s\n' "$application_mounts" | grep -Fq 'docker.sock'; then
+            echo "$application_service must not mount the Docker socket" >&2
+            exit 77
+        fi
+        if [ "$application_service" != backend ] && printf '%s\n' "$application_mounts" | grep -Eq '/var/lib/meal-planner/observability|/run/meal-observability'; then
+            echo "$application_service must not mount observability data" >&2
+            exit 77
+        fi
+    done
+    case "${OBSERVABILITY_HOST_SNAPSHOT_ENABLED:-true}" in
+        true)
+            compose exec -T backend node --input-type=module -e "const {HostSnapshotReader}=await import('./dist/src/modules/admin-observability/host-snapshot.reader.js');const snapshot=await new HostSnapshotReader('/run/meal-observability/current.json').read();if(snapshot.freshness.state!=='fresh'||!['ok','partial'].includes(snapshot.collectorStatus))process.exit(1)" || {
+                echo "Enabled host observability snapshot is not safely readable" >&2
+                exit 77
+            }
+            ;;
+        false) printf '%s\n' 'Host observability is explicitly disabled; safe read-only mount remains required and snapshot may be absent' ;;
+        *) echo "OBSERVABILITY_HOST_SNAPSHOT_ENABLED must be true or false" >&2; exit 64 ;;
+    esac
     gateways=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{if .Gateway}}{{.Gateway}}{{"\n"}}{{end}}{{end}}' "$backend_id" \
         | grep -E '^[0-9]{1,3}(\.[0-9]{1,3}){3}$' | sort -u)
     expected=$(printf '%s\n' "$gateways" | sed '/^$/d;s/$/\/32/' | sort | paste -sd, -)

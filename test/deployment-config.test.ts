@@ -22,7 +22,54 @@ void test('production compose keeps database private and every image digest-pinn
     assert.match(compose, /127\.0\.0\.1:3000:3000/);
     assert.match(compose, /127\.0\.0\.1:3002:8080/);
     assert.match(compose, /profiles: \[(?:"|')?tools(?:"|')?\]/);
-    assert.equal([...compose.matchAll(/group_add: \['\$\{MEAL_SECRETS_GID:-29001\}'\]/g)].length, 3);
+    assert.equal([...compose.matchAll(/'\$\{MEAL_SECRETS_GID:-29001\}'/g)].length, 3);
+    assert.equal([...compose.matchAll(/'29002'/g)].length, 1);
+    assert.doesNotMatch(compose, /MEAL_OBSERVABILITY_GID/);
+    assert.match(
+        compose,
+        /source: \/var\/lib\/meal-planner\/observability[\s\S]*target: \/run\/meal-observability[\s\S]*read_only: true[\s\S]*create_host_path: false/,
+    );
+    assert.doesNotMatch(compose, /docker\.sock/);
+});
+
+void test('host observability collector is bounded, atomic and systemd sandboxed', async () => {
+    const collector = await text('deploy/host-observability-collector.py');
+    assert.match(collector, /SERVICES = \("postgres", "backend", "worker", "frontend", "admin"\)/);
+    assert.match(collector, /MAX_COMMAND_OUTPUT_BYTES = 32_768/);
+    assert.match(collector, /COMMAND_TIMEOUT_SECONDS = 2\.0/);
+    assert.match(collector, /shell=False/);
+    assert.match(collector, /os\.O_EXCL \| os\.O_NOFOLLOW/);
+    assert.match(collector, /os\.fsync\(directory_descriptor\)/);
+    assert.match(collector, /collectorStatus"] == "partial"[\s\S]*return 0/);
+    assert.doesNotMatch(collector, /collectorStatus"] == "partial"[\s\S]{0,160}return 1/);
+    assert.doesNotMatch(collector, /shell=True|os\.system|eval\(|exec\(/);
+    const service = await text('deploy/systemd/meal-observability-collector.service');
+    assert.doesNotMatch(service, /Requires=docker\.service/);
+    for (const directive of [
+        'NoNewPrivileges=true',
+        'CapabilityBoundingSet=',
+        'PrivateNetwork=true',
+        'ProtectSystem=strict',
+        'ReadWritePaths=/var/lib/meal-planner/observability',
+        'InaccessiblePaths=/etc/meal-planner/secrets',
+    ])
+        assert.ok(service.includes(directive), directive);
+    const timer = await text('deploy/systemd/meal-observability-collector.timer');
+    assert.match(timer, /OnUnitActiveSec=60s/);
+    assert.match(timer, /Persistent=false/);
+    assert.equal((await text('deploy/sysusers.d/meal-observability.conf')).trim(), 'g meal-observability 29002 -');
+    assert.equal(
+        (await text('deploy/tmpfiles.d/meal-observability.conf')).trim(),
+        'd /var/lib/meal-planner/observability 2750 root meal-observability -',
+    );
+    const verify = await text('deploy/verify.sh');
+    assert.match(verify, /docker\.sock/);
+    assert.match(verify, /OBSERVABILITY_HOST_SNAPSHOT_ENABLED/);
+    assert.match(verify, /Enabled host observability snapshot is not safely readable/);
+    assert.match(verify, /HostSnapshotReader/);
+    assert.match(verify, /snapshot\.freshness\.state!==['"]fresh['"]/);
+    assert.match(verify, /0 29002 2750/);
+    assert.match(verify, /must not mount observability data/);
 });
 
 void test('backend build uses the verified immutable Node base', async () => {
@@ -59,6 +106,18 @@ void test('component deployment isolates UI rollout from database migration', as
     assert.match(deploy, /compose up -d --no-deps "\$component"/);
     assert.match(deploy, /ALLOW_BACKEND_AUTO_ROLLBACK/);
     assert.match(deploy, /BACKEND_ROLLBACK_EVIDENCE_FILE/);
+    assert.match(deploy, /Observability host bootstrap is required before the first backend rollout/);
+    assert.match(deploy, /0 29002 2750/);
+    assert.ok(
+        deploy.indexOf('Observability host bootstrap is required') < deploy.indexOf('compose config --quiet'),
+        'host bootstrap gate must run before compose rollout',
+    );
+    const observabilityRunbook = await text('docs/observability-runbook.md');
+    assert.match(observabilityRunbook, /install -d -o root -g root -m 0755 \/usr\/local\/libexec\/meal-planner/);
+    assert.match(observabilityRunbook, /\[ ! -s "\$backup_dir\/SHA256SUMS" \] \|\|/);
+    assert.match(observabilityRunbook, /CANDIDATE_SHA256SUMS/);
+    assert.match(observabilityRunbook, /candidate_stage/);
+    assert.match(observabilityRunbook, /до первого rollout compose-файла/);
     const wrapper = await text('deploy/meal-deploy');
     assert.match(wrapper, /\[ "\$#" -eq 3 \]/);
     assert.match(wrapper, /meal_backend@sha256/);

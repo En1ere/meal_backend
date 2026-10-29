@@ -17,7 +17,10 @@ export function databasePoolConfig(connectionString: string) {
 @Injectable()
 export class DatabaseService implements OnApplicationShutdown {
     readonly db: Kysely<DatabaseSchema> | undefined;
+    private readonly pool: pg.Pool | undefined;
+    private readonly poolMax: number;
     constructor(@Inject(APP_CONFIG) config: AppConfig) {
+        this.poolMax = config.DATABASE_POOL_SIZE;
         if (config.DATABASE_URL) {
             const connection = databasePoolConfig(config.DATABASE_URL);
             const pool = new pg.Pool({
@@ -30,8 +33,18 @@ export class DatabaseService implements OnApplicationShutdown {
             });
             // Never print raw PostgreSQL errors: they may contain SQL values.
             pool.on('error', () => console.error('PostgreSQL idle connection failed'));
+            this.pool = pool;
             this.db = new Kysely<DatabaseSchema>({ dialect: new PostgresDialect({ pool }) });
         }
+    }
+    poolSnapshot() {
+        if (!this.pool) return null;
+        return {
+            max: this.poolMax,
+            total: this.pool.totalCount,
+            idle: this.pool.idleCount,
+            waiting: this.pool.waitingCount,
+        };
     }
     async ready(): Promise<boolean> {
         if (!this.db) return false;

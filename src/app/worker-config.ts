@@ -28,6 +28,8 @@ export function readWorkerApplicationConfig(env: NodeJS.ProcessEnv): AppConfig {
         ADMIN_ALLOWED_IPS: [],
         DATABASE_URL: databaseUrl,
         DATABASE_POOL_SIZE: poolSize,
+        OBSERVABILITY_HOST_SNAPSHOT_ENABLED: false,
+        OBSERVABILITY_HOST_SNAPSHOT_FILE: undefined,
         WORKER_OWNER_ID: env.WORKER_OWNER_ID,
         COOKING_LIFECYCLE_ENABLED: false,
         LOG_LEVEL: 'warn',

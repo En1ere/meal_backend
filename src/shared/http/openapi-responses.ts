@@ -120,6 +120,7 @@ import {
     adminDetailSchema,
     adminRelatedPageSchema,
 } from '../../modules/admin/admin-read.contracts.js';
+import { adminObservabilitySchema } from '../../modules/admin-observability/admin-observability.contracts.js';
 import {
     notificationSettingsSchema,
     supportCommandResultSchema,
@@ -360,6 +361,7 @@ export function documentResponses(document: OpenAPIObject): OpenAPIObject {
     accountSchemas['/api/v1/admin/{section}/search'] = adminPageSchema;
     accountSchemas['/api/v1/admin/{section}/{id}'] = adminDetailSchema;
     accountSchemas['/api/v1/admin/{section}/{id}/related/{collection}/search'] = adminRelatedPageSchema;
+    accountSchemas['/api/v1/admin/observability'] = adminObservabilitySchema;
     accountSchemas['/api/v1/admin/notification-preferences'] = notificationSettingsSchema;
     accountSchemas['/api/v1/admin/support/{id}/reply'] = supportCommandResultSchema;
     accountSchemas['/api/v1/admin/support/{id}/reopen'] = supportCommandResultSchema;

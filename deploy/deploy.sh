@@ -30,6 +30,13 @@ printf '%s\n' "$previous_image" >"$state_dir/previous.image"
 printf '%s\n' "$candidate_image" >"$state_dir/candidate.image"
 printf '%s\n' "${revision:-unknown}" >"$state_dir/revision"
 
+if [ "$component" = backend ]; then
+    [ -d /var/lib/meal-planner/observability ] && [ ! -L /var/lib/meal-planner/observability ] && \
+        [ "$(stat -c '%u %g %a' /var/lib/meal-planner/observability)" = '0 29002 2750' ] || {
+        echo "Observability host bootstrap is required before the first backend rollout" >&2
+        exit 78
+    }
+fi
 compose config --quiet
 if [ "$component" = backend ]; then compose pull backend worker; else compose pull "$component"; fi
 if [ "$component" = backend ]; then

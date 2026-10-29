@@ -33,7 +33,7 @@ services:
     backend:
         <<: *application-hardening
         image: ${BACKEND_IMAGE:?immutable backend digest reference is required}
-        group_add: ['${MEAL_SECRETS_GID:-29001}']
+        group_add: ['${MEAL_SECRETS_GID:-29001}', '29002']
         environment:
             NODE_ENV: production
             HOST: 0.0.0.0
@@ -45,6 +45,8 @@ services:
             SECURITY_KEY_FILE: /run/secrets/backend_security_key
             MFA_ENCRYPTION_KEY_FILE: /run/secrets/backend_mfa_encryption_key
             DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-10}
+            OBSERVABILITY_HOST_SNAPSHOT_ENABLED: ${OBSERVABILITY_HOST_SNAPSHOT_ENABLED:-true}
+            OBSERVABILITY_HOST_SNAPSHOT_FILE: ${OBSERVABILITY_HOST_SNAPSHOT_FILE-/run/meal-observability/current.json}
             LOG_LEVEL: ${BACKEND_LOG_LEVEL:-info}
             TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:?trusted host proxy CIDR is required}
             ADMIN_ALLOWED_IPS: ${ADMIN_ALLOWED_IPS:-}
@@ -52,6 +54,13 @@ services:
             COOKING_LIFECYCLE_ENABLED: 'false'
         secrets: [backend_database_url, backend_security_key, backend_mfa_encryption_key]
         ports: ['127.0.0.1:3001:3001']
+        volumes:
+            - type: bind
+              source: /var/lib/meal-planner/observability
+              target: /run/meal-observability
+              read_only: true
+              bind:
+                  create_host_path: false
         tmpfs:
             - '/tmp:rw,noexec,nosuid,nodev,size=128m'
         depends_on:

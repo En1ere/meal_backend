@@ -94,10 +94,15 @@ import { FamilyController } from '../modules/family/family.http.js';
 import { FamilyService } from '../modules/family/family.service.js';
 import { AdminReadController } from '../modules/admin/admin-read.http.js';
 import { AdminReadService } from '../modules/admin/admin-read.service.js';
+import { AdminObservabilityController } from '../modules/admin-observability/admin-observability.http.js';
+import { AdminObservabilityRepository } from '../modules/admin-observability/admin-observability.repository.js';
+import { AdminObservabilityService } from '../modules/admin-observability/admin-observability.service.js';
+import { HostSnapshotReader } from '../modules/admin-observability/host-snapshot.reader.js';
 import { AdminActionsController } from '../modules/admin-actions/admin-actions.http.js';
 import { AdminActionsService } from '../modules/admin-actions/admin-actions.service.js';
 import { AdminAuthController, AdminSessionGuard } from '../modules/admin-auth/admin-auth.http.js';
 import { AdminAccessService } from '../modules/admin-auth/admin-access.service.js';
+import { AdminReadBoundary } from '../modules/admin-auth/admin-read-boundary.service.js';
 import { AdminNetworkGuard } from '../modules/admin-auth/admin-network.guard.js';
 import { AdminNewsController } from '../modules/admin-news/admin-news.http.js';
 import { AdminNewsService } from '../modules/admin-news/admin-news.service.js';
@@ -234,6 +239,7 @@ export class AppModule {
                 ModeratorController,
                 AdminAuthController,
                 AdminReadController,
+                AdminObservabilityController,
                 AdminActionsController,
                 AccountController,
                 MailboxController,
@@ -334,6 +340,18 @@ export class AppModule {
                 AuthService,
                 AdminAccessService,
                 AdminReadService,
+                AdminReadBoundary,
+                AdminObservabilityRepository,
+                AdminObservabilityService,
+                {
+                    provide: HostSnapshotReader,
+                    useFactory: () =>
+                        new HostSnapshotReader(
+                            config.OBSERVABILITY_HOST_SNAPSHOT_ENABLED
+                                ? config.OBSERVABILITY_HOST_SNAPSHOT_FILE
+                                : undefined,
+                        ),
+                },
                 AdminActionsService,
                 AdminBillingService,
                 AdminReviewService,

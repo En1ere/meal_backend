@@ -1,6 +1,16 @@
 # Полная программа ручной приёмки Meal Planner
 
-Дата среза: 28.10.2026. Контракт OpenAPI: 0.0.60, 347 операций в 62 tag-группах. Клиент: 117 маршрутов. Админка: 18 разделов. Схема: 29 миграций, 209 таблиц, 483 внешних ключа.
+## OPS-OBS — admin observability
+
+| ID         | Сценарий                                                                                             | Ожидаемый результат                                                                                                    |
+| ---------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| OPS-OBS-01 | Anonymous/user/staff/moderator/revoked admin вызывает `GET /api/v1/admin/observability`              | 401/403; snapshot и audit не создаются                                                                                 |
+| OPS-OBS-02 | Active admin + MFA читает endpoint                                                                   | no-store; strict host/database/queue/workers/providers; один `admin.observability.read`; нет IDs/secrets/raw errors    |
+| OPS-OBS-03 | Collector выключен/удалён/просрочен или snapshot symlink/non-root/writable/oversize/future/malformed | Safe `disabled`/`missing`/`stale`/`invalid`/`clock_skew`; DB-derived секции остаются доступны                          |
+| OPS-OBS-04 | Provider/worker без sample, со stale sample, timeout/failure и active/expired lease                  | `no_samples` не считается green; freshness и failure counts детерминированы; owner/job IDs отсутствуют                 |
+| OPS-OBS-05 | Compose/systemd/verify                                                                               | Только backend получает read-only snapshot mount/GID 29002; docker.sock отсутствует; collector bounded/atomic/hardened |
+
+Дата среза: 29.10.2026. Контракт OpenAPI: 0.0.144, 348 операций. Клиент: 117 маршрутов. Админка: 18 разделов. Схема: 29 миграций, 209 таблиц, 483 внешних ключа.
 
 > Это живая программа приёмки. Строка считается пройденной только при проверке всех применимых исходов из матрицы ниже. `BLOCKED`, `SKIP` и «не проверялось» не равны `PASS`. Новый найденный сценарий сначала добавляется сюда, затем выполняется в текущей и последующих итерациях.
 

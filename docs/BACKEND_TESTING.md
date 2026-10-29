@@ -2,6 +2,14 @@
 
 Это последовательная программа production-like приёмки backend. Полная машинная карта операций находится в `openapi/openapi.json`, а историческая матрица покрытия — в `docs/TESTs.md`. Каждый endpoint должен быть сопоставлен с OpenAPI operation, реализацией, моделью БД, позитивным сценарием, набором отказов и хотя бы одним readback.
 
+## Admin observability
+
+1. Без admin cookie, с user/staff/moderator cookie и с отозванной admin-session `GET /api/v1/admin/observability` обязан вернуть 401/403 без данных. Сразу после revoke role/TOTP/session повторить запрос: live transactional recheck должен отказать.
+2. Активный admin с MFA получает строгий envelope, `Cache-Control: no-store` и ровно host/database/queue/10 workers/8 providers. После успеха существует один audit event `admin.observability.read`; секреты, IDs, raw errors, paths и provider payloads отсутствуют.
+3. Остановить collector: до 150 секунд host остаётся `fresh`, затем `stale`. Удалённый snapshot даёт `missing`; выключенные env — `disabled`; symlink, non-root/group-writable, >64 KiB, future timestamp/mtime, extra keys или дубликаты дают только safe `invalid`/`clock_skew`.
+4. Для нового provider/worker без telemetry ожидается `no_samples`, а не green. Искусственно устаревший sample даёт `stale`; очередь и pool остаются bounded aggregates без job/session identifiers.
+5. Проверить `deploy/verify.sh`: Docker socket отсутствует во всех пяти containers; observability directory смонтирован read-only только backend; snapshot является bounded regular file. Linux-host отдельно проверяет hardened systemd unit/timer и atomic update во время повторных чтений.
+
 ## 1. Входные условия
 
 - PostgreSQL прошёл `docs/DATABASE_TESTING.md`.

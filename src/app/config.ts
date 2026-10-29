@@ -19,6 +19,15 @@ export const configSchema = z.object({
         .refine((values) => values.every((value) => isIP(value) !== 0), 'Expected exact IPv4/IPv6 addresses'),
     DATABASE_URL: z.string().optional(),
     DATABASE_POOL_SIZE: z.coerce.number().int().min(1).max(50).default(10),
+    OBSERVABILITY_HOST_SNAPSHOT_ENABLED: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
+    OBSERVABILITY_HOST_SNAPSHOT_FILE: z
+        .string()
+        .trim()
+        .transform((value) => (value === '' ? undefined : value))
+        .optional(),
     WORKER_OWNER_ID: z
         .string()
         .regex(/^[a-z][a-z0-9-]{2,63}$/)
@@ -156,6 +165,15 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
             throw new Error('DATABASE_URL must target PostgreSQL meal_planner_postgres');
         }
     }
+    if (config.OBSERVABILITY_HOST_SNAPSHOT_ENABLED !== Boolean(config.OBSERVABILITY_HOST_SNAPSHOT_FILE))
+        throw new Error('Host observability requires both enabled flag and snapshot path');
+    if (
+        config.OBSERVABILITY_HOST_SNAPSHOT_FILE &&
+        (config.NODE_ENV === 'production'
+            ? config.OBSERVABILITY_HOST_SNAPSHOT_FILE !== '/run/meal-observability/current.json'
+            : !isAbsolute(config.OBSERVABILITY_HOST_SNAPSHOT_FILE))
+    )
+        throw new Error('OBSERVABILITY_HOST_SNAPSHOT_FILE is not an approved absolute path');
     if (
         config.NODE_ENV === 'production' &&
         (config.AI_RECONCILIATION_ENABLED || config.COOKING_LIFECYCLE_ENABLED) &&

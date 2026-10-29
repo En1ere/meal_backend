@@ -7,6 +7,8 @@ export interface AppConfig {
     ADMIN_ALLOWED_IPS: string[];
     DATABASE_URL?: string | undefined;
     DATABASE_POOL_SIZE: number;
+    OBSERVABILITY_HOST_SNAPSHOT_ENABLED: boolean;
+    OBSERVABILITY_HOST_SNAPSHOT_FILE?: string | undefined;
     WORKER_OWNER_ID?: string | undefined;
     COOKING_LIFECYCLE_ENABLED: boolean;
     LOG_LEVEL: 'silent' | 'error' | 'warn' | 'info' | 'debug';
