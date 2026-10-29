@@ -45,6 +45,20 @@ validate_images() {
     require_digest_reference BACKEND_IMAGE "${BACKEND_IMAGE:-}"
     require_digest_reference FRONTEND_IMAGE "${FRONTEND_IMAGE:-}"
     require_digest_reference ADMIN_IMAGE "${ADMIN_IMAGE:-}"
+    require_semver BACKEND_VERSION "${BACKEND_VERSION:-}"
+}
+
+require_semver() {
+    if ! printf '%s\n' "$2" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+        echo "$1 must be a numeric SemVer release" >&2
+        exit 64
+    fi
+}
+
+image_package_version() {
+    docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
+        --entrypoint node "$1" --input-type=module --eval \
+        'import fs from "node:fs";const value=JSON.parse(fs.readFileSync("/app/package.json","utf8")).version;process.stdout.write(String(value));'
 }
 
 compose() {
@@ -69,6 +83,7 @@ persist_images() {
     {
         printf 'POSTGRES_IMAGE=%s\n' "$POSTGRES_IMAGE"
         printf 'BACKEND_IMAGE=%s\n' "$BACKEND_IMAGE"
+        printf 'BACKEND_VERSION=%s\n' "$BACKEND_VERSION"
         printf 'FRONTEND_IMAGE=%s\n' "$FRONTEND_IMAGE"
         printf 'ADMIN_IMAGE=%s\n' "$ADMIN_IMAGE"
     } >"$temporary"

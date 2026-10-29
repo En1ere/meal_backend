@@ -24,8 +24,16 @@ require_file "$state_dir/previous.image"
 image=$(cat "$state_dir/previous.image")
 require_digest_reference "$component rollback image" "$image"
 set_component_image "$component" "$image"
-compose pull "$component"
-compose up -d --no-deps "$component"
+if [ "$component" = backend ]; then
+    if account_mail_enabled; then compose pull backend worker mail-worker; else compose pull backend worker; fi
+    BACKEND_VERSION=$(image_package_version "$image")
+    require_semver rollback-backend-version "$BACKEND_VERSION"
+    export BACKEND_VERSION
+    if account_mail_enabled; then compose up -d --no-deps backend worker mail-worker; else compose up -d --no-deps backend worker; fi
+else
+    compose pull "$component"
+    compose up -d --no-deps "$component"
+fi
 MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/verify.sh" --component "$component"
 persist_images
 printf '%s\n' rolled-back >"$state_dir/rollback-status"

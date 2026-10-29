@@ -84,6 +84,8 @@ void test('backend build uses the verified immutable Node base', async () => {
     assert.match(dockerfile, /scripts\/run-worker-scheduler\.mjs/);
     assert.match(dockerfile, /scripts\/run-scheduled-task\.mjs/);
     assert.match(dockerfile, /scripts\/check-worker-health\.mjs/);
+    assert.match(dockerfile, /scripts\/run-account-mail-worker\.mjs/);
+    assert.match(dockerfile, /scripts\/check-account-mail-worker-health\.mjs/);
 });
 
 void test('host Nginx keeps TLS at the edge and proxies only loopback application ports', async () => {
@@ -114,6 +116,9 @@ void test('component deployment isolates UI rollout from database migration', as
     assert.match(deploy, /account_mail_enabled/);
     assert.match(deploy, /mail-worker/);
     assert.match(deploy, /schema_version=31/);
+    assert.match(deploy, /image_package_version/);
+    assert.match(deploy, /previous\.version/);
+    assert.match(deploy, /candidate\.version/);
     assert.match(deploy, /persist_images/);
     assert.match(deploy, /compose up -d --no-deps "\$component"/);
     assert.match(deploy, /ALLOW_BACKEND_AUTO_ROLLBACK/);
@@ -175,6 +180,11 @@ void test('component deployment isolates UI rollout from database migration', as
     const common = await text('deploy/common.sh');
     assert.match(common, /compose\.account-mail\.yml/);
     assert.match(common, /ACCOUNT_MAIL_ENABLED:-false/);
+    assert.match(common, /BACKEND_VERSION=%s/);
+    assert.match(common, /docker run --rm --network none --read-only --cap-drop ALL/);
+    const rollback = await text('deploy/rollback.sh');
+    assert.match(rollback, /image_package_version/);
+    assert.match(rollback, /compose up -d --no-deps backend worker/);
     const provisionMail = await text('deploy/provision-account-mail-runtime.sh');
     assert.match(provisionMail, /create role meal_mail_runtime login noinherit/);
     assert.match(provisionMail, /revoke meal_app from meal_mail_runtime/);

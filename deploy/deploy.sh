@@ -21,6 +21,15 @@ take_lock
 previous_image=$(component_image "$component")
 require_digest_reference "previous $component image" "$previous_image"
 set_component_image "$component" "$candidate_image"
+if [ "$component" = backend ]; then
+    docker pull "$candidate_image" >/dev/null
+    previous_backend_version=$(image_package_version "$previous_image")
+    candidate_backend_version=$(image_package_version "$candidate_image")
+    require_semver previous-backend-version "$previous_backend_version"
+    require_semver candidate-backend-version "$candidate_backend_version"
+    BACKEND_VERSION=$candidate_backend_version
+    export BACKEND_VERSION
+fi
 mkdir -p "$STATE_ROOT"; chmod 700 "$STATE_ROOT"
 deployment_id=$(date -u +%Y%m%dT%H%M%SZ)-$component
 state_dir="$STATE_ROOT/$deployment_id"
@@ -29,6 +38,10 @@ printf '%s\n' "$component" >"$state_dir/component"
 printf '%s\n' "$previous_image" >"$state_dir/previous.image"
 printf '%s\n' "$candidate_image" >"$state_dir/candidate.image"
 printf '%s\n' "${revision:-unknown}" >"$state_dir/revision"
+if [ "$component" = backend ]; then
+    printf '%s\n' "$previous_backend_version" >"$state_dir/previous.version"
+    printf '%s\n' "$candidate_backend_version" >"$state_dir/candidate.version"
+fi
 
 if [ "$component" = backend ]; then
     [ -d /var/lib/meal-planner/observability ] && [ ! -L /var/lib/meal-planner/observability ] && \
@@ -82,6 +95,8 @@ if ! MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/verify.sh" --component "$component"; then
     fi
     set_component_image "$component" "$previous_image"
     if [ "$component" = backend ]; then
+        BACKEND_VERSION=$previous_backend_version
+        export BACKEND_VERSION
         if account_mail_enabled; then
             compose pull backend worker mail-worker
             compose up -d --no-deps backend worker mail-worker
