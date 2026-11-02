@@ -47,6 +47,7 @@ case "$component" in
     backend)
         require_running postgres; require_running backend; wait_healthy worker
         if account_mail_enabled; then wait_healthy mail-worker; fi
+        if media_infra_enabled; then wait_healthy seaweedfs; fi
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready ;;
     frontend) require_running frontend; wait_http frontend http://127.0.0.1:3000/healthz ;;
@@ -54,6 +55,7 @@ case "$component" in
     all)
         require_running postgres; require_running backend; wait_healthy worker; require_running frontend; require_running admin
         if account_mail_enabled; then wait_healthy mail-worker; fi
+        if media_infra_enabled; then wait_healthy seaweedfs; fi
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready
         wait_http frontend http://127.0.0.1:3000/healthz
@@ -87,6 +89,44 @@ if [ "$component" = backend ] || [ "$component" = all ]; then
             exit 77
         fi
     done
+    if media_infra_enabled; then
+        verify_media_host_storage
+        media_id=$(compose ps -q seaweedfs)
+        media_mounts=$(docker inspect --format '{{range .Mounts}}{{println .Source .Destination .RW}}{{end}}' "$media_id")
+        expected_media_mount="$MEDIA_STORAGE_HOST_ROOT /data true"
+        [ "$(printf '%s\n' "$media_mounts" | grep -Fxc "$expected_media_mount" || true)" -eq 1 ] || {
+            echo "SeaweedFS must have one exact writable media mount" >&2
+            exit 77
+        }
+        [ "$(printf '%s\n' "$media_mounts" | awk '$3 == "true" {count++} END {print count+0}')" -eq 1 ] || {
+            echo "SeaweedFS must not have additional writable mounts" >&2
+            exit 77
+        }
+        if printf '%s\n' "$media_mounts" | grep -Fq 'docker.sock'; then
+            echo "SeaweedFS must not mount the Docker socket" >&2
+            exit 77
+        fi
+        port_bindings=$(docker inspect --format '{{json .HostConfig.PortBindings}}' "$media_id")
+        [ "$port_bindings" = '{}' ] || [ "$port_bindings" = 'null' ] || {
+            echo "SeaweedFS must not publish host ports" >&2
+            exit 77
+        }
+        media_image=$(docker inspect --format '{{.Config.Image}}' "$media_id")
+        [ "$media_image" = "$SEAWEEDFS_IMAGE" ] || {
+            echo "SeaweedFS is not running the configured immutable image" >&2
+            exit 77
+        }
+        backend_networks=$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' "$backend_id")
+        if media_storage_enabled; then
+            printf '%s\n' "$backend_networks" | grep -Fqx meal-media || {
+                echo "Enabled backend is not attached to the private media network" >&2
+                exit 77
+            }
+        elif printf '%s\n' "$backend_networks" | grep -Fqx meal-media; then
+            echo "Disabled media API must not attach backend to the media network" >&2
+            exit 77
+        fi
+    fi
     case "${OBSERVABILITY_HOST_SNAPSHOT_ENABLED:-true}" in
         true)
             compose exec -T backend node --input-type=module -e "const {HostSnapshotReader}=await import('./dist/src/modules/admin-observability/host-snapshot.reader.js');const snapshot=await new HostSnapshotReader('/run/meal-observability/current.json').read();if(snapshot.freshness.state!=='fresh'||!['ok','partial'].includes(snapshot.collectorStatus))process.exit(1)" || {

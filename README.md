@@ -26,11 +26,12 @@ npm run openapi
 - Телеметрия не содержит токены, содержимое документов и чувствительные payloads; правила — `docs/telemetry.md`.
 - Worker topology и maintenance-команды описаны в `docs/operational-maintenance.md`.
 - Admin-only observability snapshot и host collector описаны в `docs/observability-runbook.md`; приложение не получает Docker socket.
+- Encrypted media checkpoint 6A описан в `docs/MEDIA_STORAGE.md`: локальный S3-compatible provider может работать отдельно от пользовательского API, а файлы не публикуются без scanner/manual-review gate.
 - Versioned admin acceptance checklist хранит текущий результат, CAS/idempotency и append-only history для 83 кейсов из четырёх manual test-документов; committed catalog находится в `resources/acceptance-test-catalog.json`.
 
 Полная ручная и API-приёмка находится в `docs/TESTs.md`. Развёрнутый тестовый production-стенд, адреса, сервисы и эксплуатационные команды описаны в `docs/DEPLOYMENT.md`. Юридический пакет — `docs/legal/`; он остаётся `draft_blocked` до заполнения реальных данных и утверждения.
 
-Production container contract находится в `Dockerfile` и `deploy/compose.production.yml`. Общие `deploy/*.sh` владеют first-cutover restore, backup, component-isolated rollout, проверкой и application-only rollback; они не монтируют старый PostgreSQL data directory и не выполняют автоматический rollback данных.
+Production container contract находится в `Dockerfile`, `deploy/compose.production.yml` и opt-in overlay-файлах. Общие `deploy/*.sh` владеют first-cutover restore, backup, component-isolated rollout, проверкой и application-only rollback; они не монтируют старый PostgreSQL data directory и не выполняют автоматический rollback данных. `MEDIA_STORAGE_INFRA_ENABLED` поднимает только private storage, а независимый `MEDIA_STORAGE_ENABLED` остаётся выключенным до следующего согласованного checkpoint.
 
 ## Самостоятельный репозиторий
 

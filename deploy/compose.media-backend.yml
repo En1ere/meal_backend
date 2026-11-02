@@ -1,0 +1,33 @@
+services:
+    backend:
+        environment:
+            MEDIA_STORAGE_ENABLED: 'true'
+            MEDIA_STORAGE_ENDPOINT: http://seaweedfs
+            MEDIA_STORAGE_BACKEND_PORT: '8333'
+            MEDIA_STORAGE_REGION: ${MEDIA_STORAGE_REGION:-us-east-1}
+            MEDIA_STORAGE_ACCESS_KEY_ID: ${MEDIA_STORAGE_ACCESS_KEY_ID:-meal-backend-v1}
+            MEDIA_STORAGE_SECRET_ACCESS_KEY_FILE: /run/secrets/media_storage_secret_access_key
+            MEDIA_STORAGE_QUARANTINE_BUCKET: ${MEDIA_STORAGE_QUARANTINE_BUCKET:-meal-media-quarantine}
+            MEDIA_STORAGE_READY_BUCKET: ${MEDIA_STORAGE_READY_BUCKET:-meal-media-ready}
+            MEDIA_STORAGE_PREFIX: ${MEDIA_STORAGE_PREFIX:-meal}
+            MEDIA_STORAGE_FORCE_PATH_STYLE: 'true'
+            MEDIA_STORAGE_PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?public HTTPS origin is required}
+            MEDIA_STORAGE_SIGNING_KEY_FILE: /run/secrets/media_storage_signing_key
+            MEDIA_STORAGE_ENCRYPTION_KEY_FILE: /run/secrets/media_storage_encryption_key
+            MEDIA_STORAGE_KEY_VERSION: ${MEDIA_STORAGE_KEY_VERSION:-1}
+        secrets:
+            - media_storage_secret_access_key
+            - media_storage_signing_key
+            - media_storage_encryption_key
+        depends_on:
+            seaweedfs:
+                condition: service_healthy
+        networks: [meal-db, meal-egress, meal-media]
+
+secrets:
+    media_storage_secret_access_key:
+        file: ${MEDIA_STORAGE_SECRET_ACCESS_KEY_FILE:-/etc/meal-planner/secrets/media-storage-secret-access-key}
+    media_storage_signing_key:
+        file: ${MEDIA_STORAGE_SIGNING_KEY_FILE:-/etc/meal-planner/secrets/media-signing-key-v1}
+    media_storage_encryption_key:
+        file: ${MEDIA_STORAGE_ENCRYPTION_KEY_FILE:-/etc/meal-planner/secrets/media-encryption-key-v1}

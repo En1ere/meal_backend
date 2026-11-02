@@ -17,6 +17,11 @@ case "$component" in backend|frontend|admin) ;; *) echo "--component is required
 }
 load_deploy_environment
 take_lock
+if media_infra_enabled; then
+    verify_media_host_storage
+    validate_network_route meal-media "$MEAL_MEDIA_SUBNET"
+    compose up -d --no-deps seaweedfs
+fi
 state_dir=${state_dir:-$STATE_ROOT/current-$component}
 state_dir=$(readlink -f "$state_dir")
 case "$state_dir" in "$STATE_ROOT"/*) ;; *) echo "Rollback state must be under $STATE_ROOT" >&2; exit 64 ;; esac

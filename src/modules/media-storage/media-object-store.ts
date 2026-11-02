@@ -17,6 +17,7 @@ export type MediaObjectReadResult = Readonly<{ body: Readable; contentLength: nu
 
 export interface MediaObjectStore {
     status(): Readonly<{ configured: boolean; provider: string | null; endpoint: string | null }>;
+    preflight?(): Promise<void>;
     put(request: MediaObjectPutRequest): Promise<void>;
     read(location: MediaObjectLocation, objectKey: string): Promise<MediaObjectReadResult>;
     delete(location: MediaObjectLocation, objectKey: string): Promise<void>;
@@ -38,7 +39,10 @@ export class DisabledMediaObjectStore implements MediaObjectStore {
         return { configured: false, provider: null, endpoint: null } as const;
     }
     private unavailable<T>(): Promise<T> {
-        return Promise.reject(new ServiceUnavailableException('S3-compatible media storage adapter is not installed'));
+        return Promise.reject(new ServiceUnavailableException('S3-compatible media storage is not enabled'));
+    }
+    preflight(): Promise<void> {
+        return this.unavailable();
     }
     put(request: MediaObjectPutRequest): Promise<void> {
         void request;

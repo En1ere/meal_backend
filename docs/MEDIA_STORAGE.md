@@ -2,9 +2,14 @@
 
 ## Current safety state
 
-Schema v32 and API contract `0.0.62` prepare an S3-compatible, provider-neutral lifecycle. The committed runtime deliberately uses `DisabledMediaObjectStore`: reservations return HTTP 503 and no object/metadata is created until a reviewed S3 adapter is installed. Malware scanning, promotion from `quarantine` to `ready`, and public delivery are not implemented in this checkpoint. This is fail-closed, not a partially working publication path.
+Schema v32 and API contract `0.0.62` define an S3-compatible, provider-neutral lifecycle. Backend `0.0.156` contains a reviewed AWS-SDK adapter, while the production control plane separates two independent gates:
 
-The temporary VPS provider may be SeaweedFS. A later move must require only changing endpoint, credentials, buckets and region in the environment; domain services do not import provider SDK types.
+- `MEDIA_STORAGE_INFRA_ENABLED=true` starts the private local SeaweedFS provider only;
+- `MEDIA_STORAGE_ENABLED=true` additionally connects the backend and enables reservation/upload endpoints.
+
+Checkpoint 6A deploys only the first gate. User reservations continue to return HTTP 503 and the backend is not attached to the media network. Malware scanning, target binding, promotion from `quarantine` to `ready` and public delivery are not implemented in this checkpoint. This is fail-closed, not a partially working publication path.
+
+The temporary VPS provider stores application-encrypted ciphertext in SeaweedFS. A later S3-compatible move changes endpoint, credentials, buckets and region without exposing provider SDK types to domain services.
 
 ## HTTP contract
 
@@ -61,15 +66,21 @@ MEDIA_STORAGE_KEY_VERSION=1
 
 `MEDIA_STORAGE_ENDPOINT` is a credential-free origin without port/path; port is separate. Plain HTTP is accepted in production only for an internal Docker DNS hostname. Public origin must be exact HTTPS. Signing and encryption keys are independent 32-byte random values encoded as base64. Never rotate/delete an encryption-key version while objects reference it.
 
-## Future apply preflight
+## Checkpoint 6A deployment
 
-The following is a plan for the separately approved deployment; this checkpoint does not apply it.
+`deploy/compose.media-local.yml` defines a non-root, read-only SeaweedFS container on an internal network without host ports. Its only writable mount is `/var/lib/meal-planner/media/provider`. `deploy/compose.media-backend.yml` is a separate activation overlay and is deliberately not selected while the API gate is false.
+
+The host bootstrap creates independent storage credential, signing key and encryption key files, rejects symlinks/unsafe paths and requires at least 5 GiB and 20% free disk. Provider provisioning creates the two private buckets. Media is explicitly excluded from the current PostgreSQL-only backup and must be treated as disposable test data until checkpoint 9.
+
+Preflight:
 
 ```bash
 npm ci
 npm run check
 npm run db:plan
 docker compose config --quiet
+sh deploy/bootstrap-media-storage.sh
+docker compose -f deploy/compose.production.yml -f deploy/compose.media-local.yml config --quiet
 docker compose pull seaweedfs backend
 docker compose run --rm backend npm run db:plan
 ```
@@ -80,9 +91,14 @@ Before enabling traffic, verify all of the following:
 2. provider images are immutable-digest pinned and S3 port is not published on the host;
 3. quarantine credentials cannot read/write the ready bucket except through the backend/scanner roles defined by the later checkpoint;
 4. both buckets exist, public ACL/policy is absent, versioning/retention choice is recorded, and disk-pressure alerting is active;
-5. backend readiness stays false/503 if endpoint, credentials, bucket, key version or adapter is unavailable;
-6. test upload remains quarantined; EICAR/stale-signature/outage tests remain blocked until the scanner is installed;
-7. rollback keeps schema/objects intact and disables new reservations by setting `MEDIA_STORAGE_ENABLED=false`.
+5. with `MEDIA_STORAGE_ENABLED=false`, backend has no media-network attachment and reservation remains 503;
+6. provider preflight verifies both buckets without exposing credentials;
+7. no user upload is attempted in 6A; EICAR/stale-signature/outage tests remain blocked until scanner/manual review exists;
+8. rollback keeps schema/objects/keys intact and disables infrastructure without deleting the provider directory.
+
+## Gate for checkpoint 6B
+
+The generic purpose-only reservation contract is not enough for user traffic. Before `MEDIA_STORAGE_ENABLED=true`, reservations must be durably bound to an allowed diary/support/receipt/avatar/community target, with per-user/global quotas, bounded reconciliation and approved retention. Until then the provider may be healthy, but the upload API remains disabled.
 
 ## Acceptance matrix
 

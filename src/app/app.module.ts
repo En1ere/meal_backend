@@ -42,6 +42,7 @@ import {
     OBJECT_STORAGE_PROVIDER,
 } from '../modules/media-infrastructure/media-provider.js';
 import { DisabledMediaObjectStore, MEDIA_OBJECT_STORE } from '../modules/media-storage/media-object-store.js';
+import { S3MediaObjectStore } from '../modules/media-storage/s3-media-object-store.js';
 import { MediaStorageController } from '../modules/media-storage/media-storage.http.js';
 import { MediaStorageService } from '../modules/media-storage/media-storage.service.js';
 import {
@@ -294,7 +295,17 @@ export class AppModule {
                 { provide: KEY_MANAGEMENT_PROVIDER, useExisting: DisabledKeyManagementProvider },
                 { provide: MALWARE_SCANNER_PROVIDER, useExisting: DisabledMalwareScannerProvider },
                 DisabledMediaObjectStore,
-                { provide: MEDIA_OBJECT_STORE, useExisting: DisabledMediaObjectStore },
+                {
+                    provide: S3MediaObjectStore,
+                    inject: [APP_CONFIG],
+                    useFactory: (config: AppConfig) => new S3MediaObjectStore(config),
+                },
+                {
+                    provide: MEDIA_OBJECT_STORE,
+                    inject: [APP_CONFIG, DisabledMediaObjectStore, S3MediaObjectStore],
+                    useFactory: (config: AppConfig, disabled: DisabledMediaObjectStore, s3: S3MediaObjectStore) =>
+                        config.MEDIA_STORAGE_ENABLED ? s3 : disabled,
+                },
                 MediaStorageService,
                 DisabledEmailDeliveryProvider,
                 DisabledWebPushDeliveryProvider,

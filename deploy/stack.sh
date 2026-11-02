@@ -13,6 +13,10 @@ case "$action" in
         take_lock
         validate_network_route meal-db "$MEAL_NETWORK_SUBNET"
         validate_network_route meal-egress "$MEAL_EGRESS_SUBNET"
+        if media_infra_enabled; then
+            validate_network_route meal-media "$MEAL_MEDIA_SUBNET"
+            verify_media_host_storage
+        fi
         compose config --quiet
         compose up -d
         ;;

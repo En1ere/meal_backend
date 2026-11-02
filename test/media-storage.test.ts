@@ -188,7 +188,7 @@ void test('purpose policy limits MIME/size and keeps privileged sources off the 
     assert.throws(() => mediaPurposePolicy('profile_avatar', 'image/png', 6 * 1024 * 1024), HttpException);
 });
 
-void test('provider port remains explicit fail-closed until the reviewed S3 adapter is installed', async () => {
+void test('provider port remains explicit fail-closed while the reviewed S3 adapter is disabled', async () => {
     const store = new DisabledMediaObjectStore();
     assert.deepEqual(store.status(), { configured: false, provider: null, endpoint: null });
     await assert.rejects(store.read('quarantine', 'meal/quarantine/asset'), ServiceUnavailableException);

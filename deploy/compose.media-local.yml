@@ -1,0 +1,51 @@
+services:
+    seaweedfs:
+        image: ${SEAWEEDFS_IMAGE:?immutable SeaweedFS digest reference is required}
+        init: true
+        user: '29003:29003'
+        read_only: true
+        cap_drop: [ALL]
+        security_opt: [no-new-privileges:true]
+        pids_limit: 128
+        mem_limit: 512m
+        cpus: 1.0
+        restart: unless-stopped
+        command:
+            - server
+            - -s3
+            - -dir=/data
+            - -ip=seaweedfs
+            - -master.port=9333
+            - -volume.port=8080
+            - -filer.port=8888
+            - -s3.port=8333
+            - -s3.config=/run/secrets/seaweedfs_s3_config
+        secrets: [seaweedfs_s3_config]
+        volumes:
+            - type: bind
+              source: ${MEDIA_STORAGE_HOST_ROOT:-/var/lib/meal-planner/media/provider}
+              target: /data
+              bind:
+                  create_host_path: false
+        tmpfs:
+            - '/tmp:rw,noexec,nosuid,nodev,uid=29003,gid=29003,mode=0700,size=64m'
+        healthcheck:
+            test: [CMD, weed, shell, -master=127.0.0.1:9333, -command=cluster.status]
+            interval: 10s
+            timeout: 5s
+            retries: 18
+            start_period: 30s
+        stop_grace_period: 120s
+        networks: [meal-media]
+
+networks:
+    meal-media:
+        name: meal-media
+        internal: true
+        ipam:
+            config:
+                - subnet: ${MEAL_MEDIA_SUBNET:-172.29.0.0/24}
+
+secrets:
+    seaweedfs_s3_config:
+        file: ${SEAWEEDFS_S3_CONFIG_FILE:-/etc/meal-planner/secrets/seaweedfs-s3-config.json}

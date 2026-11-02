@@ -34,6 +34,79 @@ void test('production compose keeps database private and every image digest-pinn
     assert.doesNotMatch(compose, /docker\.sock/);
 });
 
+void test('local media provider is isolated from the disabled user media API', async () => {
+    const common = await text('deploy/common.sh');
+    const provider = await text('deploy/compose.media-local.yml');
+    const activation = await text('deploy/compose.media-backend.yml');
+    const bootstrap = await text('deploy/bootstrap-media-storage.sh');
+    const provision = await text('deploy/provision-media-storage.sh');
+    const disable = await text('deploy/disable-media-storage.sh');
+    const deploy = await text('deploy/deploy.sh');
+    const verify = await text('deploy/verify.sh');
+
+    assert.match(common, /MEDIA_STORAGE_INFRA_ENABLED:-false/);
+    assert.match(common, /MEDIA_STORAGE_ENABLED:-false/);
+    assert.match(common, /MEDIA_STORAGE_ENABLED requires MEDIA_STORAGE_INFRA_ENABLED=true/);
+    assert.match(common, /MEDIA_STORAGE_INFRA_ENABLED must be true or false/);
+    assert.match(common, /compose\.media-local\.yml/);
+    assert.match(common, /compose\.media-backend\.yml/);
+    assert.match(common, /SEAWEEDFS_IMAGE/);
+    assert.match(common, /MEDIA_STORAGE_MIN_FREE_BYTES:-5368709120/);
+    assert.match(common, /MEDIA_STORAGE_MIN_FREE_PERCENT:-20/);
+    assert.match(common, /stat -c '%u %g %a'/);
+    assert.match(common, /'0 29003 2770'/);
+
+    assert.match(provider, /image: \$\{SEAWEEDFS_IMAGE:\?immutable SeaweedFS digest reference is required\}/);
+    assert.match(provider, /user: ['"]29003:29003['"]/);
+    assert.match(provider, /read_only: true/);
+    assert.match(provider, /cap_drop: \[ALL\]/);
+    assert.match(provider, /no-new-privileges:true/);
+    assert.match(provider, /pids_limit: 128/);
+    assert.match(provider, /mem_limit: 512m/);
+    assert.match(provider, /cpus: 1\.0/);
+    assert.match(provider, /create_host_path: false/);
+    assert.match(provider, /source: \$\{MEDIA_STORAGE_HOST_ROOT:-\/var\/lib\/meal-planner\/media\/provider\}/);
+    assert.match(provider, /meal-media:[\s\S]*internal: true/);
+    assert.match(provider, /MEAL_MEDIA_SUBNET:-172\.29\.0\.0\/24/);
+    assert.doesNotMatch(provider, /ports:/);
+    assert.doesNotMatch(provider, /MEDIA_STORAGE_ENABLED/);
+
+    assert.match(activation, /MEDIA_STORAGE_ENABLED: ['"]true['"]/);
+    assert.match(activation, /MEDIA_STORAGE_ENDPOINT: http:\/\/seaweedfs/);
+    assert.match(activation, /MEDIA_STORAGE_SECRET_ACCESS_KEY_FILE: \/run\/secrets\/media_storage_secret_access_key/);
+    assert.match(activation, /MEDIA_STORAGE_SIGNING_KEY_FILE: \/run\/secrets\/media_storage_signing_key/);
+    assert.match(activation, /MEDIA_STORAGE_ENCRYPTION_KEY_FILE: \/run\/secrets\/media_storage_encryption_key/);
+    assert.match(activation, /condition: service_healthy/);
+    assert.match(activation, /networks: \[meal-db, meal-egress, meal-media\]/);
+
+    assert.match(bootstrap, /\[ "\$\(id -u\)" -eq 0 \]/);
+    assert.match(bootstrap, /Refusing symlink/);
+    assert.match(bootstrap, /openssl rand -hex 32/);
+    assert.equal([...bootstrap.matchAll(/openssl rand -base64 32/g)].length, 2);
+    assert.match(bootstrap, /\[ "\$signing_key" != "\$encryption_key" \]/);
+    assert.match(bootstrap, /media-storage-secret-access-key/);
+    assert.match(bootstrap, /media-signing-key-v1/);
+    assert.match(bootstrap, /media-encryption-key-v1/);
+    assert.match(bootstrap, /seaweedfs-s3-config\.json/);
+    assert.match(bootstrap, /Stored media keys must differ/);
+    assert.match(bootstrap, /identity config does not match the backend credential/);
+    assert.doesNotMatch(bootstrap, /echo .*access_secret|echo .*signing_key|echo .*encryption_key/);
+
+    assert.match(provision, /media_infra_enabled/);
+    assert.match(provision, /s3\.bucket\.list/);
+    assert.match(provision, /s3\.bucket\.create -name=\$bucket/);
+    assert.match(disable, /MEDIA_STORAGE_ENABLED:-false/);
+    assert.match(disable, /stop --timeout 120 seaweedfs/);
+    assert.match(disable, /Backend is still attached to meal-media/);
+    assert.match(disable, /objects and keys were preserved/);
+    assert.match(deploy, /compose up -d --no-deps seaweedfs/);
+    assert.match(verify, /SeaweedFS must not publish host ports/);
+    assert.match(verify, /SeaweedFS must not have additional writable mounts/);
+    assert.match(verify, /SeaweedFS must not mount the Docker socket/);
+    assert.match(verify, /Disabled media API must not attach backend to the media network/);
+    assert.match(verify, /SeaweedFS is not running the configured immutable image/);
+});
+
 void test('host observability collector is bounded, atomic and systemd sandboxed', async () => {
     const collector = await text('deploy/host-observability-collector.py');
     assert.match(collector, /SERVICES = \("postgres", "backend", "worker", "frontend", "admin"\)/);

@@ -4,6 +4,8 @@ set -eu
 DEPLOY_ROOT=${DEPLOY_ROOT:-/srv/meal/deployment}
 COMPOSE_FILE=${COMPOSE_FILE:-$DEPLOY_ROOT/compose.production.yml}
 ACCOUNT_MAIL_COMPOSE_FILE=${ACCOUNT_MAIL_COMPOSE_FILE:-$DEPLOY_ROOT/compose.account-mail.yml}
+MEDIA_INFRA_COMPOSE_FILE=${MEDIA_INFRA_COMPOSE_FILE:-$DEPLOY_ROOT/compose.media-local.yml}
+MEDIA_BACKEND_COMPOSE_FILE=${MEDIA_BACKEND_COMPOSE_FILE:-$DEPLOY_ROOT/compose.media-backend.yml}
 DEPLOY_ENV_FILE=${DEPLOY_ENV_FILE:-/etc/meal-planner/deploy.env}
 DEPLOY_LOCK_FILE=${DEPLOY_LOCK_FILE:-/run/lock/meal-planner-deploy.lock}
 STATE_ROOT=${STATE_ROOT:-/var/lib/meal-planner/deployments}
@@ -11,7 +13,11 @@ IMAGE_STATE_FILE=${IMAGE_STATE_FILE:-$STATE_ROOT/images.env}
 BACKUP_ROOT=${BACKUP_ROOT:-/var/backups/meal-planner}
 MEAL_NETWORK_SUBNET=${MEAL_NETWORK_SUBNET:-172.30.0.0/24}
 MEAL_EGRESS_SUBNET=${MEAL_EGRESS_SUBNET:-172.31.0.0/24}
-export MEAL_NETWORK_SUBNET MEAL_EGRESS_SUBNET
+MEAL_MEDIA_SUBNET=${MEAL_MEDIA_SUBNET:-172.29.0.0/24}
+MEDIA_STORAGE_HOST_ROOT=${MEDIA_STORAGE_HOST_ROOT:-/var/lib/meal-planner/media/provider}
+MEDIA_STORAGE_MIN_FREE_BYTES=${MEDIA_STORAGE_MIN_FREE_BYTES:-5368709120}
+MEDIA_STORAGE_MIN_FREE_PERCENT=${MEDIA_STORAGE_MIN_FREE_PERCENT:-20}
+export MEAL_NETWORK_SUBNET MEAL_EGRESS_SUBNET MEAL_MEDIA_SUBNET
 
 require_file() {
     if [ ! -r "$1" ]; then
@@ -46,6 +52,10 @@ validate_images() {
     require_digest_reference FRONTEND_IMAGE "${FRONTEND_IMAGE:-}"
     require_digest_reference ADMIN_IMAGE "${ADMIN_IMAGE:-}"
     require_semver BACKEND_VERSION "${BACKEND_VERSION:-}"
+    if media_infra_enabled; then
+        require_digest_reference SEAWEEDFS_IMAGE "${SEAWEEDFS_IMAGE:-}"
+    fi
+    validate_media_flags
 }
 
 require_semver() {
@@ -62,16 +72,69 @@ image_package_version() {
 }
 
 compose() {
-    if [ "${ACCOUNT_MAIL_ENABLED:-false}" = true ]; then
+    validate_media_flags
+    compose_files="-f $COMPOSE_FILE"
+    compose_profiles=
+    if account_mail_enabled; then
         require_file "$ACCOUNT_MAIL_COMPOSE_FILE"
-        docker compose -f "$COMPOSE_FILE" -f "$ACCOUNT_MAIL_COMPOSE_FILE" --profile mail "$@"
-    else
-        docker compose -f "$COMPOSE_FILE" "$@"
+        compose_files="$compose_files -f $ACCOUNT_MAIL_COMPOSE_FILE"
+        compose_profiles='--profile mail'
     fi
+    if media_infra_enabled; then
+        require_file "$MEDIA_INFRA_COMPOSE_FILE"
+        compose_files="$compose_files -f $MEDIA_INFRA_COMPOSE_FILE"
+    fi
+    if media_storage_enabled; then
+        require_file "$MEDIA_BACKEND_COMPOSE_FILE"
+        compose_files="$compose_files -f $MEDIA_BACKEND_COMPOSE_FILE"
+    fi
+    # Deployment paths are fixed root-owned paths without whitespace.
+    # shellcheck disable=SC2086
+    docker compose $compose_files $compose_profiles "$@"
 }
 
 account_mail_enabled() {
     [ "${ACCOUNT_MAIL_ENABLED:-false}" = true ]
+}
+
+media_infra_enabled() {
+    [ "${MEDIA_STORAGE_INFRA_ENABLED:-false}" = true ]
+}
+
+media_storage_enabled() {
+    [ "${MEDIA_STORAGE_ENABLED:-false}" = true ]
+}
+
+validate_media_flags() {
+    case "${MEDIA_STORAGE_INFRA_ENABLED:-false}" in true|false) ;; *) echo "MEDIA_STORAGE_INFRA_ENABLED must be true or false" >&2; exit 64 ;; esac
+    case "${MEDIA_STORAGE_ENABLED:-false}" in true|false) ;; *) echo "MEDIA_STORAGE_ENABLED must be true or false" >&2; exit 64 ;; esac
+    if media_storage_enabled && ! media_infra_enabled; then
+        echo "MEDIA_STORAGE_ENABLED requires MEDIA_STORAGE_INFRA_ENABLED=true" >&2
+        exit 64
+    fi
+}
+
+verify_media_host_storage() {
+    [ -d "$MEDIA_STORAGE_HOST_ROOT" ] && [ ! -L "$MEDIA_STORAGE_HOST_ROOT" ] || {
+        echo "Media storage host bootstrap is required" >&2
+        exit 78
+    }
+    [ "$(stat -c '%u %g %a' "$MEDIA_STORAGE_HOST_ROOT")" = '0 29003 2770' ] || {
+        echo "Media storage host directory metadata is unsafe" >&2
+        exit 78
+    }
+    free_kib=$(df -Pk "$MEDIA_STORAGE_HOST_ROOT" | awk 'NR==2 {print $4}')
+    used_percent=$(df -Pk "$MEDIA_STORAGE_HOST_ROOT" | awk 'NR==2 {gsub(/%/,"",$5); print $5}')
+    case "$free_kib:$used_percent:$MEDIA_STORAGE_MIN_FREE_BYTES:$MEDIA_STORAGE_MIN_FREE_PERCENT" in
+        *[!0-9:]*|'') echo "Media storage disk guard received invalid capacity data" >&2; exit 78 ;;
+    esac
+    free_bytes=$((free_kib * 1024))
+    free_percent=$((100 - used_percent))
+    [ "$free_bytes" -ge "$MEDIA_STORAGE_MIN_FREE_BYTES" ] && \
+        [ "$free_percent" -ge "$MEDIA_STORAGE_MIN_FREE_PERCENT" ] || {
+        echo "Media storage disk guard refused operation" >&2
+        exit 78
+    }
 }
 
 persist_images() {

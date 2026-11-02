@@ -357,11 +357,11 @@ const providerFailClosed = new Map([
     ['AiController_purchase', 'payment adapter'],
     ['DiaryController_uploadMedia', 'object storage, KMS and malware scanner'],
     ['ExportsController_download', 'protected export storage'],
-    ['MediaStorageController_reserve', 'S3-compatible object adapter is intentionally disabled'],
-    ['MediaStorageController_status', 'schema v32 is prepared but not applied to a provider-backed runtime'],
-    ['MediaStorageController_complete', 'S3-compatible object adapter is intentionally disabled'],
-    ['MediaStorageController_download', 'scanner promotion and S3-compatible object adapter are unavailable'],
-    ['MediaStorageController_downloadTarget', 'scanner promotion and S3-compatible object adapter are unavailable'],
+    ['MediaStorageController_reserve', 'provider infrastructure and user media gate are intentionally disabled'],
+    ['MediaStorageController_status', 'provider infrastructure and user media gate are intentionally disabled'],
+    ['MediaStorageController_complete', 'provider infrastructure and user media gate are intentionally disabled'],
+    ['MediaStorageController_download', 'scanner promotion and user media gate are unavailable'],
+    ['MediaStorageController_downloadTarget', 'scanner promotion and user media gate are unavailable'],
 ]);
 
 const externalSuccessRequired = new Map([

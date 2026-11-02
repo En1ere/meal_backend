@@ -49,9 +49,17 @@ if [ "$component" = backend ]; then
         echo "Observability host bootstrap is required before the first backend rollout" >&2
         exit 78
     }
+    if media_infra_enabled; then
+        verify_media_host_storage
+        validate_network_route meal-media "$MEAL_MEDIA_SUBNET"
+    fi
 fi
 compose config --quiet
 if [ "$component" = backend ]; then
+    if media_infra_enabled; then
+        compose pull seaweedfs
+        compose up -d --no-deps seaweedfs
+    fi
     if account_mail_enabled; then compose pull backend worker mail-worker; else compose pull backend worker; fi
 else
     compose pull "$component"

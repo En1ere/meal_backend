@@ -1,5 +1,16 @@
 # Полная программа ручной приёмки Meal Planner
 
+## Encrypted local storage foundation 0.0.156 — 02.11.2026
+
+1. При обоих media-флагах `false` resolved Compose не содержит SeaweedFS, backend не подключён к `meal-media`, а reservation отвечает 503 без строк/объектов.
+2. При `MEDIA_STORAGE_INFRA_ENABLED=true` и `MEDIA_STORAGE_ENABLED=false` SeaweedFS работает только во внутренней сети без host ports; backend к сети не подключён, пользовательский API остаётся выключенным.
+3. Bootstrap отклоняет symlink/неверные ownership/mode и диск с остатком менее 5 GiB либо 20%; signing/encryption/storage secrets независимы и не выводятся.
+4. S3 adapter проверяет оба private bucket, key prefix, stream length и abort; 4xx классифицируется как `not_committed`, 5xx/network как `unknown` без provider payload в ответе.
+5. Evidence-only reconciler не удаляет объекты и не угадывает успех: exact DB/provider match подтверждает quarantine, доказанное отсутствие — failure, unknown откладывается, mismatch требует ручной проверки.
+6. Выключение provider сохраняет каталог объектов и ключи. PostgreSQL-only backup явно не считается полным media recovery set.
+
+Автоматические проверки: `test/media-s3-object-store.test.ts`, `test/media-storage-guard.test.ts`, `test/media-storage-reconciler.test.ts`, `test/deployment-config.test.ts`.
+
 ## OPS-AUTH-RECOVERY — operator-only восстановление MFA администратора
 
 | ID                  | Сценарий                                                                                   | Ожидаемый результат                                                                                                                          |
