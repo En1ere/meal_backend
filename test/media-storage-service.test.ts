@@ -100,6 +100,12 @@ class FakeMediaDatabase {
             tokenNonce: 'A'.repeat(22),
             expiresAt: new Date(Date.now() + 60_000),
             version: String(this.version),
+            intakeId: null,
+            diaryEntryId: null,
+            supportMessageId: null,
+            avatarUserId: userId,
+            targetSlot: 'avatar',
+            targetPosition: 0,
         };
     }
     private execute(query: Query) {
@@ -107,6 +113,8 @@ class FakeMediaDatabase {
         if (normalized.includes('select exists( select 1 from meal.users')) {
             return { rows: [{ allowed: this.allowed.shift() ?? true }] };
         }
+        if (normalized.includes('select exists( select 1 from meal.media_intakes'))
+            return { rows: [{ allowed: true }] };
         if (normalized.startsWith("update meal.media_upload_reservations set state='expired'")) return { rows: [] };
         if (normalized.includes('from meal.media_upload_reservations r') && normalized.includes('r.asset_id=')) {
             return { rows: query.parameters[1] === userId ? [this.row()] : [] };
@@ -128,6 +136,8 @@ class FakeMediaDatabase {
             this.binding = true;
             return { rows: [] };
         }
+        if (normalized.startsWith('insert into meal.media_links')) return { rows: [] };
+        if (normalized.startsWith('insert into meal.media_processing_jobs')) return { rows: [] };
         if (normalized.startsWith('insert into meal.media_processing_runs')) return { rows: [] };
         if (normalized.startsWith("update meal.media_upload_reservations set state='quarantined'")) {
             this.state = 'quarantined';

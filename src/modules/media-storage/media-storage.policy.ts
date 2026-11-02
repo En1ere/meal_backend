@@ -24,15 +24,7 @@ export const mediaPurposePolicies: Readonly<Record<MediaPurpose, MediaPurposePol
     support_attachment: {
         purpose: 'support_attachment',
         maximumBytes: 10 * mib,
-        acceptedMimeTypes: [
-            'image/jpeg',
-            'image/png',
-            'image/webp',
-            'application/pdf',
-            'video/mp4',
-            'video/webm',
-            'video/quicktime',
-        ],
+        acceptedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
         retentionClass: 'private-support-v1',
         publishable: false,
         userReservable: true,
@@ -45,10 +37,18 @@ export const mediaPurposePolicies: Readonly<Record<MediaPurpose, MediaPurposePol
         publishable: true,
         userReservable: false,
     },
+    inventory_source: {
+        purpose: 'inventory_source',
+        maximumBytes: 10 * mib,
+        acceptedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+        retentionClass: 'private-inventory-intake-v1',
+        publishable: false,
+        userReservable: true,
+    },
     receipt_source: {
         purpose: 'receipt_source',
-        maximumBytes: 20 * mib,
-        acceptedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'],
+        maximumBytes: 10 * mib,
+        acceptedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
         retentionClass: 'private-receipt-v1',
         publishable: false,
         userReservable: true,
@@ -75,7 +75,8 @@ export const mediaPurposePolicies: Readonly<Record<MediaPurpose, MediaPurposePol
         acceptedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm'],
         retentionClass: 'public-community-v1',
         publishable: true,
-        userReservable: true,
+        // The comment-only product target has no authoring contract yet. Keep it fail closed.
+        userReservable: false,
     },
     profile_avatar: {
         purpose: 'profile_avatar',

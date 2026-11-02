@@ -39,6 +39,7 @@ export function readWorkerApplicationConfig(env: NodeJS.ProcessEnv): AppConfig {
         LEGAL_EVIDENCE_MODE: 'approved',
         MEDIA_STORAGE_ENABLED: false,
         MEDIA_STORAGE_FORCE_PATH_STYLE: true,
+        INLINE_INGEST_OCR_ENABLED: false,
         AUTH_RATE_LIMIT: 10,
         PIN_TRUST_DAYS: 30,
         REGISTRATION_RISK_ENABLED: false,

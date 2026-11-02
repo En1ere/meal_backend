@@ -87,6 +87,8 @@ void test('local media provider is isolated from the disabled user media API', a
     assert.equal([...bootstrap.matchAll(/openssl rand -base64 32/g)].length, 2);
     assert.match(bootstrap, /\[ "\$signing_key" != "\$encryption_key" \]/);
     assert.match(bootstrap, /media-storage-secret-access-key/);
+    assert.match(bootstrap, /media-processor-storage-secret-access-key/);
+    assert.match(bootstrap, /Backend and processor storage credentials must differ/);
     assert.match(bootstrap, /media-signing-key-v1/);
     assert.match(bootstrap, /media-encryption-key-v1/);
     assert.match(bootstrap, /seaweedfs-s3-config\.json/);
@@ -192,12 +194,15 @@ void test('component deployment isolates UI rollout from database migration', as
     const deploy = await text('deploy/deploy.sh');
     assert.match(deploy, /--component/);
     assert.match(deploy, /if \[ "\$component" = backend \]; then/);
-    assert.match(deploy, /compose pull backend worker/);
-    assert.match(deploy, /compose up -d --no-deps backend worker/);
+    assert.match(deploy, /backend_services='backend worker'/);
+    assert.match(deploy, /compose pull \$backend_services/);
+    assert.match(deploy, /compose up -d --no-deps \$backend_services/);
     assert.match(deploy, /create role meal_mail_worker nologin noinherit/);
     assert.match(deploy, /account_mail_enabled/);
     assert.match(deploy, /mail-worker/);
-    assert.match(deploy, /schema_version=32/);
+    assert.match(deploy, /media_processor_enabled/);
+    assert.match(deploy, /media-processor/);
+    assert.match(deploy, /schema_version=33/);
     assert.ok(
         deploy.indexOf('compose stop backend worker') < deploy.indexOf('sh "$SCRIPT_DIR/backup.sh"'),
         'backend writers must stop before the final pre-migration backup',
@@ -254,7 +259,7 @@ void test('component deployment isolates UI rollout from database migration', as
     const proxySmoke = await text('deploy/proxy-smoke.sh');
     assert.match(proxySmoke, /X-Forwarded-For/);
     assert.match(proxySmoke, /Runtime proxy source verified by admin guard/);
-    assert.match(bootstrap, /32\/216\/494\/18/);
+    assert.match(bootstrap, /33\/223\/513\/18/);
     assert.match(bootstrap, /meal_runtime/);
     assert.doesNotMatch(bootstrap, /grant meal_mail_worker to meal_runtime/);
     assert.match(bootstrap, /chown postgres:postgres "\$restore_path"/);

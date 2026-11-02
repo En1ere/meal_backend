@@ -31,6 +31,7 @@ export const mediaPurposeSchema = z.enum([
     'diary_photo',
     'support_attachment',
     'allergen_icon',
+    'inventory_source',
     'receipt_source',
     'export_file',
     'billing_document',

@@ -1,0 +1,69 @@
+services:
+    media-processor:
+        image: ${BACKEND_IMAGE:?immutable backend digest reference is required}
+        profiles: [media-processor]
+        init: true
+        user: node
+        read_only: true
+        cap_drop: [ALL]
+        security_opt: [no-new-privileges:true]
+        pids_limit: 64
+        mem_limit: 384m
+        mem_reservation: 256m
+        cpus: 0.75
+        restart: unless-stopped
+        group_add: ['${MEAL_SECRETS_GID:-29001}']
+        environment:
+            NODE_ENV: production
+            MEDIA_PROCESSOR_ENABLED: ${MEDIA_PROCESSOR_ENABLED:-false}
+            MEDIA_PROCESSOR_DATABASE_URL_FILE: /run/secrets/media_processor_database_url
+            MEDIA_PROCESSOR_STORAGE_SECRET_ACCESS_KEY_FILE: /run/secrets/media_processor_storage_secret_access_key
+            MEDIA_PROCESSOR_ENCRYPTION_KEY_FILE: /run/secrets/media_processor_encryption_key
+            MEDIA_PROCESSOR_STORAGE_ENDPOINT: http://seaweedfs
+            MEDIA_PROCESSOR_STORAGE_PORT: '8333'
+            MEDIA_PROCESSOR_STORAGE_REGION: ${MEDIA_PROCESSOR_STORAGE_REGION:-us-east-1}
+            MEDIA_PROCESSOR_STORAGE_ACCESS_KEY_ID: ${MEDIA_PROCESSOR_STORAGE_ACCESS_KEY_ID:-meal-media-processor-v1}
+            MEDIA_PROCESSOR_QUARANTINE_BUCKET: ${MEDIA_STORAGE_QUARANTINE_BUCKET:-meal-media-quarantine}
+            MEDIA_PROCESSOR_READY_BUCKET: ${MEDIA_STORAGE_READY_BUCKET:-meal-media-ready}
+            MEDIA_PROCESSOR_STORAGE_PREFIX: ${MEDIA_STORAGE_PREFIX:-meal}
+            MEDIA_PROCESSOR_KEY_VERSION: ${MEDIA_STORAGE_KEY_VERSION:-1}
+            MEDIA_PROCESSOR_OWNER_ID: ${MEDIA_PROCESSOR_OWNER_ID:-media-primary}
+            MEDIA_PROCESSOR_CONCURRENCY: '1'
+            MEDIA_PROCESSOR_POLL_MS: ${MEDIA_PROCESSOR_POLL_MS:-2000}
+            MEDIA_PROCESSOR_LEASE_SECONDS: ${MEDIA_PROCESSOR_LEASE_SECONDS:-120}
+            MEDIA_PROCESSOR_CDR_TIMEOUT_MS: ${MEDIA_PROCESSOR_CDR_TIMEOUT_MS:-45000}
+            MEDIA_PROCESSOR_KILL_GRACE_MS: ${MEDIA_PROCESSOR_KILL_GRACE_MS:-2000}
+            MEDIA_PROCESSOR_STORAGE_TIMEOUT_MS: ${MEDIA_PROCESSOR_STORAGE_TIMEOUT_MS:-15000}
+            MEDIA_PROCESSOR_MAX_ATTEMPTS: ${MEDIA_PROCESSOR_MAX_ATTEMPTS:-3}
+            NODE_OPTIONS: --max-old-space-size=160
+            VIPS_CONCURRENCY: '1'
+            MALLOC_ARENA_MAX: '2'
+        secrets:
+            - media_processor_database_url
+            - media_processor_storage_secret_access_key
+            - media_processor_encryption_key
+        tmpfs:
+            - '/tmp/meal-media-processor:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=0700,size=64m'
+            - '/run/meal-media-processor:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=0700,size=2m'
+        depends_on:
+            postgres:
+                condition: service_healthy
+            seaweedfs:
+                condition: service_healthy
+        healthcheck:
+            test: [CMD, node, scripts/check-media-processor-health.mjs]
+            interval: 15s
+            timeout: 3s
+            retries: 4
+            start_period: 20s
+        stop_grace_period: 60s
+        networks: [meal-db, meal-media]
+        command: [node, scripts/run-media-processor.mjs]
+
+secrets:
+    media_processor_database_url:
+        file: ${MEDIA_PROCESSOR_DATABASE_URL_FILE:-/etc/meal-planner/secrets/media-processor-database-url}
+    media_processor_storage_secret_access_key:
+        file: ${MEDIA_PROCESSOR_STORAGE_SECRET_ACCESS_KEY_FILE:-/etc/meal-planner/secrets/media-processor-storage-secret-access-key}
+    media_processor_encryption_key:
+        file: ${MEDIA_PROCESSOR_ENCRYPTION_KEY_FILE:-/etc/meal-planner/secrets/media-encryption-key-v1}

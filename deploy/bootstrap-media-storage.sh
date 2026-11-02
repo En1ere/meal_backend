@@ -8,6 +8,7 @@ MEDIA_GROUP=${MEAL_MEDIA_GROUP:-meal-media}
 MEDIA_ROOT=${MEDIA_STORAGE_HOST_ROOT:-/var/lib/meal-planner/media/provider}
 SECRETS_ROOT=${MEAL_SECRETS_ROOT:-/etc/meal-planner/secrets}
 ACCESS_KEY_ID=${MEDIA_STORAGE_ACCESS_KEY_ID:-meal-backend-v1}
+PROCESSOR_ACCESS_KEY_ID=${MEDIA_PROCESSOR_STORAGE_ACCESS_KEY_ID:-meal-media-processor-v1}
 
 [ "$MEDIA_GID" = 29003 ] || { echo "MEAL_MEDIA_GID must remain 29003" >&2; exit 64; }
 case "$MEDIA_ROOT" in /var/lib/meal-planner/media/provider) ;; *) echo "Unsafe media root" >&2; exit 64 ;; esac
@@ -55,14 +56,21 @@ create_secret() {
 }
 
 access_secret=$(openssl rand -hex 32)
+processor_access_secret=$(openssl rand -hex 32)
 signing_key=$(openssl rand -base64 32 | tr -d '\n')
 encryption_key=$(openssl rand -base64 32 | tr -d '\n')
 [ "$signing_key" != "$encryption_key" ] || { echo "Generated media keys must differ" >&2; exit 70; }
 
 create_secret "$SECRETS_ROOT/media-storage-secret-access-key" "$access_secret" meal-secrets 640
+create_secret "$SECRETS_ROOT/media-processor-storage-secret-access-key" "$processor_access_secret" meal-secrets 640
 create_secret "$SECRETS_ROOT/media-signing-key-v1" "$signing_key" meal-secrets 640
 create_secret "$SECRETS_ROOT/media-encryption-key-v1" "$encryption_key" meal-secrets 640
 grep -Eq '^[a-f0-9]{64}$' "$SECRETS_ROOT/media-storage-secret-access-key" || { echo "Invalid storage credential" >&2; exit 77; }
+grep -Eq '^[a-f0-9]{64}$' "$SECRETS_ROOT/media-processor-storage-secret-access-key" || { echo "Invalid processor storage credential" >&2; exit 77; }
+[ "$(cat "$SECRETS_ROOT/media-storage-secret-access-key")" != "$(cat "$SECRETS_ROOT/media-processor-storage-secret-access-key")" ] || {
+    echo "Backend and processor storage credentials must differ" >&2
+    exit 77
+}
 grep -Eq '^[A-Za-z0-9+/]{43}=$' "$SECRETS_ROOT/media-signing-key-v1" || { echo "Invalid signing key" >&2; exit 77; }
 grep -Eq '^[A-Za-z0-9+/]{43}=$' "$SECRETS_ROOT/media-encryption-key-v1" || { echo "Invalid encryption key" >&2; exit 77; }
 [ "$(cat "$SECRETS_ROOT/media-signing-key-v1")" != "$(cat "$SECRETS_ROOT/media-encryption-key-v1")" ] || {
@@ -71,11 +79,24 @@ grep -Eq '^[A-Za-z0-9+/]{43}=$' "$SECRETS_ROOT/media-encryption-key-v1" || { ech
 }
 
 stored_secret=$(cat "$SECRETS_ROOT/media-storage-secret-access-key")
-s3_config=$(printf '{"identities":[{"name":"meal-backend","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Read","Write","List"]}]}' "$ACCESS_KEY_ID" "$stored_secret")
+processor_stored_secret=$(cat "$SECRETS_ROOT/media-processor-storage-secret-access-key")
+old_s3_config=$(printf '{"identities":[{"name":"meal-backend","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Read","Write","List"]}]}' "$ACCESS_KEY_ID" "$stored_secret")
+s3_config=$(printf '{"identities":[{"name":"meal-backend","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Read","Write","List"]},{"name":"meal-media-processor","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Read","Write","List"]}]}' "$ACCESS_KEY_ID" "$stored_secret" "$PROCESSOR_ACCESS_KEY_ID" "$processor_stored_secret")
 s3_config_path="$SECRETS_ROOT/seaweedfs-s3-config.json"
 if [ -f "$s3_config_path" ] && [ ! -L "$s3_config_path" ] && [ "$(stat -c '%u %G %a' "$s3_config_path")" = '0 root 400' ]; then
     chown root:"$MEDIA_GROUP" "$s3_config_path"
     chmod 440 "$s3_config_path"
+fi
+if [ -f "$s3_config_path" ] && [ ! -L "$s3_config_path" ] && [ "$(cat "$s3_config_path")" = "$old_s3_config" ]; then
+    temporary="$s3_config_path.tmp.$$"
+    trap 'rm -f "$temporary"' EXIT HUP INT TERM
+    (set -C; printf '%s\n' "$s3_config" >"$temporary") 2>/dev/null || {
+        echo "Unable to migrate SeaweedFS identity config" >&2; exit 77;
+    }
+    chown root:"$MEDIA_GROUP" "$temporary"
+    chmod 440 "$temporary"
+    mv "$temporary" "$s3_config_path"
+    trap - EXIT HUP INT TERM
 fi
 create_secret "$s3_config_path" "$s3_config" "$MEDIA_GROUP" 440
 [ "$(cat "$s3_config_path")" = "$s3_config" ] || {

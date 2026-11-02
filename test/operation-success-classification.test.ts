@@ -358,6 +358,7 @@ const providerFailClosed = new Map([
     ['DiaryController_uploadMedia', 'object storage, KMS and malware scanner'],
     ['ExportsController_download', 'protected export storage'],
     ['MediaStorageController_reserve', 'provider infrastructure and user media gate are intentionally disabled'],
+    ['MediaStorageController_createIntake', 'provider infrastructure and user media gate are intentionally disabled'],
     ['MediaStorageController_status', 'provider infrastructure and user media gate are intentionally disabled'],
     ['MediaStorageController_complete', 'provider infrastructure and user media gate are intentionally disabled'],
     ['MediaStorageController_download', 'scanner promotion and user media gate are unavailable'],
@@ -378,7 +379,7 @@ void test('every OpenAPI operation has an honest success/effect acceptance class
         .flatMap((pathItem) => Object.values(pathItem))
         .filter((operation): operation is Operation & { operationId: string } => Boolean(operation?.operationId));
     const ids = new Set(operations.map((operation) => operation.operationId));
-    assert.equal(ids.size, 356);
+    assert.equal(ids.size, 357);
     assert.equal(operations.length, ids.size, 'operationId values must remain unique');
 
     for (const id of explicitLiveSuccess) assert.ok(ids.has(id), `${id}: explicit live-success operation is absent`);
@@ -402,7 +403,7 @@ void test('every OpenAPI operation has an honest success/effect acceptance class
     );
 
     assert.equal(explicitLiveSuccess.size, 343);
-    assert.equal(providerFailClosed.size, 10);
+    assert.equal(providerFailClosed.size, 11);
     assert.equal(externalSuccessRequired.size, 3);
     assert.equal(pending.length, 0);
     assert.deepEqual(pendingByTag, {});

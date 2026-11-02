@@ -1,6 +1,7 @@
 import {
     ConflictException,
     ForbiddenException,
+    HttpException,
     Inject,
     Injectable,
     NotFoundException,
@@ -17,8 +18,11 @@ import { encryptMediaStream, decryptMediaStream, encryptedMediaHeaderBytes } fro
 import { MediaMimeVerifier } from './media-mime.js';
 import { MEDIA_OBJECT_STORE, MediaObjectStoreError, type MediaObjectStore } from './media-object-store.js';
 import {
+    mediaIntakeResultSchema,
     mediaReservationResultSchema,
+    type MediaIntakeCreateRequest,
     type MediaReservationRequest,
+    type MediaReservationTarget,
     type MediaStorageState,
 } from './media-storage.contracts.js';
 import { mediaPurposePolicy } from './media-storage.policy.js';
@@ -41,7 +45,19 @@ type ReservationRow = {
     tokenNonce: string;
     expiresAt: Date;
     version: string;
+    intakeId: string | null;
+    diaryEntryId: string | null;
+    supportMessageId: string | null;
+    avatarUserId: string | null;
+    targetSlot: string;
+    targetPosition: number;
 };
+
+const maximumActiveReservationsPerUser = 10;
+const maximumDailyDeclaredBytesPerUser = 100 * 1024 * 1024;
+const maximumStoredBytesPerUser = 500 * 1024 * 1024;
+const maximumActiveReservationsGlobal = 100;
+const maximumStoredBytesGlobal = 20 * 1024 * 1024 * 1024;
 
 @Injectable()
 export class MediaStorageService {
@@ -74,10 +90,52 @@ export class MediaStorageService {
             throw new ServiceUnavailableException('Media storage provider is not available');
         return { signer: this.signer, key: this.encryptionKey };
     }
+    private target(row: Pick<ReservationRow, 'intakeId' | 'diaryEntryId' | 'supportMessageId' | 'avatarUserId'>) {
+        if (row.intakeId) return { kind: 'intake' as const, intakeId: row.intakeId };
+        if (row.diaryEntryId) return { kind: 'diary_entry' as const, diaryEntryId: row.diaryEntryId };
+        if (row.supportMessageId) return { kind: 'support_message' as const, supportMessageId: row.supportMessageId };
+        if (row.avatarUserId) return { kind: 'profile_avatar' as const, userId: row.avatarUserId };
+        throw new ServiceUnavailableException('Media reservation target is missing');
+    }
+    private targetHash(target: MediaReservationTarget) {
+        switch (target.kind) {
+            case 'intake':
+                return ['intake', target.intakeId];
+            case 'diary_entry':
+                return ['diary_entry', target.diaryEntryId];
+            case 'support_message':
+                return ['support_message', target.supportMessageId];
+            case 'profile_avatar':
+                return ['profile_avatar', target.userId];
+        }
+    }
+    private targetSlot(target: MediaReservationTarget) {
+        switch (target.kind) {
+            case 'intake':
+                return 'source';
+            case 'diary_entry':
+                return 'photo';
+            case 'support_message':
+                return 'attachment';
+            case 'profile_avatar':
+                return 'avatar';
+        }
+    }
+    private targetKey(target: MediaReservationTarget, position: number) {
+        return `media-target:${this.targetHash(target).join(':')}:${this.targetSlot(target)}:${position}`;
+    }
     private requestHash(input: MediaReservationRequest): string {
         return createHash('sha256')
             .update(
-                JSON.stringify([input.purpose, input.fileName, input.mimeType, input.sizeBytes, input.idempotencyKey]),
+                JSON.stringify([
+                    input.purpose,
+                    this.targetHash(input.target),
+                    input.position,
+                    input.fileName,
+                    input.mimeType,
+                    input.sizeBytes,
+                    input.idempotencyKey,
+                ]),
             )
             .digest('hex');
     }
@@ -110,6 +168,8 @@ export class MediaStorageService {
             asset: {
                 assetId: row.assetId,
                 purpose: row.purpose,
+                target: this.target(row),
+                position: row.targetPosition,
                 state: row.state,
                 mimeType: row.mimeType,
                 sizeBytes: Number(row.sizeBytes),
@@ -133,13 +193,123 @@ export class MediaStorageService {
         ) allowed`.execute(db);
         if (!access.rows[0]?.allowed) throw new ForbiddenException();
     }
+    async createIntake(userId: string, input: MediaIntakeCreateRequest) {
+        this.runtime();
+        const requestHash = createHash('sha256')
+            .update(JSON.stringify([input.kind, input.scopeId, input.idempotencyKey]))
+            .digest('hex');
+        const row = await this.database.transaction(async (tx) => {
+            await this.assertActive(userId, tx);
+            await sql`select pg_advisory_xact_lock(hashtextextended(${`media-intake:${userId}:${input.idempotencyKey}`},0))`.execute(
+                tx,
+            );
+            if (input.scopeId) {
+                const scope = await sql<{ allowed: boolean }>`select exists(
+                  select 1 from meal.data_scopes ds join meal.family_memberships fm
+                    on fm.family_id=ds.family_id and fm.user_id=${userId}::uuid and fm.left_at is null
+                  where ds.id=${input.scopeId}::uuid and ds.kind='family'
+                ) allowed`.execute(tx);
+                if (!scope.rows[0]?.allowed) throw new ForbiddenException();
+            }
+            const replay = await sql<{
+                intakeId: string;
+                kind: MediaIntakeCreateRequest['kind'];
+                scopeId: string | null;
+                status: 'awaiting_upload' | 'processing' | 'review_required' | 'completed' | 'cancelled' | 'failed';
+                requestHash: string;
+            }>`select id "intakeId",kind,scope_id "scopeId",state status,request_hash "requestHash"
+              from meal.media_intakes where user_id=${userId}::uuid and idempotency_key=${input.idempotencyKey}::uuid
+              limit 1`.execute(tx);
+            if (replay.rows[0]) {
+                if (replay.rows[0].requestHash !== requestHash) throw new ConflictException('Idempotency key reused');
+                return replay.rows[0];
+            }
+            const intakeId = randomUUID();
+            await sql`insert into meal.media_intakes(id,kind,state,user_id,scope_id,request_hash,idempotency_key)
+              values(${intakeId}::uuid,${input.kind},'awaiting_upload',${userId}::uuid,${input.scopeId}::uuid,
+              ${requestHash},${input.idempotencyKey}::uuid)`.execute(tx);
+            return {
+                intakeId,
+                kind: input.kind,
+                scopeId: input.scopeId,
+                status: 'awaiting_upload' as const,
+                requestHash,
+            };
+        });
+        return mediaIntakeResultSchema.parse({
+            intake: {
+                intakeId: row.intakeId,
+                kind: row.kind,
+                scopeId: row.scopeId,
+                status: row.status,
+                requiresReview: true,
+            },
+        });
+    }
+    private async assertTargetAccess(
+        tx: Transaction<DatabaseSchema>,
+        userId: string,
+        purpose: MediaReservationRequest['purpose'],
+        target: MediaReservationTarget,
+    ): Promise<void> {
+        let allowed = false;
+        if (target.kind === 'intake') {
+            const result = await sql<{ allowed: boolean }>`select exists(
+              select 1 from meal.media_intakes i where i.id=${target.intakeId}::uuid and i.user_id=${userId}::uuid
+                and i.state in ('awaiting_upload','processing')
+                and ((i.kind='inventory_scan' and ${purpose}='inventory_source')
+                  or (i.kind='receipt_photo' and ${purpose}='receipt_source'))
+            ) allowed`.execute(tx);
+            allowed = result.rows[0]?.allowed === true;
+        } else if (target.kind === 'diary_entry' && purpose === 'diary_photo') {
+            const result = await sql<{ allowed: boolean }>`select exists(
+              select 1 from meal.diary_entries d where d.id=${target.diaryEntryId}::uuid and d.owner_id=${userId}::uuid
+            ) allowed`.execute(tx);
+            allowed = result.rows[0]?.allowed === true;
+        } else if (target.kind === 'support_message' && purpose === 'support_attachment') {
+            const result = await sql<{ allowed: boolean }>`select exists(
+              select 1 from meal.support_messages m join meal.support_tickets t on t.id=m.ticket_id
+              where m.id=${target.supportMessageId}::uuid and m.author_id=${userId}::uuid
+                and t.requester_id=${userId}::uuid and m.internal=false
+            ) allowed`.execute(tx);
+            allowed = result.rows[0]?.allowed === true;
+        } else if (target.kind === 'profile_avatar' && purpose === 'profile_avatar') {
+            allowed = target.userId === userId;
+        }
+        if (!allowed) throw new ForbiddenException('Media target is unavailable');
+    }
+    private async assertQuota(tx: Transaction<DatabaseSchema>, userId: string, requestedBytes: number): Promise<void> {
+        const quota = await sql<{ active: string; dailyBytes: string; storedBytes: string }>`select
+          count(*) filter(where state in ('reserved','uploading','quarantined'))::text active,
+          coalesce(sum(declared_size) filter(where created_at>=now()-interval '24 hours'),0)::text "dailyBytes",
+          coalesce(sum(declared_size) filter(where state in ('quarantined')),0)::text "storedBytes"
+          from meal.media_upload_reservations where uploader_id=${userId}::uuid`.execute(tx);
+        const current = quota.rows[0]!;
+        if (
+            Number(current.active) >= maximumActiveReservationsPerUser ||
+            Number(current.dailyBytes) + requestedBytes > maximumDailyDeclaredBytesPerUser ||
+            Number(current.storedBytes) + requestedBytes > maximumStoredBytesPerUser
+        )
+            throw new HttpException({ code: 'MEDIA_QUOTA_EXCEEDED', message: 'Лимит загрузок исчерпан' }, 429);
+        const global = await sql<{ active: string; storedBytes: string }>`select
+          count(*) filter(where state in ('reserved','uploading','quarantined'))::text active,
+          coalesce(sum(declared_size) filter(where state='quarantined'),0)::text "storedBytes"
+          from meal.media_upload_reservations`.execute(tx);
+        if (
+            Number(global.rows[0]?.active ?? 0) >= maximumActiveReservationsGlobal ||
+            Number(global.rows[0]?.storedBytes ?? 0) + requestedBytes > maximumStoredBytesGlobal
+        )
+            throw new ServiceUnavailableException('Media storage quota is unavailable');
+    }
     async reserve(userId: string, input: MediaReservationRequest) {
         this.runtime();
+        if ((input.target.kind === 'profile_avatar' || input.target.kind === 'diary_entry') && input.position !== 0)
+            throw new ConflictException('Media target supports one image');
         const policy = mediaPurposePolicy(input.purpose, input.mimeType, input.sizeBytes);
         if (!policy.userReservable) throw new ForbiddenException('Это назначение доступно только внутреннему процессу');
-        await this.assertActive(userId);
         const hash = this.requestHash(input);
         const row = await this.database.transaction(async (tx) => {
+            await this.assertActive(userId, tx);
             await sql`select pg_advisory_xact_lock(hashtextextended(${`media:${userId}:${input.idempotencyKey}`},0))`.execute(
                 tx,
             );
@@ -149,7 +319,10 @@ export class MediaStorageService {
             const replay = await sql<ReservationRow>`select r.asset_id "assetId",r.uploader_id "uploaderId",r.purpose,
               r.declared_mime "mimeType",r.declared_size::text "sizeBytes",r.state,a.checksum,r.failure_code "failureCode",
               r.object_key "objectKey",r.request_hash "requestHash",r.access_key_id "accessKeyId",r.token_nonce "tokenNonce",
-              r.expires_at "expiresAt",r.version::text version from meal.media_upload_reservations r left join meal.media_assets a on a.id=r.asset_id
+              r.expires_at "expiresAt",r.version::text version,r.intake_id "intakeId",r.diary_entry_id "diaryEntryId",
+              r.support_message_id "supportMessageId",r.avatar_user_id "avatarUserId",r.target_slot "targetSlot",
+              r.target_position "targetPosition"
+              from meal.media_upload_reservations r left join meal.media_assets a on a.id=r.asset_id
               where r.uploader_id=${userId}::uuid and r.idempotency_key=${input.idempotencyKey}::uuid limit 1`.execute(
                 tx,
             );
@@ -157,16 +330,43 @@ export class MediaStorageService {
                 if (replay.rows[0].requestHash !== hash) throw new ConflictException('Idempotency key reused');
                 return replay.rows[0];
             }
+            await this.assertTargetAccess(tx, userId, input.purpose, input.target);
+            await sql`select pg_advisory_xact_lock(hashtextextended(${this.targetKey(input.target, input.position)},0))`.execute(
+                tx,
+            );
+            const targetIntakeId = input.target.kind === 'intake' ? input.target.intakeId : null;
+            const targetDiaryEntryId = input.target.kind === 'diary_entry' ? input.target.diaryEntryId : null;
+            const targetSupportMessageId =
+                input.target.kind === 'support_message' ? input.target.supportMessageId : null;
+            const targetAvatarUserId = input.target.kind === 'profile_avatar' ? input.target.userId : null;
+            const occupied = await sql<{ occupied: boolean }>`select exists(
+              select 1 from meal.media_upload_reservations r where r.target_binding_version=1
+                and r.target_slot=${this.targetSlot(input.target)} and r.target_position=${input.position}
+                and r.intake_id is not distinct from ${targetIntakeId}::uuid
+                and r.diary_entry_id is not distinct from ${targetDiaryEntryId}::uuid
+                and r.support_message_id is not distinct from ${targetSupportMessageId}::uuid
+                and r.avatar_user_id is not distinct from ${targetAvatarUserId}::uuid
+                and r.state not in ('expired','failed','deleted')
+            ) occupied`.execute(tx);
+            if (occupied.rows[0]?.occupied) throw new ConflictException('Media target position is occupied');
+            await this.assertQuota(tx, userId, input.sizeBytes);
             const assetId = randomUUID();
             const nonce = randomBytes(16).toString('base64url');
             const expiresAt = new Date(Date.now() + uploadTtlMs);
             const prefix = this.config.MEDIA_STORAGE_PREFIX!;
             const objectKey = `${prefix}/quarantine/${input.purpose}/${assetId}`;
+            const intakeId = input.target.kind === 'intake' ? input.target.intakeId : null;
+            const diaryEntryId = input.target.kind === 'diary_entry' ? input.target.diaryEntryId : null;
+            const supportMessageId = input.target.kind === 'support_message' ? input.target.supportMessageId : null;
+            const avatarUserId = input.target.kind === 'profile_avatar' ? input.target.userId : null;
+            const targetSlot = this.targetSlot(input.target);
             await sql`insert into meal.media_upload_reservations(asset_id,uploader_id,purpose,file_name,declared_mime,
-              declared_size,retention_class,object_key,state,request_hash,idempotency_key,access_key_id,token_nonce,expires_at)
+              declared_size,retention_class,object_key,state,request_hash,idempotency_key,access_key_id,token_nonce,expires_at,
+              intake_id,diary_entry_id,support_message_id,avatar_user_id,target_binding_version,target_slot,target_position)
               values(${assetId}::uuid,${userId}::uuid,${input.purpose},${input.fileName},${input.mimeType},${input.sizeBytes},
               ${policy.retentionClass},${objectKey},'reserved',${hash},${input.idempotencyKey}::uuid,
-              ${this.config.MEDIA_STORAGE_ACCESS_KEY_ID!},${nonce},${expiresAt})`.execute(tx);
+              ${this.config.MEDIA_STORAGE_ACCESS_KEY_ID!},${nonce},${expiresAt},${intakeId}::uuid,${diaryEntryId}::uuid,
+              ${supportMessageId}::uuid,${avatarUserId}::uuid,1,${targetSlot},${input.position})`.execute(tx);
             return {
                 assetId,
                 uploaderId: userId,
@@ -182,6 +382,12 @@ export class MediaStorageService {
                 tokenNonce: nonce,
                 expiresAt,
                 version: '1',
+                intakeId,
+                diaryEntryId,
+                supportMessageId,
+                avatarUserId,
+                targetSlot,
+                targetPosition: input.position,
             };
         });
         const upload =
@@ -199,7 +405,10 @@ export class MediaStorageService {
             const result = await sql<ReservationRow>`select r.asset_id "assetId",r.uploader_id "uploaderId",r.purpose,
               r.declared_mime "mimeType",r.declared_size::text "sizeBytes",coalesce(a.status,r.state) state,a.checksum,
               r.failure_code "failureCode",r.object_key "objectKey",r.request_hash "requestHash",r.access_key_id "accessKeyId",
-              r.token_nonce "tokenNonce",r.expires_at "expiresAt",r.version::text version from meal.media_upload_reservations r
+              r.token_nonce "tokenNonce",r.expires_at "expiresAt",r.version::text version,r.intake_id "intakeId",
+              r.diary_entry_id "diaryEntryId",r.support_message_id "supportMessageId",r.avatar_user_id "avatarUserId",
+              r.target_slot "targetSlot",r.target_position "targetPosition"
+              from meal.media_upload_reservations r
               left join meal.media_assets a on a.id=r.asset_id where r.asset_id=${assetId}::uuid
                 and r.uploader_id=${userId}::uuid limit 1`.execute(tx);
             if (!result.rows[0]) throw new NotFoundException();
@@ -213,6 +422,7 @@ export class MediaStorageService {
     private async claimUpload(row: ReservationRow, userId: string): Promise<void> {
         await this.database.transaction(async (tx) => {
             await this.assertActive(userId, tx);
+            await this.assertTargetAccess(tx, userId, row.purpose, this.target(row));
             const claimed = await sql<{ version: string }>`update meal.media_upload_reservations
               set state='uploading',failure_code=null,updated_at=now(),version=version+1
               where asset_id=${row.assetId}::uuid and uploader_id=${userId}::uuid and state='reserved'
@@ -304,9 +514,18 @@ export class MediaStorageService {
                   algorithm,nonce,authentication_tag) values(${assetId}::uuid,${row.purpose},'s3-compatible',
                   ${`app-media-v${this.config.MEDIA_STORAGE_KEY_VERSION}`},${this.config.MEDIA_STORAGE_KEY_VERSION!},
                   'aes-256-gcm',${completed.nonce},${completed.authenticationTag})`.execute(tx);
-                await sql`insert into meal.media_processing_runs(id,kind,status,provider,policy_version,result,asset_id)
-                  values(${randomUUID()}::uuid,'malware_scan','pending',null,'scanner-required-v1',
-                  ${JSON.stringify({ publicationAllowed: false })}::jsonb,${assetId}::uuid)`.execute(tx);
+                if (row.intakeId) {
+                    await sql`insert into meal.media_intake_sources(id,intake_id,asset_id,slot,position)
+                      values(${randomUUID()}::uuid,${row.intakeId}::uuid,${assetId}::uuid,${row.targetSlot},
+                      ${row.targetPosition})`.execute(tx);
+                } else {
+                    await sql`insert into meal.media_links(id,position,slot,asset_id,diary_entry_id,support_message_id,
+                      avatar_user_id) values(${randomUUID()}::uuid,${row.targetPosition},${row.targetSlot},${assetId}::uuid,
+                      ${row.diaryEntryId}::uuid,${row.supportMessageId}::uuid,${row.avatarUserId}::uuid)`.execute(tx);
+                }
+                await sql`insert into meal.media_processing_jobs(id,kind,status,asset_id,intake_id,policy_version,
+                  source_checksum) values(${randomUUID()}::uuid,'image_cdr','queued',${assetId}::uuid,
+                  ${row.intakeId}::uuid,'image-cdr-v1',${completed.checksum})`.execute(tx);
                 await sql`update meal.media_upload_reservations set state='quarantined',completed_at=now(),updated_at=now(),
                   version=version+1 where asset_id=${assetId}::uuid and state='uploading'`.execute(tx);
             });

@@ -1,8 +1,35 @@
 import { z } from 'zod';
 import { mediaChecksumSchema, mediaPurposeSchema } from '../media-infrastructure/media-provider.js';
 
+export const mediaIntakeKindSchema = z.enum(['inventory_scan', 'receipt_photo']);
+
+export const mediaIntakeCreateRequestSchema = z.strictObject({
+    kind: mediaIntakeKindSchema,
+    scopeId: z.uuid().nullable(),
+    idempotencyKey: z.uuid(),
+});
+
+export const mediaIntakeSchema = z.strictObject({
+    intakeId: z.uuid(),
+    kind: mediaIntakeKindSchema,
+    scopeId: z.uuid().nullable(),
+    status: z.enum(['awaiting_upload', 'processing', 'review_required', 'completed', 'cancelled', 'failed']),
+    requiresReview: z.literal(true),
+});
+
+export const mediaIntakeResultSchema = z.strictObject({ intake: mediaIntakeSchema });
+
+export const mediaReservationTargetSchema = z.discriminatedUnion('kind', [
+    z.strictObject({ kind: z.literal('intake'), intakeId: z.uuid() }),
+    z.strictObject({ kind: z.literal('diary_entry'), diaryEntryId: z.uuid() }),
+    z.strictObject({ kind: z.literal('support_message'), supportMessageId: z.uuid() }),
+    z.strictObject({ kind: z.literal('profile_avatar'), userId: z.uuid() }),
+]);
+
 export const mediaReservationRequestSchema = z.strictObject({
     purpose: mediaPurposeSchema,
+    target: mediaReservationTargetSchema,
+    position: z.number().int().min(0).max(2),
     fileName: z
         .string()
         .trim()
@@ -14,7 +41,7 @@ export const mediaReservationRequestSchema = z.strictObject({
         .number()
         .int()
         .positive()
-        .max(50 * 1024 * 1024),
+        .max(10 * 1024 * 1024),
     idempotencyKey: z.uuid(),
 });
 
@@ -44,6 +71,8 @@ export const mediaUploadTargetSchema = z.strictObject({
 export const mediaReservationSchema = z.strictObject({
     assetId: z.uuid(),
     purpose: mediaPurposeSchema,
+    target: mediaReservationTargetSchema,
+    position: z.number().int().min(0).max(2),
     state: mediaStorageStateSchema,
     mimeType: z.string(),
     sizeBytes: z.number().int().positive(),
@@ -69,5 +98,7 @@ export const mediaDownloadTargetResultSchema = z.strictObject({
 });
 
 export type MediaReservationRequest = z.infer<typeof mediaReservationRequestSchema>;
+export type MediaReservationTarget = z.infer<typeof mediaReservationTargetSchema>;
+export type MediaIntakeCreateRequest = z.infer<typeof mediaIntakeCreateRequestSchema>;
 export type MediaStorageState = z.infer<typeof mediaStorageStateSchema>;
 export type MediaReservation = z.infer<typeof mediaReservationSchema>;

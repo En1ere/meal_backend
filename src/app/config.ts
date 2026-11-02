@@ -97,6 +97,10 @@ export const configSchema = z.object({
         .regex(/^[A-Za-z0-9+/]{43}=$/)
         .optional(),
     MEDIA_STORAGE_KEY_VERSION: z.coerce.number().int().min(1).max(32767).optional(),
+    INLINE_INGEST_OCR_ENABLED: z
+        .enum(['true', 'false'])
+        .transform((value) => value === 'true')
+        .optional(),
     AUTH_RATE_LIMIT: z.coerce.number().int().min(1).max(100).default(10),
     PIN_TRUST_DAYS: z.coerce.number().int().min(1).max(365).default(30),
     REGISTRATION_RISK_ENABLED: z
@@ -180,7 +184,10 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
             `Invalid configuration fields: ${result.error.issues.map((issue) => issue.path.join('.')).join(', ')}`,
         );
     }
-    const config = result.data;
+    const config = {
+        ...result.data,
+        INLINE_INGEST_OCR_ENABLED: result.data.INLINE_INGEST_OCR_ENABLED ?? result.data.NODE_ENV !== 'production',
+    };
     const aiFields = [config.AI_API_BASE_URL, config.AI_API_TOKEN, config.AI_MODEL].filter(Boolean).length;
     if (aiFields !== 0 && aiFields !== 3)
         throw new Error('AI_API_BASE_URL, AI_API_TOKEN and AI_MODEL must be configured together');

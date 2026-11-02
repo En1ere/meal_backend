@@ -256,8 +256,8 @@ void test('prepared worker lease migration is manifest-bound and grants no delet
             sha256: createHash('sha256').update(migration).digest('hex'),
         },
     );
-    assert.equal(manifest.totalTables, 216);
-    assert.equal(manifest.foreignKeys, 494);
+    assert.equal(manifest.totalTables, 223);
+    assert.equal(manifest.foreignKeys, 513);
     assert.match(grants, /GRANT SELECT,INSERT ON meal\.worker_leases TO meal_app/);
     assert.doesNotMatch(grants, /GRANT DELETE ON meal\.worker_leases/);
 });
@@ -309,7 +309,7 @@ const recoverySet = {
     state: 'ready',
     database: 'meal_planner_postgres',
     postgresMajor: 18,
-    schemaVersion: 32,
+    schemaVersion: 33,
     migrationManifestChecksum: `sha256:${'a'.repeat(64)}`,
     snapshotAt: now,
     secrets: 'excluded',
@@ -318,8 +318,8 @@ const recoverySet = {
 const gates = {
     artifactHashes: true,
     schemaVersion: true,
-    tableCount216: true,
-    foreignKeyCount494: true,
+    tableCount223: true,
+    foreignKeyCount513: true,
     applicationRole: true,
     domainSmoke: true,
     mediaCoverage: true,

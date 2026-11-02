@@ -31,6 +31,7 @@ COPY --chown=node:node scripts/migrate.mjs ./scripts/migrate.mjs
 COPY --chown=node:node scripts/admin-mfa-recover.mjs ./scripts/admin-mfa-recover.mjs
 COPY --chown=node:node scripts/run-worker-scheduler.mjs scripts/run-scheduled-task.mjs scripts/check-worker-health.mjs ./scripts/
 COPY --chown=node:node scripts/run-account-mail-worker.mjs scripts/check-account-mail-worker-health.mjs ./scripts/
+COPY --chown=node:node scripts/run-media-processor.mjs scripts/run-image-cdr-child.mjs scripts/check-media-processor-health.mjs ./scripts/
 
 USER node
 EXPOSE 3001

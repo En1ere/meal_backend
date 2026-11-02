@@ -121,7 +121,7 @@ try {
             & (Join-Path $PgBin 'psql.exe') '-w' '-v' 'ON_ERROR_STOP=1' '-c' $billingFixtures | Out-Null
             if ($LASTEXITCODE -ne 0) { throw "Iteration ${iteration}: billing fixture creation failed." }
 
-            $createRole = "CREATE ROLE meal_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD '$appPassword'; CREATE ROLE meal_mail_worker NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; GRANT CONNECT ON DATABASE meal_planner_postgres TO meal_app; GRANT USAGE ON SCHEMA meal TO meal_app;"
+            $createRole = "CREATE ROLE meal_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD '$appPassword'; CREATE ROLE meal_mail_worker NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; CREATE ROLE meal_media_worker NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS; GRANT CONNECT ON DATABASE meal_planner_postgres TO meal_app; GRANT USAGE ON SCHEMA meal TO meal_app;"
             & (Join-Path $PgBin 'psql.exe') '-w' '-v' 'ON_ERROR_STOP=1' '-c' $createRole | Out-Null
             if ($LASTEXITCODE -ne 0) { throw "Iteration ${iteration}: application role creation failed." }
             & (Join-Path $PgBin 'psql.exe') '-w' '-v' 'ON_ERROR_STOP=1' '-f' (Join-Path $backRoot 'database\application-grants.sql') | Out-Null

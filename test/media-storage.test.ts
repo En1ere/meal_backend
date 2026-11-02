@@ -200,7 +200,35 @@ void test('schema v32 and application grants preserve quarantine lifecycle and l
     assert.doesNotMatch(migration, /OLD\.state = 'uploading' AND NEW\.state[^\n]*'reserved'/);
     assert.match(migration, /r\.state IN \('quarantined','deleted'\)/);
     assert.match(migration, /a\.status = r\.state/);
-    assert.match(grants, /migrations 1-32/);
+    assert.match(grants, /migrations 1-33/);
     assert.match(grants, /GRANT UPDATE\(state,completed_at,failure_code,updated_at,version\)/);
     assert.doesNotMatch(grants, /GRANT DELETE ON meal\.media_/);
+});
+
+void test('schema v33 binds image reservations to exact domain targets and durable processing evidence', () => {
+    const migration = readFileSync('database/migrations/033_media_target_processing.sql', 'utf8');
+    const grants = readFileSync('database/application-grants.sql', 'utf8');
+    const generated = readFileSync('src/infrastructure/database/schema.generated.ts', 'utf8');
+    assert.match(migration, /'inventory_source'/);
+    assert.match(migration, /ADD COLUMN intake_id uuid/);
+    assert.match(migration, /ADD COLUMN diary_entry_id uuid/);
+    assert.match(migration, /ADD COLUMN support_message_id uuid/);
+    assert.match(migration, /ADD COLUMN avatar_user_id uuid/);
+    assert.match(migration, /num_nonnulls\(intake_id,diary_entry_id,support_message_id,avatar_user_id\)/);
+    assert.match(migration, /declared_mime IN \('image\/jpeg','image\/png','image\/webp'\)/);
+    assert.match(migration, /CREATE TABLE meal\.media_intake_sources/);
+    assert.match(migration, /CREATE TABLE meal\.media_processing_jobs/);
+    assert.match(migration, /'malware_scan','image_cdr','ocr'/);
+    assert.match(migration, /CREATE TABLE meal\.media_variant_bindings/);
+    assert.match(migration, /CREATE TABLE meal\.media_variant_evidence/);
+    assert.match(migration, /CREATE TABLE meal\.recognition_review_snapshots/);
+    assert.match(migration, /CREATE TABLE meal\.media_reconciliation_attempts/);
+    assert.match(grants, /migrations 1-33/);
+    assert.match(grants, /GRANT INSERT\(id,intake_id,asset_id,slot,position\) ON meal\.media_intake_sources/);
+    assert.match(grants, /GRANT INSERT\(id,position,slot,asset_id,diary_entry_id,support_message_id,avatar_user_id\)/);
+    assert.doesNotMatch(grants, /GRANT DELETE ON meal\.media_/);
+    assert.match(generated, /media_intakes:/);
+    assert.match(generated, /inventory_source/);
+    assert.match(generated, /media_processing_jobs:/);
+    assert.match(generated, /recognition_review_snapshots:/);
 });

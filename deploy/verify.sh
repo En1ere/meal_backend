@@ -47,6 +47,7 @@ case "$component" in
     backend)
         require_running postgres; require_running backend; wait_healthy worker
         if account_mail_enabled; then wait_healthy mail-worker; fi
+        if media_processor_enabled; then wait_healthy media-processor; fi
         if media_infra_enabled; then wait_healthy seaweedfs; fi
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready ;;
@@ -55,6 +56,7 @@ case "$component" in
     all)
         require_running postgres; require_running backend; wait_healthy worker; require_running frontend; require_running admin
         if account_mail_enabled; then wait_healthy mail-worker; fi
+        if media_processor_enabled; then wait_healthy media-processor; fi
         if media_infra_enabled; then wait_healthy seaweedfs; fi
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready
@@ -76,6 +78,7 @@ if [ "$component" = backend ] || [ "$component" = all ]; then
     }
     application_services='backend worker frontend admin postgres'
     if account_mail_enabled; then application_services="$application_services mail-worker"; fi
+    if media_processor_enabled; then application_services="$application_services media-processor"; fi
     for application_service in $application_services; do
         application_id=$(compose ps -q "$application_service")
         [ -z "$application_id" ] && continue
@@ -125,6 +128,18 @@ if [ "$component" = backend ] || [ "$component" = all ]; then
         elif printf '%s\n' "$backend_networks" | grep -Fqx meal-media; then
             echo "Disabled media API must not attach backend to the media network" >&2
             exit 77
+        fi
+        if media_processor_enabled; then
+            processor_id=$(compose ps -q media-processor)
+            [ -n "$processor_id" ] || { echo "Enabled media processor is missing" >&2; exit 77; }
+            processor_networks=$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' "$processor_id" | sort)
+            [ "$processor_networks" = "$(printf 'meal-db\nmeal-media')" ] || {
+                echo "Media processor must use only database and media networks" >&2; exit 77;
+            }
+            processor_security=$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}/{{.HostConfig.PidsLimit}}/{{.HostConfig.Memory}}/{{.HostConfig.NanoCpus}}/{{json .HostConfig.PortBindings}}' "$processor_id")
+            [ "$processor_security" = 'true/64/402653184/750000000/{}' ] || [ "$processor_security" = 'true/64/402653184/750000000/null' ] || {
+                echo "Media processor runtime limits differ from the reviewed policy" >&2; exit 77;
+            }
         fi
     fi
     case "${OBSERVABILITY_HOST_SNAPSHOT_ENABLED:-true}" in

@@ -6,6 +6,7 @@ COMPOSE_FILE=${COMPOSE_FILE:-$DEPLOY_ROOT/compose.production.yml}
 ACCOUNT_MAIL_COMPOSE_FILE=${ACCOUNT_MAIL_COMPOSE_FILE:-$DEPLOY_ROOT/compose.account-mail.yml}
 MEDIA_INFRA_COMPOSE_FILE=${MEDIA_INFRA_COMPOSE_FILE:-$DEPLOY_ROOT/compose.media-local.yml}
 MEDIA_BACKEND_COMPOSE_FILE=${MEDIA_BACKEND_COMPOSE_FILE:-$DEPLOY_ROOT/compose.media-backend.yml}
+MEDIA_PROCESSOR_COMPOSE_FILE=${MEDIA_PROCESSOR_COMPOSE_FILE:-$DEPLOY_ROOT/compose.media-processor.yml}
 DEPLOY_ENV_FILE=${DEPLOY_ENV_FILE:-/etc/meal-planner/deploy.env}
 DEPLOY_LOCK_FILE=${DEPLOY_LOCK_FILE:-/run/lock/meal-planner-deploy.lock}
 STATE_ROOT=${STATE_ROOT:-/var/lib/meal-planner/deployments}
@@ -88,6 +89,11 @@ compose() {
         require_file "$MEDIA_BACKEND_COMPOSE_FILE"
         compose_files="$compose_files -f $MEDIA_BACKEND_COMPOSE_FILE"
     fi
+    if media_processor_enabled; then
+        require_file "$MEDIA_PROCESSOR_COMPOSE_FILE"
+        compose_files="$compose_files -f $MEDIA_PROCESSOR_COMPOSE_FILE"
+        compose_profiles="$compose_profiles --profile media-processor"
+    fi
     # Deployment paths are fixed root-owned paths without whitespace.
     # shellcheck disable=SC2086
     docker compose $compose_files $compose_profiles "$@"
@@ -105,11 +111,20 @@ media_storage_enabled() {
     [ "${MEDIA_STORAGE_ENABLED:-false}" = true ]
 }
 
+media_processor_enabled() {
+    [ "${MEDIA_PROCESSOR_ENABLED:-false}" = true ]
+}
+
 validate_media_flags() {
     case "${MEDIA_STORAGE_INFRA_ENABLED:-false}" in true|false) ;; *) echo "MEDIA_STORAGE_INFRA_ENABLED must be true or false" >&2; exit 64 ;; esac
     case "${MEDIA_STORAGE_ENABLED:-false}" in true|false) ;; *) echo "MEDIA_STORAGE_ENABLED must be true or false" >&2; exit 64 ;; esac
+    case "${MEDIA_PROCESSOR_ENABLED:-false}" in true|false) ;; *) echo "MEDIA_PROCESSOR_ENABLED must be true or false" >&2; exit 64 ;; esac
     if media_storage_enabled && ! media_infra_enabled; then
         echo "MEDIA_STORAGE_ENABLED requires MEDIA_STORAGE_INFRA_ENABLED=true" >&2
+        exit 64
+    fi
+    if media_processor_enabled && ! media_infra_enabled; then
+        echo "MEDIA_PROCESSOR_ENABLED requires MEDIA_STORAGE_INFRA_ENABLED=true" >&2
         exit 64
     fi
 }

@@ -1,5 +1,20 @@
 # Полная программа ручной приёмки Meal Planner
 
+## Target-bound image storage 6B — 02.11.2026
+
+1. Production starts with `MEDIA_STORAGE_ENABLED=false`, `MEDIA_PROCESSOR_ENABLED=false` and `INLINE_INGEST_OCR_ENABLED=false`; inventory table import remains available, inline image OCR returns stable `INGEST_OCR_DISABLED` without reading multipart bytes or starting a worker.
+2. Create personal/family `inventory_scan` and `receipt_photo` intakes; reject foreign/unknown family scope, conflicting idempotency replay and inactive/sanctioned accounts.
+3. Reserve JPEG/PNG/WebP only against the exact allowed intake/diary/support/avatar target. Reject PDF/video/HEIC/SVG/GIF, MIME-magic mismatch, >10 MiB, avatar >5 MiB, wrong owner, internal/staff support message and duplicate occupied target position.
+4. Verify quotas: 10 active per user, rolling 100 MiB declared, 500 MiB stored, 100 active global and 20 GiB global; exact idempotent replay does not double-count.
+5. Complete upload concurrently and verify one object write, one asset/binding, one exact `media_intake_sources` or `media_links` row and one checksum-bound `image_cdr` job in the same SERIALIZABLE commit.
+6. Kill/disconnect before PUT, during PUT and after possible provider/DB commit. Only proven-not-committed may retry/fail; ambiguous outcomes remain reconciliation/manual-review and no automatic object deletion occurs.
+7. CDR accepts a single bounded JPEG/PNG/WebP, handles EXIF orientation, strips metadata, rejects animation/corruption/decompression bombs, emits canonical JPEG/PNG and immutable `cdr_reencoded` evidence. It never writes `malware_scan_clean` and never promotes the original.
+8. Run the default-off processor with concurrency 1, read-only filesystem, no host ports/egress, 384 MiB cgroup limit, CPU/pid/tmpfs bounds, dedicated DB/storage identities and `_FILE` secrets. Exercise timeout TERM/KILL, stale lease recovery, fencing, restart, unknown HEAD/PUT/commit and exact-key readback.
+9. On the VPS measure baseline and worst-case peak RSS for sequential JPEG/PNG/WebP, API/readiness latency, PostgreSQL health, cgroup OOM isolation and RSS after repeated jobs. Do not enable user traffic if the processor or host OOMs or memory grows.
+10. OCR is not part of CDR success: any later OCR snapshot must be source/checksum/model bound, bounded, `requiresReview=true` and must not mutate receipt/inventory until a separate user confirmation transaction.
+
+Автоматические проверки: `test/media-storage.test.ts`, `test/media-storage-service.test.ts`, `test/image-cdr.test.ts`, `test/media-processor.test.ts`, `test/inventory-ingest.test.ts`, `test/deployment-config.test.ts`.
+
 ## Encrypted local storage foundation 0.0.156 — 02.11.2026
 
 1. При обоих media-флагах `false` resolved Compose не содержит SeaweedFS, backend не подключён к `meal-media`, а reservation отвечает 503 без строк/объектов.
@@ -42,7 +57,7 @@
 | OPS-ACC-05 | Reset проверенного кейса и reset untouched/already-not-tested                       | Проверенный → not_tested, comment сохранён, history append-only; бессмысленный reset → 409 без эффекта                          |
 | OPS-ACC-06 | Изменение committed catalog case                                                    | Новый catalogVersion/run и нулевой progress; старые run/events сохранены; semantic ID остаётся стабильным при изменении порядка |
 
-Дата среза: 02.11.2026. Контракт OpenAPI: 0.0.62, 356 операций. Клиент: 117 маршрутов. Админка: 19 разделов. Схема: 32 миграции, 216 таблиц, 494 внешних ключа.
+Дата среза: 02.11.2026. Контракт OpenAPI: 0.0.63, 357 операций. Клиент: 117 маршрутов. Админка: 19 разделов. Схема: 33 миграции, 223 таблицы, 513 внешних ключей.
 
 > Это живая программа приёмки. Строка считается пройденной только при проверке всех применимых исходов из матрицы ниже. `BLOCKED`, `SKIP` и «не проверялось» не равны `PASS`. Новый найденный сценарий сначала добавляется сюда, затем выполняется в текущей и последующих итерациях.
 
@@ -220,7 +235,7 @@ Revoked-role проверка account-deletion переиспользует от
 | BE-10  | Export/support/news/notif                              | Async export; ticket lifecycle; publishing/delivery/preferences                                                        | Queue→processing→ready/failed/expired; all channel policies             | Storage/mail/push unavailable, retry/restart                         | Fail-closed; outbox/delivery dedupe; signed URL scoped; marketing consent                    |
 | BE-11  | Admin/moderator                                        | Staff auth, generic projections, decisions, governance, releases, operations                                           | Direct API for each UI command and permission                           | User cookie, downgraded role, stale claim, arbitrary section/column  | Context isolation; allowlists; critical gates; exact audit                                   |
 | BE-12  | Health/telemetry/errors                                | live/ready, browser telemetry, malformed requests                                                                      | Dependency outage, oversize, bad JSON/content-type                      | Sink unavailable, stack/SQL/token/PII                                | live only process; ready dependencies/migrations; stable envelope/request ID                 |
-| DB-01  | PostgreSQL                                             | Fresh migrate 001–032 + repeat; v31→v32 encrypted-media reservation/binding/transition constraints                     | Empty PG18, checksum/history/environment; run twice                     | Missing/modified migration, wrong PG/env, inconsistent media binding | 216 tables/494 FK; second no-op; v32 quarantine/idempotency/immutability invariants verified |
+| DB-01  | PostgreSQL                                             | Fresh migrate 001–033 + repeat; v32→v33 target/intake/processing/review constraints                                    | Empty PG18, checksum/history/environment; run twice                     | Missing/modified migration, wrong PG/env, inconsistent media binding | 223 tables/513 FK; second no-op; v33 target/CDR/idempotency/immutability invariants verified |
 | DB-02  | Grants/isolation                                       | Apply application-grants; connect as meal_app                                                                          | Allowed CRUD and forbidden DDL/DELETE/other schemas                     | Direct IDOR, role flags, sequence/function access                    | Least privilege; no super/create/bypass; health/account lifecycle work                       |
 | DB-03  | Transactions/concurrency                               | 2–10 concurrent inventory/payment/AI/family mutations                                                                  | SERIALIZABLE/deadlock/connection loss/crash boundaries                  | Exhaust retry, pool exhaustion, statement timeout                    | No partial writes/double spend/lost update; clear 5xx/readiness                              |
 | DB-04  | Backup/restore/performance                             | Backup; restore separate instance; reconcile; EXPLAIN lists/search/queues                                              | Realistic volume, disk-full/read-only simulation                        | RPO/RTO, unbounded scan/N+1                                          | Restored checksum/count/sample match; documented timings; bounded plans                      |

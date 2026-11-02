@@ -1,4 +1,5 @@
 import {
+    Inject,
     Injectable,
     BadRequestException,
     ServiceUnavailableException,
@@ -12,11 +13,15 @@ import type { FastifyRequest } from 'fastify';
 import type {} from '@fastify/multipart';
 import { sql } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
+import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import { ingestLimitsSchema, importPreviewSchema, scanPreviewSchema } from './ingest.contracts.js';
 
 @Injectable()
 export class InventoryIngestService {
-    constructor(private readonly database: DatabaseService) {}
+    constructor(
+        private readonly database: DatabaseService,
+        @Inject(APP_CONFIG) private readonly config: AppConfig,
+    ) {}
     private active = 0;
     private readonly users = new Set<string>();
     readonly limits = ingestLimitsSchema.parse({
@@ -34,6 +39,11 @@ export class InventoryIngestService {
         ),
     });
     async preview(request: FastifyRequest, kind: 'table' | 'scan', userId: string) {
+        if (kind === 'scan' && !this.config.INLINE_INGEST_OCR_ENABLED)
+            throw new ServiceUnavailableException({
+                code: 'INGEST_OCR_DISABLED',
+                message: 'Распознавание изображений временно недоступно.',
+            });
         if (!request.isMultipart()) throw new UnsupportedMediaTypeException('Ожидался multipart/form-data');
         if (!this.database.db || !(await this.database.ready())) throw new ServiceUnavailableException();
         const access = await sql<{

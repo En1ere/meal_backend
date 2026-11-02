@@ -1,11 +1,94 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
+import { ServiceUnavailableException, UnsupportedMediaTypeException } from '@nestjs/common';
+import type { FastifyRequest } from 'fastify';
 import * as XLSX from 'xlsx';
+import { readConfig } from '../src/app/config.js';
+import type { DatabaseService } from '../src/infrastructure/database/database.service.js';
 import { ingestLimitsSchema } from '../src/modules/inventory-ingest/ingest.contracts.js';
+import { InventoryIngestService } from '../src/modules/inventory-ingest/ingest.service.js';
 import { parseTable } from '../src/modules/inventory-ingest/table-parser.js';
 import { checkZip } from '../src/modules/inventory-ingest/zip-safety.js';
 
 const limits = ingestLimitsSchema.parse({});
+const productionConfig = () =>
+    readConfig({
+        NODE_ENV: 'production',
+        FRONTEND_ORIGIN: 'https://meal.example.test',
+        DATABASE_URL: 'postgresql://meal_app:test@localhost/meal_planner_postgres',
+        SECURITY_KEY: randomBytes(32).toString('base64'),
+        MFA_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+    });
+
+void test('legacy inline OCR is enabled by default only outside production and remains explicitly configurable', () => {
+    assert.equal(readConfig({ NODE_ENV: 'development' }).INLINE_INGEST_OCR_ENABLED, true);
+    assert.equal(readConfig({ NODE_ENV: 'test' }).INLINE_INGEST_OCR_ENABLED, true);
+    assert.equal(productionConfig().INLINE_INGEST_OCR_ENABLED, false);
+    assert.equal(
+        readConfig({
+            NODE_ENV: 'test',
+            INLINE_INGEST_OCR_ENABLED: 'false',
+        }).INLINE_INGEST_OCR_ENABLED,
+        false,
+    );
+    assert.equal(
+        readConfig({
+            NODE_ENV: 'production',
+            FRONTEND_ORIGIN: 'https://meal.example.test',
+            DATABASE_URL: 'postgresql://meal_app:test@localhost/meal_planner_postgres',
+            SECURITY_KEY: randomBytes(32).toString('base64'),
+            MFA_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+            INLINE_INGEST_OCR_ENABLED: 'true',
+        }).INLINE_INGEST_OCR_ENABLED,
+        true,
+    );
+    assert.throws(() => readConfig({ INLINE_INGEST_OCR_ENABLED: 'yes' }), /INLINE_INGEST_OCR_ENABLED/);
+});
+
+void test('disabled legacy OCR fails closed before request, database or worker processing while table import is unchanged', async () => {
+    const database = new Proxy(
+        {},
+        {
+            get() {
+                throw new Error('database must not be accessed');
+            },
+        },
+    ) as DatabaseService;
+    const service = new InventoryIngestService(
+        database,
+        readConfig({ NODE_ENV: 'test', INLINE_INGEST_OCR_ENABLED: 'false' }),
+    );
+    const inaccessibleRequest = new Proxy(
+        {},
+        {
+            get() {
+                throw new Error('request must not be accessed');
+            },
+        },
+    ) as FastifyRequest;
+    await assert.rejects(
+        service.preview(inaccessibleRequest, 'scan', 'c9cc69e6-430f-4ef8-b6fe-335647a248d0'),
+        (error: unknown) => {
+            assert.ok(error instanceof ServiceUnavailableException);
+            assert.equal(error.getStatus(), 503);
+            assert.deepEqual(error.getResponse(), {
+                code: 'INGEST_OCR_DISABLED',
+                message: 'Распознавание изображений временно недоступно.',
+            });
+            return true;
+        },
+    );
+    await assert.rejects(
+        service.preview(
+            { isMultipart: () => false } as FastifyRequest,
+            'table',
+            'c9cc69e6-430f-4ef8-b6fe-335647a248d0',
+        ),
+        UnsupportedMediaTypeException,
+    );
+});
+
 void test('CSV and TSV preserve quoted fields, Cyrillic, unknown quantity and separate rows', () => {
     const csv = parseTable(
         Buffer.from('Название;Количество;Единица\n"Молоко; цельное";1;л\nЯйца;;шт'),

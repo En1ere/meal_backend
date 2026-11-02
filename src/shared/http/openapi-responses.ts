@@ -237,6 +237,7 @@ import {
 import { telemetryAcceptedSchema } from '../../modules/telemetry/telemetry.contracts.js';
 import {
     mediaDownloadTargetResultSchema,
+    mediaIntakeResultSchema,
     mediaReservationResultSchema,
 } from '../../modules/media-storage/media-storage.contracts.js';
 
@@ -642,6 +643,7 @@ export function documentResponses(document: OpenAPIObject): OpenAPIObject {
         'POST /api/v1/ai/tasks/{id}/messages': aiConversationSchema,
         'POST /api/v1/ai/package/purchase': aiPurchaseSchema,
         'POST /api/v1/media/reservations': mediaReservationResultSchema,
+        'POST /api/v1/media/intakes': mediaIntakeResultSchema,
         'GET /api/v1/media/assets/{id}': mediaReservationResultSchema,
         'PUT /api/v1/media/assets/{id}/content': mediaReservationResultSchema,
         'POST /api/v1/media/assets/{id}/download-target': mediaDownloadTargetResultSchema,

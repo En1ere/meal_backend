@@ -64,7 +64,10 @@ select 'create role meal_runtime login inherit nosuperuser nocreatedb nocreatero
 where not exists(select 1 from pg_roles where rolname='meal_runtime') \gexec
 select 'create role meal_mail_worker nologin noinherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls'
 where not exists(select 1 from pg_roles where rolname='meal_mail_worker') \gexec
+select 'create role meal_media_worker nologin noinherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls'
+where not exists(select 1 from pg_roles where rolname='meal_media_worker') \gexec
 alter role meal_app nologin noinherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls;
+alter role meal_media_worker nologin noinherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls;
 alter role meal_runtime login inherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls password :'runtime_password';
 grant meal_app to meal_runtime with inherit true, set true;
 SQL
@@ -91,7 +94,7 @@ select
  (select count(*) from information_schema.tables where table_schema='meal' and table_type='BASE TABLE'),
  (select count(*) from pg_constraint c join pg_namespace n on n.oid=c.connamespace where n.nspname='meal' and c.contype='f'),
  current_setting('server_version_num')::int/10000;")
-[ "$facts" = "32/216/494/18" ] || { echo "Restored database invariant mismatch" >&2; exit 65; }
+[ "$facts" = "33/223/513/18" ] || { echo "Restored database invariant mismatch" >&2; exit 65; }
 role_facts=$(compose exec -T postgres psql --username "${POSTGRES_USER:-meal_owner}" \
     --dbname meal_planner_postgres --no-password --tuples-only --no-align --field-separator / --command "
 select app.rolcanlogin,app.rolinherit,mail.rolcanlogin,mail.rolinherit,runtime.rolcanlogin,runtime.rolinherit,

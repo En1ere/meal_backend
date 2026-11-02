@@ -32,6 +32,7 @@ export interface AppConfig {
     MEDIA_STORAGE_SIGNING_KEY?: string | undefined;
     MEDIA_STORAGE_ENCRYPTION_KEY?: string | undefined;
     MEDIA_STORAGE_KEY_VERSION?: number | undefined;
+    INLINE_INGEST_OCR_ENABLED: boolean;
     AUTH_RATE_LIMIT: number;
     PIN_TRUST_DAYS: number;
     REGISTRATION_RISK_ENABLED: boolean;

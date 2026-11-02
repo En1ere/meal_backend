@@ -1,9 +1,10 @@
--- Apply separately after reviewed restore + migrations 1-32. No owner/superuser privileges.
+-- Apply separately after reviewed restore + migrations 1-33. No owner/superuser privileges.
 BEGIN ISOLATION LEVEL SERIALIZABLE;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='30s';
 GRANT USAGE ON SCHEMA meal TO meal_app;
 GRANT USAGE ON SCHEMA meal TO meal_mail_worker;
+GRANT USAGE ON SCHEMA meal TO meal_media_worker;
 GRANT SELECT,INSERT ON meal.admin_session_unlocks TO meal_app;
 GRANT SELECT ON meal.schema_migrations,meal.environment,meal.users,meal.password_credentials,
  meal.user_settings,meal.sessions,meal.auth_challenges,meal.mfa_factors,meal.mfa_recovery_codes,
@@ -301,8 +302,34 @@ GRANT UPDATE(status,attempts,available_at,lease_owner,lease_token,lease_until,pr
  ON meal.account_mail_deliveries TO meal_mail_worker;
 GRANT INSERT ON meal.account_mail_attempts TO meal_mail_worker;
 -- v32 encrypted S3-compatible media quarantine. The HTTP role cannot publish, scan or delete metadata.
-GRANT SELECT,INSERT ON meal.media_upload_reservations TO meal_app;
+GRANT SELECT ON meal.media_upload_reservations TO meal_app;
+REVOKE INSERT ON meal.media_upload_reservations FROM meal_app;
+GRANT INSERT(asset_id,uploader_id,purpose,file_name,declared_mime,declared_size,retention_class,object_key,
+ state,request_hash,idempotency_key,access_key_id,token_nonce,expires_at,intake_id,diary_entry_id,
+ support_message_id,avatar_user_id,target_slot,target_position) ON meal.media_upload_reservations TO meal_app;
 GRANT UPDATE(state,completed_at,failure_code,updated_at,version) ON meal.media_upload_reservations TO meal_app;
 GRANT INSERT ON meal.media_assets,meal.media_asset_bindings,meal.media_processing_runs TO meal_app;
 GRANT SELECT ON meal.media_asset_bindings,meal.media_processing_runs TO meal_app;
+-- v33 target-bound image intake and durable processing. Evidence/bindings are append-only.
+GRANT SELECT ON meal.media_intakes,meal.media_intake_sources,meal.media_processing_jobs,
+ meal.media_variant_bindings,meal.media_variant_evidence,meal.media_reconciliation_attempts,
+ meal.recognition_jobs,meal.recognition_sources,meal.recognition_fields,meal.recognition_review_snapshots TO meal_app;
+GRANT INSERT(id,kind,user_id,scope_id,idempotency_key,request_hash)
+ ON meal.media_intakes TO meal_app;
+GRANT UPDATE(state,failure_code,completed_at,updated_at,version) ON meal.media_intakes TO meal_app;
+GRANT INSERT(id,intake_id,asset_id,slot,position) ON meal.media_intake_sources TO meal_app;
+GRANT INSERT(id,position,slot,asset_id,diary_entry_id,support_message_id,avatar_user_id)
+ ON meal.media_links TO meal_app;
+GRANT INSERT ON meal.media_processing_jobs TO meal_app;
+GRANT INSERT ON meal.recognition_jobs,meal.recognition_sources,meal.recognition_fields,
+ meal.recognition_review_snapshots TO meal_app;
+GRANT UPDATE(status,result_snapshot,version) ON meal.recognition_jobs TO meal_app;
+GRANT UPDATE(reviewed_value,reviewed_at,conflict,reviewed_by,version) ON meal.recognition_fields TO meal_app;
+-- The isolated image CDR role can claim source-bound work and append sanitized variant evidence only.
+GRANT SELECT ON meal.media_assets,meal.media_asset_bindings,meal.media_intake_sources,
+ meal.media_processing_jobs,meal.media_variants,meal.media_variant_bindings TO meal_media_worker;
+GRANT UPDATE(status,attempt_count,available_at,lease_owner,lease_token,lease_until,result_code,
+ result_evidence,completed_at,updated_at,version) ON meal.media_processing_jobs TO meal_media_worker;
+GRANT UPDATE(status,version) ON meal.media_assets TO meal_media_worker;
+GRANT INSERT ON meal.media_variants,meal.media_variant_bindings,meal.media_variant_evidence TO meal_media_worker;
 COMMIT;

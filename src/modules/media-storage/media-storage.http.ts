@@ -20,7 +20,7 @@ import type {} from '@fastify/multipart';
 import { z } from 'zod';
 import { UserSessionGuard } from '../auth/auth.http.js';
 import type { Principal } from '../auth/auth.service.js';
-import { mediaReservationRequestSchema } from './media-storage.contracts.js';
+import { mediaIntakeCreateRequestSchema, mediaReservationRequestSchema } from './media-storage.contracts.js';
 import { MediaStorageService } from './media-storage.service.js';
 
 type Request = FastifyRequest & { principal: Principal };
@@ -44,6 +44,13 @@ const token = (value: string | undefined) => {
 @Controller('media')
 export class MediaStorageController {
     constructor(private readonly media: MediaStorageService) {}
+
+    @Post('intakes')
+    @HttpCode(201)
+    @ApiBody({ schema: body(mediaIntakeCreateRequestSchema) })
+    createIntake(@Req() request: Request, @Body() input: unknown) {
+        return this.media.createIntake(request.principal.id, mediaIntakeCreateRequestSchema.parse(input));
+    }
 
     @Post('reservations')
     @HttpCode(201)
@@ -72,7 +79,7 @@ export class MediaStorageController {
         @Headers('x-media-upload-token') uploadToken: string | undefined,
     ) {
         if (!request.isMultipart()) throw new UnsupportedMediaTypeException('Ожидался multipart/form-data');
-        const part = await request.file({ limits: { fileSize: 50 * 1024 * 1024, files: 1, fields: 0, parts: 1 } });
+        const part = await request.file({ limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 0, parts: 1 } });
         if (!part || part.type !== 'file' || part.fieldname !== 'file') throw new BadRequestException('Ожидался файл');
         return this.media.complete(
             assetId(id),

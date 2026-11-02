@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { format } from 'prettier';
 const root = new URL('../', import.meta.url);
 const tables = JSON.parse(fs.readFileSync(new URL('database/type-source-v1.json', root), 'utf8'));
-let source = `// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029/030/031/032 overlays.\nimport type { ColumnType, Generated } from 'kysely';
+let source = `// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029/030/031/032/033 overlays.\nimport type { ColumnType, Generated } from 'kysely';
 type Timestamp = ColumnType<Date, Date | string, Date | string>;
 type Int64 = ColumnType<string, string | number | bigint, string | number | bigint>;
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
@@ -11,18 +11,61 @@ type OptionalInsert<T> = T extends ColumnType<infer S, infer I, infer U> ? Colum
 export interface DatabaseSchema {
     media_upload_reservations: {
         asset_id: string; uploader_id: string;
-        purpose: 'diary_photo' | 'support_attachment' | 'allergen_icon' | 'receipt_source' | 'export_file' | 'billing_document' | 'community_media' | 'profile_avatar';
+        purpose: 'diary_photo' | 'support_attachment' | 'allergen_icon' | 'receipt_source' | 'inventory_source' | 'export_file' | 'billing_document' | 'community_media' | 'profile_avatar';
         file_name: string; declared_mime: string; declared_size: Int64; retention_class: string; object_key: string;
         state: 'reserved' | 'uploading' | 'quarantined' | 'expired' | 'failed' | 'deleted';
         request_hash: string; idempotency_key: string; access_key_id: string; token_nonce: string; expires_at: Timestamp;
         completed_at: Timestamp | null; failure_code: string | null; created_at: OptionalInsert<Timestamp>;
         updated_at: OptionalInsert<Timestamp>; version: OptionalInsert<Int64>;
+        target_binding_version: OptionalInsert<number>; intake_id: string | null; diary_entry_id: string | null;
+        support_message_id: string | null; avatar_user_id: string | null; target_slot: string | null; target_position: number | null;
     };
     media_asset_bindings: {
         asset_id: string;
-        purpose: 'diary_photo' | 'support_attachment' | 'allergen_icon' | 'receipt_source' | 'export_file' | 'billing_document' | 'community_media' | 'profile_avatar';
+        purpose: 'diary_photo' | 'support_attachment' | 'allergen_icon' | 'receipt_source' | 'inventory_source' | 'export_file' | 'billing_document' | 'community_media' | 'profile_avatar';
         storage_provider: 's3-compatible'; key_reference: string; key_version: number; algorithm: 'aes-256-gcm';
         nonce: string; authentication_tag: string; created_at: OptionalInsert<Timestamp>; version: OptionalInsert<Int64>;
+    };
+    media_intakes: {
+        id: string; kind: 'inventory_scan' | 'receipt_photo';
+        state: OptionalInsert<'awaiting_upload' | 'processing' | 'review_required' | 'completed' | 'failed' | 'cancelled'>;
+        user_id: string; scope_id: string | null; idempotency_key: string; request_hash: string;
+        failure_code: string | null; completed_at: Timestamp | null; created_at: OptionalInsert<Timestamp>;
+        updated_at: OptionalInsert<Timestamp>; version: OptionalInsert<Int64>;
+    };
+    media_intake_sources: {
+        id: string; intake_id: string; asset_id: string; slot: string; position: number; created_at: OptionalInsert<Timestamp>;
+    };
+    media_processing_jobs: {
+        id: string; kind: 'malware_scan' | 'image_cdr' | 'ocr';
+        status: 'queued' | 'processing' | 'succeeded' | 'failed' | 'manual_review' | 'cancelled';
+        asset_id: string; intake_id: string | null; policy_version: string; source_checksum: string;
+        attempt_count: OptionalInsert<number>; available_at: OptionalInsert<Timestamp>; lease_owner: string | null;
+        lease_token: string | null; lease_until: Timestamp | null; result_code: string | null; result_evidence: JsonValue | null;
+        completed_at: Timestamp | null; created_at: OptionalInsert<Timestamp>; updated_at: OptionalInsert<Timestamp>;
+        version: OptionalInsert<Int64>;
+    };
+    media_variant_bindings: {
+        variant_id: string; processing_job_id: string; source_checksum: string; variant_checksum: string;
+        key_reference: string; key_version: number; algorithm: 'aes-256-gcm'; nonce: string; authentication_tag: string;
+        transformation_policy: string; created_at: OptionalInsert<Timestamp>; version: OptionalInsert<Int64>;
+    };
+    media_variant_evidence: {
+        id: string; variant_id: string; processing_job_id: string; kind: 'decode' | 'metadata_strip' | 'sanitize' | 'encode';
+        outcome: 'passed' | 'failed' | 'manual_review'; policy_version: string; evidence: JsonValue;
+        recorded_at: OptionalInsert<Timestamp>;
+    };
+    recognition_review_snapshots: {
+        id: string; job_id: string; revision: number; decision: 'confirmed' | 'rejected' | 'applied'; fields: JsonValue;
+        source_checksum: string; reviewed_by: string; reviewed_at: Timestamp; idempotency_key: string;
+        previous_snapshot_id: string | null; created_at: OptionalInsert<Timestamp>;
+    };
+    media_reconciliation_attempts: {
+        id: string; asset_id: string; provider_outcome: 'present' | 'missing' | 'unknown';
+        database_outcome: 'absent' | 'complete' | 'partial' | 'mismatch';
+        action: 'confirm_quarantined' | 'confirm_failed' | 'defer' | 'manual_review'; reason: string;
+        observed_content_length: Int64 | null; evidence_hash: string | null; policy_version: string;
+        worker_owner: string; attempted_at: OptionalInsert<Timestamp>;
     };
     account_mail_deliveries: {
         id: string; account_token_id: string; user_id: string; recipient: string;
@@ -213,6 +256,7 @@ for (const table of tables) {
     if (table.name === 'account_tokens') source += 'cipher_key_version: OptionalInsert<number>;\n';
     if (table.name === 'account_devices') source += 'expires_at: Timestamp;\n';
     if (table.name === 'export_jobs') source += 'idempotency_key: string | null;\n';
+    if (table.name === 'recognition_jobs') source += 'intake_id: string | null;\n';
     if (table.name === 'payment_attempts')
         source += 'request_hash: string | null; checkout_url: string | null; provider_occurred_at: Timestamp | null;\n';
     if (table.name === 'payment_refunds')
