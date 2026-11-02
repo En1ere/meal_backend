@@ -58,8 +58,10 @@ else
 fi
 if [ "$component" = backend ]; then
     # Only backend releases own schema changes. UI-only releases never touch PostgreSQL.
-    MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/backup.sh" >"$state_dir/backup.path"
     if account_mail_enabled; then compose stop backend worker mail-worker; else compose stop backend worker; fi
+    # The restore point must include every write accepted before maintenance begins.
+    # Keep writers stopped until the verified backup and schema rollout complete.
+    MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/backup.sh" >"$state_dir/backup.path"
     compose --profile tools run --rm migrate
     # Cluster roles are not transactional schema objects. Create the NOLOGIN
     # grant role idempotently before application-grants.sql references it.

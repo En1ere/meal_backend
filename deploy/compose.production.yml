@@ -39,6 +39,8 @@ services:
             HOST: 0.0.0.0
             PORT: '3001'
             APP_VERSION: ${BACKEND_VERSION:?backend version is required}
+            LEGAL_EVIDENCE_MODE: ${LEGAL_EVIDENCE_MODE:-approved}
+            MEDIA_STORAGE_ENABLED: 'false'
             FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?frontend HTTPS origin is required}
             ADMIN_FRONTEND_ORIGIN: ${ADMIN_FRONTEND_ORIGIN:?admin HTTPS origin is required}
             DATABASE_URL_FILE: /run/secrets/backend_database_url

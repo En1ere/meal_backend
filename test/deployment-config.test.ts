@@ -21,6 +21,8 @@ void test('production compose keeps database private and every image digest-pinn
     assert.match(compose, /127\.0\.0\.1:3001:3001/);
     assert.match(compose, /127\.0\.0\.1:3000:3000/);
     assert.match(compose, /127\.0\.0\.1:3002:8080/);
+    assert.match(compose, /LEGAL_EVIDENCE_MODE: \$\{LEGAL_EVIDENCE_MODE:-approved\}/);
+    assert.match(compose, /MEDIA_STORAGE_ENABLED: ['"]false['"]/);
     assert.match(compose, /profiles: \[(?:"|')?tools(?:"|')?\]/);
     assert.equal([...compose.matchAll(/'\$\{MEAL_SECRETS_GID:-29001\}'/g)].length, 3);
     assert.equal([...compose.matchAll(/'29002'/g)].length, 1);
@@ -81,6 +83,7 @@ void test('backend build uses the verified immutable Node base', async () => {
     );
     assert.equal([...dockerfile.matchAll(/FROM \$\{NODE_IMAGE\}/g)].length, 3);
     assert.match(dockerfile, /COPY contracts \.\/contracts/);
+    assert.match(dockerfile, /scripts\/admin-mfa-recover\.mjs/);
     assert.match(dockerfile, /scripts\/run-worker-scheduler\.mjs/);
     assert.match(dockerfile, /scripts\/run-scheduled-task\.mjs/);
     assert.match(dockerfile, /scripts\/check-worker-health\.mjs/);
@@ -116,6 +119,14 @@ void test('component deployment isolates UI rollout from database migration', as
     assert.match(deploy, /account_mail_enabled/);
     assert.match(deploy, /mail-worker/);
     assert.match(deploy, /schema_version=32/);
+    assert.ok(
+        deploy.indexOf('compose stop backend worker') < deploy.indexOf('sh "$SCRIPT_DIR/backup.sh"'),
+        'backend writers must stop before the final pre-migration backup',
+    );
+    assert.ok(
+        deploy.indexOf('sh "$SCRIPT_DIR/backup.sh"') < deploy.indexOf('compose --profile tools run --rm migrate'),
+        'the verified backup must complete before migration',
+    );
     assert.match(deploy, /image_package_version/);
     assert.match(deploy, /previous\.version/);
     assert.match(deploy, /candidate\.version/);
