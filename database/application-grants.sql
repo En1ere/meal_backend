@@ -249,6 +249,10 @@ GRANT UPDATE(version) ON meal.allergens TO meal_app;
 GRANT SELECT,INSERT ON meal.announcement_versions,meal.announcement_reads TO meal_app;
 GRANT SELECT,INSERT ON meal.announcements,meal.mail_campaigns TO meal_app;
 GRANT SELECT(user_id,revoked_at) ON meal.push_subscriptions TO meal_app;
+GRANT SELECT,INSERT ON meal.push_subscriptions,meal.web_push_policies,meal.runtime_setting_previews TO meal_app;
+GRANT UPDATE(endpoint_encrypted,keys_encrypted,endpoint_hash,expiration_time,session_id,revoked_at,updated_at,version) ON meal.push_subscriptions TO meal_app;
+GRANT UPDATE(quiet_start,quiet_end,critical_ttl,important_ttl,informational_ttl,marketing_ttl,updated_at,updated_by,version) ON meal.web_push_policies TO meal_app;
+GRANT UPDATE(consumed_at) ON meal.runtime_setting_previews TO meal_app;
 GRANT UPDATE(kind,revision,pages,status,publish_at,version) ON meal.announcements TO meal_app;
 GRANT UPDATE(status,scheduled_at,audience_snapshot,test_result,version) ON meal.mail_campaigns TO meal_app;
 -- Privacy settings may inspect legal consent state and revoke an existing AI consent; enabling stays fail-closed.

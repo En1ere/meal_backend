@@ -1,7 +1,8 @@
-import { HttpException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { HttpException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { sql, type Transaction } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
+import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
 import {
     notificationCategories,
@@ -66,7 +67,10 @@ const project = (row: {
 };
 @Injectable()
 export class NotificationsService {
-    constructor(private readonly database: DatabaseService) {}
+    constructor(
+        private readonly database: DatabaseService,
+        @Inject(APP_CONFIG) private readonly config: AppConfig,
+    ) {}
     private async db() {
         if (!this.database.db || !(await this.database.ready())) throw new ServiceUnavailableException();
         return this.database.db;
@@ -231,7 +235,7 @@ export class NotificationsService {
             timezone: first?.timezone ?? 'Europe/Moscow',
             urgentFoodRisk: rows.some((x) => x.urgent_opt_in),
             version: Math.max(1, ...rows.map((x) => Number(x.version))),
-            deliveryAvailable: { push: false, email: false },
+            deliveryAvailable: { push: this.config.WEB_PUSH_ENABLED, email: false },
         });
     }
     updatePreferences(userId: string, raw: unknown) {
@@ -282,7 +286,7 @@ export class NotificationsService {
                     timezone: input.timezone,
                     urgentFoodRisk: input.urgentFoodRisk,
                     version: next,
-                    deliveryAvailable: { push: false, email: false },
+                    deliveryAvailable: { push: this.config.WEB_PUSH_ENABLED, email: false },
                 });
             });
         });

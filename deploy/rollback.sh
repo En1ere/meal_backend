@@ -16,6 +16,7 @@ case "$component" in backend|frontend|admin) ;; *) echo "--component is required
     echo "Set ALLOW_APPLICATION_ROLLBACK=true only after confirming schema compatibility" >&2; exit 77;
 }
 load_deploy_environment
+remove_disabled_web_push_worker
 if [ "$component" = backend ] && ocr_preview_enabled; then
     echo "Disable OCR preview before backend image rollback" >&2
     exit 77
@@ -38,6 +39,7 @@ if [ "$component" = backend ]; then
     if account_mail_enabled; then backend_services="$backend_services mail-worker"; fi
     if media_processor_enabled; then backend_services="$backend_services media-processor"; fi
     if ocr_preview_enabled; then backend_services="$backend_services ocr-preview"; fi
+    if web_push_enabled; then backend_services="$backend_services push-worker"; fi
     # shellcheck disable=SC2086
     compose pull $backend_services
     BACKEND_VERSION=$(image_package_version "$image")

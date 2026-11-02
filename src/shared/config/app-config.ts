@@ -17,6 +17,11 @@ export interface AppConfig {
     MFA_ENCRYPTION_KEY?: string | undefined;
     ACCOUNT_MAIL_ENABLED: boolean;
     ACCOUNT_MAIL_TOKEN_KEY?: string | undefined;
+    WEB_PUSH_ENABLED: boolean;
+    WEB_PUSH_VAPID_SUBJECT: string;
+    WEB_PUSH_VAPID_PUBLIC_KEY?: string | undefined;
+    WEB_PUSH_VAPID_PRIVATE_KEY?: string | undefined;
+    WEB_PUSH_SUBSCRIPTION_KEY?: string | undefined;
     LEGAL_EVIDENCE_MODE: 'approved' | 'demonstration';
     MEDIA_STORAGE_ENABLED: boolean;
     MEDIA_STORAGE_ENDPOINT?: string | undefined;

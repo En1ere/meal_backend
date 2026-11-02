@@ -36,6 +36,8 @@ export function readWorkerApplicationConfig(env: NodeJS.ProcessEnv): AppConfig {
         APP_VERSION: env.APP_VERSION,
         ACCOUNT_MAIL_ENABLED: false,
         ACCOUNT_MAIL_TOKEN_KEY: undefined,
+        WEB_PUSH_ENABLED: false,
+        WEB_PUSH_VAPID_SUBJECT: 'mailto:saix789@gmail.com',
         LEGAL_EVIDENCE_MODE: 'approved',
         MEDIA_STORAGE_ENABLED: false,
         MEDIA_STORAGE_FORCE_PATH_STYLE: true,

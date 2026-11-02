@@ -8,7 +8,7 @@ import {
 const manifest = {
     database: 'meal_planner_postgres',
     postgresMajor: 18,
-    schemaVersion: 33,
+    schemaVersion: 34,
     totalTables: 216,
     foreignKeys: 494,
 };

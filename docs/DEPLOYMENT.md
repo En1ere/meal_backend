@@ -102,6 +102,8 @@ Rollback выполняется целиком: остановить новые 
 
 OCR preview добавляется опциональным `deploy/compose.ocr-preview.yml` только при root-owned `OCR_PREVIEW_ENABLED=true`. Sidecar не имеет host port, DB, storage и egress; точная схема изоляции, активации, приёмки и disable описана в `docs/OCR_PREVIEW.md`.
 
+Web Push добавляется опциональным `deploy/compose.web-push.yml` только при root-owned `WEB_PUSH_ENABLED=true`. Backend получает public VAPID configuration и encrypted subscription API, а отдельный least-privilege `push-worker` — DB+egress без ingress. Ключи, активация, disable и rotation описаны в `docs/WEB_PUSH.md`.
+
 Host Nginx приходит на published backend port через Docker bridge gateway. `TRUSTED_PROXY_CIDRS` не может содержать широкую RFC1918-сеть. Runtime smoke первого container cutover доказал admin-guard поведением, что фактический source — только `172.31.0.1/32`; internal `meal-db` gateway контейнеру не назначен и не доверяется. Post-deploy verify отбрасывает отсутствующие/невалидные gateway, сверяет точный список и сохраняет evidence в `proxy-smoke.txt`. Ни один непроверенный proxy CIDR не принимается. После изменения Docker route/network topology проверка выполняется заново.
 
 Первый перенос запрещает bind существующего PGDATA. После создания и проверки свежего dump оператор вручную останавливает host writers `meal-backend.service`, `meal-frontend.service` и host `postgresql.service`; bootstrap сам ничего не останавливает и fail-closed, пока любой unit остаётся active/activating/reloading. Nginx может оставаться TLS-edge. Затем оператор создаёт новый named volume и запускает:
@@ -110,7 +112,7 @@ Host Nginx приходит на published backend port через Docker bridge
 sh deploy/bootstrap-restore.sh --dump /approved/path/baseline.dump --sha256 <approved-lowercase-sha256>
 ```
 
-Скрипт отказывается работать с непустой schema, создаёт `meal_app`, `meal_mail_worker` и `meal_media_worker` NOLOGIN, а также отдельные runtime login-роли, восстанавливает dump в PostgreSQL 18 с `--no-owner`, применяет grants и до запуска application traffic сверяет migration/table/FK/PostgreSQL-major counts с manifest проверяемого release. Для schema v33 gate требует `33/223/513/18`; фактическая VPS-приёмка остаётся отдельным шагом deployment. Runtime passwords читаются из root-owned Docker secrets. Backend, mail-worker и media-processor используют разные URL с URL-encoded `SET ROLE` и не наследуют права друг друга.
+Скрипт отказывается работать с непустой schema, создаёт `meal_app`, `meal_mail_worker` и `meal_media_worker` NOLOGIN, а также отдельные runtime login-роли, восстанавливает dump в PostgreSQL 18 с `--no-owner`, применяет grants и до запуска application traffic сверяет migration/table/FK/PostgreSQL-major counts с manifest проверяемого release. Для schema v34 gate требует `34/227/519/18`; фактическая VPS-приёмка остаётся отдельным шагом deployment. Runtime passwords читаются из root-owned Docker secrets. Backend, mail-worker, media-processor и Web Push worker используют разные URL с URL-encoded `SET ROLE` и не наследуют права друг друга.
 
 Encrypted media configuration, exact env variables, fail-closed state, provider preflight and acceptance matrix are documented in [MEDIA_STORAGE.md](MEDIA_STORAGE.md). `MEDIA_STORAGE_INFRA_ENABLED=true` adds only the private SeaweedFS overlay; `MEDIA_STORAGE_ENABLED=false` keeps backend off the media network and all user reservations unavailable. The second flag may not be enabled until target binding, quotas and scanner/manual-review gates are separately accepted.
 

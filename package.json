@@ -1,6 +1,6 @@
 {
     "name": "meal-planner-back",
-    "version": "0.0.164",
+    "version": "0.0.165",
     "private": true,
     "type": "module",
     "engines": {
@@ -57,6 +57,7 @@
         "rxjs": "7.8.2",
         "sharp": "0.35.5",
         "tesseract.js": "7.0.0",
+        "web-push": "3.6.7",
         "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
         "zod": "4.6.7"
     },
@@ -64,6 +65,7 @@
         "@eslint/js": "10.0.1",
         "@types/node": "24.13.6",
         "@types/pg": "8.23.1",
+        "@types/web-push": "3.6.4",
         "eslint": "10.11.0",
         "globals": "17.12.0",
         "prettier": "3.9.9",

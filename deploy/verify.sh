@@ -49,6 +49,7 @@ case "$component" in
         if account_mail_enabled; then wait_healthy mail-worker; fi
         if media_processor_enabled; then wait_healthy media-processor; fi
         if ocr_preview_enabled; then wait_healthy ocr-preview; fi
+        if web_push_enabled; then wait_healthy push-worker; fi
         if media_infra_enabled; then wait_healthy seaweedfs; fi
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready ;;
@@ -59,6 +60,7 @@ case "$component" in
         if account_mail_enabled; then wait_healthy mail-worker; fi
         if media_processor_enabled; then wait_healthy media-processor; fi
         if ocr_preview_enabled; then wait_healthy ocr-preview; fi
+        if web_push_enabled; then wait_healthy push-worker; fi
         if media_infra_enabled; then wait_healthy seaweedfs; fi
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready
@@ -82,6 +84,7 @@ if [ "$component" = backend ] || [ "$component" = all ]; then
     if account_mail_enabled; then application_services="$application_services mail-worker"; fi
     if media_processor_enabled; then application_services="$application_services media-processor"; fi
     if ocr_preview_enabled; then application_services="$application_services ocr-preview"; fi
+    if web_push_enabled; then application_services="$application_services push-worker"; fi
     for application_service in $application_services; do
         application_id=$(compose ps -q "$application_service")
         [ -z "$application_id" ] && continue
@@ -160,6 +163,20 @@ if [ "$component" = backend ] || [ "$component" = all ]; then
         }
     elif printf '%s\n' "$backend_networks" | grep -Fqx meal-ocr; then
         echo "Disabled OCR preview must not attach backend to the OCR network" >&2; exit 77
+    fi
+    if web_push_enabled; then
+        push_id=$(compose ps -q push-worker)
+        [ -n "$push_id" ] || { echo "Enabled Web Push worker is missing" >&2; exit 77; }
+        push_networks=$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' "$push_id" | sed '/^$/d' | sort)
+        [ "$push_networks" = "$(printf 'meal-db\nmeal-egress')" ] || {
+            echo "Web Push worker must use only database and egress networks" >&2; exit 77;
+        }
+        push_security=$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}/{{.HostConfig.PidsLimit}}/{{.HostConfig.Memory}}/{{.HostConfig.NanoCpus}}/{{json .HostConfig.PortBindings}}' "$push_id")
+        [ "$push_security" = 'true/64/268435456/500000000/{}' ] || [ "$push_security" = 'true/64/268435456/500000000/null' ] || {
+            echo "Web Push worker runtime limits differ from the reviewed policy" >&2; exit 77;
+        }
+    elif [ -r "$WEB_PUSH_COMPOSE_FILE" ] && [ -n "$(compose_web_push_overlay ps -q push-worker)" ]; then
+        echo "Disabled Web Push worker must be removed" >&2; exit 77
     fi
     case "${OBSERVABILITY_HOST_SNAPSHOT_ENABLED:-true}" in
         true)

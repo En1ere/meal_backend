@@ -11,6 +11,7 @@ validate_images
 case "$action" in
     up)
         take_lock
+        remove_disabled_web_push_worker
         validate_network_route meal-db "$MEAL_NETWORK_SUBNET"
         validate_network_route meal-egress "$MEAL_EGRESS_SUBNET"
         if media_infra_enabled; then

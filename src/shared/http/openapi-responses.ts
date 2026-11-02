@@ -122,6 +122,11 @@ import {
 } from '../../modules/admin/admin-read.contracts.js';
 import { adminObservabilitySchema } from '../../modules/admin-observability/admin-observability.contracts.js';
 import {
+    runtimeSettingsSchema,
+    webPushPolicyPreviewSchema,
+    webPushPolicyResultSchema,
+} from '../../modules/admin-runtime-settings/admin-runtime-settings.contracts.js';
+import {
     acceptanceMutationResultSchema,
     acceptanceWorkspaceSchema,
 } from '../../modules/admin-acceptance-tests/admin-acceptance-tests.contracts.js';
@@ -142,6 +147,9 @@ import {
     notificationListSchema,
     notificationMutationSchema,
     notificationPreferencesSchema,
+    webPushConfigSchema,
+    webPushRevokedSchema,
+    webPushSubscriptionSchema,
 } from '../../modules/notifications/notifications.contracts.js';
 import { supportDetailSchema, supportListSchema, supportMetaSchema } from '../../modules/support/support.contracts.js';
 import {
@@ -622,6 +630,12 @@ export function documentResponses(document: OpenAPIObject): OpenAPIObject {
         'POST /api/v1/notifications/read-all': notificationMutationSchema,
         'GET /api/v1/notification-preferences': notificationPreferencesSchema,
         'PUT /api/v1/notification-preferences': notificationPreferencesSchema,
+        'GET /api/v1/notification-push/config': webPushConfigSchema,
+        'POST /api/v1/notification-push/subscriptions': webPushSubscriptionSchema,
+        'DELETE /api/v1/notification-push/subscriptions/{id}': webPushRevokedSchema,
+        'GET /api/v1/admin/runtime-settings': runtimeSettingsSchema,
+        'POST /api/v1/admin/runtime-settings/web-push-policy/preview': webPushPolicyPreviewSchema,
+        'POST /api/v1/admin/runtime-settings/web-push-policy/execute': webPushPolicyResultSchema,
         'GET /api/v1/support/meta': supportMetaSchema,
         'GET /api/v1/support': supportListSchema,
         'POST /api/v1/support': supportDetailSchema,
@@ -651,7 +665,8 @@ export function documentResponses(document: OpenAPIObject): OpenAPIObject {
     type Schema = NonNullable<NonNullable<OpenAPIObject['components']>['schemas']>[string];
     const toSchema = (value: z.ZodType) => z.toJSONSchema(value, { reused: 'inline', target: 'openapi-3.0' }) as Schema;
     for (const [path, item] of Object.entries(document.paths)) {
-        for (const method of ['get', 'post', 'put', 'patch'] as const) {
+        for (const method of ['get', 'post', 'put', 'patch', 'delete'] as const) {
+            if (method === 'delete' && path !== '/api/v1/notification-push/subscriptions/{id}') continue;
             const operation = item[method];
             if (!operation) continue;
             const key = routes[path];

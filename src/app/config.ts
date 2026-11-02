@@ -55,6 +55,26 @@ export const configSchema = z.object({
         .string()
         .regex(/^[A-Za-z0-9+/]{43}=$/)
         .optional(),
+    WEB_PUSH_ENABLED: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
+    WEB_PUSH_VAPID_SUBJECT: z
+        .string()
+        .regex(/^mailto:[^\s@]+@[^\s@]+$/)
+        .default('mailto:saix789@gmail.com'),
+    WEB_PUSH_VAPID_PUBLIC_KEY: z
+        .string()
+        .regex(/^[A-Za-z0-9_-]{87}$/)
+        .optional(),
+    WEB_PUSH_VAPID_PRIVATE_KEY: z
+        .string()
+        .regex(/^[A-Za-z0-9_-]{43}$/)
+        .optional(),
+    WEB_PUSH_SUBSCRIPTION_KEY: z
+        .string()
+        .regex(/^[A-Za-z0-9+/]{43}=$/)
+        .optional(),
     LEGAL_EVIDENCE_MODE: z.enum(['approved', 'demonstration']).default('approved'),
     MEDIA_STORAGE_ENABLED: z
         .enum(['true', 'false'])
@@ -158,6 +178,8 @@ const secretFiles = {
     SECURITY_KEY: 'SECURITY_KEY_FILE',
     MFA_ENCRYPTION_KEY: 'MFA_ENCRYPTION_KEY_FILE',
     ACCOUNT_MAIL_TOKEN_KEY: 'ACCOUNT_MAIL_TOKEN_KEY_FILE',
+    WEB_PUSH_VAPID_PRIVATE_KEY: 'WEB_PUSH_VAPID_PRIVATE_KEY_FILE',
+    WEB_PUSH_SUBSCRIPTION_KEY: 'WEB_PUSH_SUBSCRIPTION_KEY_FILE',
     MEDIA_STORAGE_SECRET_ACCESS_KEY: 'MEDIA_STORAGE_SECRET_ACCESS_KEY_FILE',
     MEDIA_STORAGE_SIGNING_KEY: 'MEDIA_STORAGE_SIGNING_KEY_FILE',
     MEDIA_STORAGE_ENCRYPTION_KEY: 'MEDIA_STORAGE_ENCRYPTION_KEY_FILE',
@@ -187,6 +209,8 @@ function withSecretFiles(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
 export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
     if (env.NODE_ENV === 'production' && env.OCR_PREVIEW_TOKEN)
         throw new Error('OCR_PREVIEW_TOKEN must use OCR_PREVIEW_TOKEN_FILE in production');
+    if (env.NODE_ENV === 'production' && (env.WEB_PUSH_VAPID_PRIVATE_KEY || env.WEB_PUSH_SUBSCRIPTION_KEY))
+        throw new Error('Web Push private keys must use root-owned *_FILE inputs in production');
     const result = configSchema.safeParse(withSecretFiles(env));
     if (!result.success) {
         throw new Error(
@@ -232,6 +256,15 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
     }
     if (config.NODE_ENV === 'production' && config.ACCOUNT_MAIL_ENABLED && !config.ACCOUNT_MAIL_TOKEN_KEY)
         throw new Error('Enabled account mail requires ACCOUNT_MAIL_TOKEN_KEY');
+    const pushFields = [
+        config.WEB_PUSH_VAPID_PUBLIC_KEY,
+        config.WEB_PUSH_VAPID_PRIVATE_KEY,
+        config.WEB_PUSH_SUBSCRIPTION_KEY,
+    ].filter(Boolean).length;
+    if (!config.WEB_PUSH_ENABLED && pushFields !== 0)
+        throw new Error('Web Push key material requires WEB_PUSH_ENABLED=true');
+    if (config.WEB_PUSH_ENABLED && pushFields !== 3)
+        throw new Error('Enabled Web Push requires public, private and subscription keys');
     const mediaStorageFields = [
         config.MEDIA_STORAGE_ENDPOINT,
         config.MEDIA_STORAGE_BACKEND_PORT,

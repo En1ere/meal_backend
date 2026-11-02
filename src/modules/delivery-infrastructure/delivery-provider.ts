@@ -144,6 +144,10 @@ export const webPushDeliveryRequestSchema = z.strictObject({
     }),
     ttlSeconds: z.number().int().min(0).max(86_400),
     urgency: z.enum(['very-low', 'low', 'normal', 'high']),
+    topic: z
+        .string()
+        .regex(/^[A-Za-z0-9_-]{1,32}$/)
+        .optional(),
 });
 export type WebPushDeliveryRequest = z.infer<typeof webPushDeliveryRequestSchema>;
 
@@ -157,6 +161,14 @@ export const webPushDeliverySnapshotSchema = z.strictObject({
     subscriptionId: z.uuid(),
     state: webPushDeliveryStateSchema,
     occurredAt: z.iso.datetime(),
+    failure: z
+        .strictObject({
+            code: z.enum(['subscription_gone', 'http_429', 'http_5xx', 'http_4xx', 'http_other', 'network_unknown']),
+            retryable: z.boolean(),
+            retryAfterSeconds: z.number().int().min(1).max(3600).nullable(),
+        })
+        .nullable()
+        .optional(),
 });
 export type WebPushDeliverySnapshot = z.infer<typeof webPushDeliverySnapshotSchema>;
 

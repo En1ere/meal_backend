@@ -157,7 +157,7 @@ await test('every OpenAPI operation is registered and reaches documented defensi
                 }
             }
 
-        assert.equal(visited.size, 357);
+        assert.equal(visited.size, 363);
         assert.ok(requestIndex > 1_200, `expected a broad state matrix, got only ${requestIndex} requests`);
     } finally {
         await app.close();

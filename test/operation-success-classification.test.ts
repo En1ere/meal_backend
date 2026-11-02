@@ -75,6 +75,9 @@ const explicitLiveSuccess = new Set([
     'AdminNewsController_cancel',
     'AdminNewsController_test',
     'AdminObservabilityController_read',
+    'AdminRuntimeSettingsController_read',
+    'AdminRuntimeSettingsController_preview',
+    'AdminRuntimeSettingsController_execute',
     'AdminAcceptanceTestsController_read',
     'AdminAcceptanceTestsController_update',
     'AdminAcceptanceTestsController_reset',
@@ -222,6 +225,9 @@ const explicitLiveSuccess = new Set([
     'NotificationsController_read',
     'NotificationsController_readAll',
     'NotificationsController_updatePreferences',
+    'WebPushSubscriptionsController_pushConfig',
+    'WebPushSubscriptionsController_subscribe',
+    'WebPushSubscriptionsController_unsubscribe',
     'NutritionController_settings',
     'NutritionController_profile',
     'NutritionController_target',
@@ -379,7 +385,7 @@ void test('every OpenAPI operation has an honest success/effect acceptance class
         .flatMap((pathItem) => Object.values(pathItem))
         .filter((operation): operation is Operation & { operationId: string } => Boolean(operation?.operationId));
     const ids = new Set(operations.map((operation) => operation.operationId));
-    assert.equal(ids.size, 357);
+    assert.equal(ids.size, 363);
     assert.equal(operations.length, ids.size, 'operationId values must remain unique');
 
     for (const id of explicitLiveSuccess) assert.ok(ids.has(id), `${id}: explicit live-success operation is absent`);
@@ -402,7 +408,7 @@ void test('every OpenAPI operation has an honest success/effect acceptance class
             .map((tag) => [tag, pending.filter((operation) => (operation.tags?.[0] ?? 'untagged') === tag).length]),
     );
 
-    assert.equal(explicitLiveSuccess.size, 343);
+    assert.equal(explicitLiveSuccess.size, 349);
     assert.equal(providerFailClosed.size, 11);
     assert.equal(externalSuccessRequired.size, 3);
     assert.equal(pending.length, 0);

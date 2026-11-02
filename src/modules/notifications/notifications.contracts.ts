@@ -100,3 +100,27 @@ export const notificationCategories = [
     ['achievements', 'Достижения'],
     ['news', 'Новости и предложения'],
 ] as const;
+
+const webPushKey = z.string().regex(/^[A-Za-z0-9_-]{16,256}$/);
+export const webPushConfigSchema = z.strictObject({
+    available: z.boolean(),
+    vapidPublicKey: z
+        .string()
+        .regex(/^[A-Za-z0-9_-]{87}$/)
+        .nullable(),
+});
+export const webPushSubscribeSchema = z.strictObject({
+    endpoint: z
+        .url()
+        .max(2048)
+        .refine((value) => new URL(value).protocol === 'https:'),
+    keys: z.strictObject({ p256dh: webPushKey, auth: webPushKey }),
+    expirationTime: z.number().int().positive().nullable(),
+    idempotencyKey: z.uuid(),
+});
+export const webPushSubscriptionSchema = z.strictObject({ id: z.uuid(), version: z.number().int().positive() });
+export const webPushRevokedSchema = z.strictObject({ revoked: z.literal(true) });
+export const webPushUnsubscribeSchema = z.strictObject({
+    expectedVersion: z.number().int().positive(),
+    idempotencyKey: z.uuid(),
+});

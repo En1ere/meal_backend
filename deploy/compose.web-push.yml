@@ -1,0 +1,50 @@
+services:
+    backend:
+        environment:
+            WEB_PUSH_ENABLED: 'true'
+            WEB_PUSH_VAPID_SUBJECT: ${WEB_PUSH_VAPID_SUBJECT:-mailto:saix789@gmail.com}
+            WEB_PUSH_VAPID_PUBLIC_KEY: ${WEB_PUSH_VAPID_PUBLIC_KEY:-disabled}
+            WEB_PUSH_VAPID_PRIVATE_KEY_FILE: /run/secrets/web_push_vapid_private_key
+            WEB_PUSH_SUBSCRIPTION_KEY_FILE: /run/secrets/web_push_subscription_key
+        secrets: [web_push_vapid_private_key, web_push_subscription_key]
+    push-worker:
+        image: ${BACKEND_IMAGE:?immutable backend digest reference is required}
+        profiles: [web-push]
+        init: true
+        user: node
+        read_only: true
+        cap_drop: [ALL]
+        security_opt: [no-new-privileges:true]
+        pids_limit: 64
+        mem_limit: 256m
+        cpus: 0.50
+        restart: unless-stopped
+        group_add: ['${MEAL_SECRETS_GID:-29001}']
+        environment:
+            DATABASE_URL_FILE: /run/secrets/web_push_worker_database_url
+            WEB_PUSH_VAPID_SUBJECT: ${WEB_PUSH_VAPID_SUBJECT:-mailto:saix789@gmail.com}
+            WEB_PUSH_VAPID_PUBLIC_KEY: ${WEB_PUSH_VAPID_PUBLIC_KEY:-disabled}
+            WEB_PUSH_VAPID_PRIVATE_KEY_FILE: /run/secrets/web_push_vapid_private_key
+            WEB_PUSH_SUBSCRIPTION_KEY_FILE: /run/secrets/web_push_subscription_key
+            WEB_PUSH_WORKER_BATCH_SIZE: ${WEB_PUSH_WORKER_BATCH_SIZE:-10}
+            WEB_PUSH_WORKER_POLL_MS: ${WEB_PUSH_WORKER_POLL_MS:-2000}
+            WEB_PUSH_WORKER_LEASE_SECONDS: ${WEB_PUSH_WORKER_LEASE_SECONDS:-120}
+        secrets: [web_push_worker_database_url, web_push_vapid_private_key, web_push_subscription_key]
+        tmpfs:
+            - '/tmp:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=0700,size=8m'
+            - '/run/meal-web-push-worker:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=0700,size=2m'
+        healthcheck:
+            test: [CMD, node, scripts/check-web-push-worker-health.mjs]
+            interval: 15s
+            timeout: 3s
+            retries: 4
+            start_period: 20s
+        networks: [meal-db, meal-egress]
+        command: [node, scripts/run-web-push-worker.mjs]
+secrets:
+    web_push_worker_database_url:
+        file: ${WEB_PUSH_WORKER_DATABASE_URL_FILE:-/etc/meal-planner/secrets/web-push-worker-database-url}
+    web_push_vapid_private_key:
+        file: ${WEB_PUSH_VAPID_PRIVATE_KEY_FILE:-/etc/meal-planner/secrets/web-push-vapid-private-key}
+    web_push_subscription_key:
+        file: ${WEB_PUSH_SUBSCRIPTION_KEY_FILE:-/etc/meal-planner/secrets/web-push-subscription-key}

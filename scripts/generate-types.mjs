@@ -3,12 +3,34 @@ import fs from 'node:fs';
 import { format } from 'prettier';
 const root = new URL('../', import.meta.url);
 const tables = JSON.parse(fs.readFileSync(new URL('database/type-source-v1.json', root), 'utf8'));
-let source = `// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029/030/031/032/033 overlays.\nimport type { ColumnType, Generated } from 'kysely';
+let source = `// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029/030/031/032/033/034 overlays.\nimport type { ColumnType, Generated } from 'kysely';
 type Timestamp = ColumnType<Date, Date | string, Date | string>;
 type Int64 = ColumnType<string, string | number | bigint, string | number | bigint>;
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 type OptionalInsert<T> = T extends ColumnType<infer S, infer I, infer U> ? ColumnType<S, I | undefined, U> : Generated<T>;
 export interface DatabaseSchema {
+    web_push_policies: {
+        id: OptionalInsert<number>; quiet_start: OptionalInsert<string>; quiet_end: OptionalInsert<string>;
+        critical_ttl: OptionalInsert<number>; important_ttl: OptionalInsert<number>;
+        informational_ttl: OptionalInsert<number>; marketing_ttl: OptionalInsert<number>;
+        updated_at: OptionalInsert<Timestamp>; updated_by: string | null; version: OptionalInsert<Int64>;
+    };
+    runtime_setting_previews: {
+        id: string; actor_id: string; actor_session_id: string; setting_key: string; expected_version: Int64;
+        payload: JsonValue; payload_hash: string; expires_at: Timestamp; consumed_at: Timestamp | null;
+        created_at: OptionalInsert<Timestamp>;
+    };
+    web_push_jobs: {
+        id: string; notification_id: string; subscription_id: string;
+        state: OptionalInsert<'queued' | 'processing' | 'deferred' | 'accepted' | 'unknown' | 'gone' | 'failed'>;
+        attempt_count: OptionalInsert<number>; next_attempt_at: OptionalInsert<Timestamp>; lease_token: string | null;
+        lease_until: Timestamp | null; topic: string; ttl_seconds: number; urgency: 'very-low' | 'low' | 'normal' | 'high';
+        created_at: OptionalInsert<Timestamp>; updated_at: OptionalInsert<Timestamp>; version: OptionalInsert<Int64>;
+    };
+    web_push_attempts: {
+        id: string; job_id: string; attempt: number; outcome: 'accepted' | 'deferred' | 'unknown' | 'gone' | 'failed';
+        http_status: number | null; error_code: string | null; retry_at: Timestamp | null; occurred_at: OptionalInsert<Timestamp>;
+    };
     media_upload_reservations: {
         asset_id: string; uploader_id: string;
         purpose: 'diary_photo' | 'support_attachment' | 'allergen_icon' | 'receipt_source' | 'inventory_source' | 'export_file' | 'billing_document' | 'community_media' | 'profile_avatar';
@@ -257,6 +279,8 @@ for (const table of tables) {
     if (table.name === 'account_devices') source += 'expires_at: Timestamp;\n';
     if (table.name === 'export_jobs') source += 'idempotency_key: string | null;\n';
     if (table.name === 'recognition_jobs') source += 'intake_id: string | null;\n';
+    if (table.name === 'push_subscriptions')
+        source += 'endpoint_hash: string; expiration_time: Timestamp | null; updated_at: OptionalInsert<Timestamp>;\n';
     if (table.name === 'payment_attempts')
         source += 'request_hash: string | null; checkout_url: string | null; provider_occurred_at: Timestamp | null;\n';
     if (table.name === 'payment_refunds')

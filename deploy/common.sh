@@ -8,6 +8,7 @@ MEDIA_INFRA_COMPOSE_FILE=${MEDIA_INFRA_COMPOSE_FILE:-$DEPLOY_ROOT/compose.media-
 MEDIA_BACKEND_COMPOSE_FILE=${MEDIA_BACKEND_COMPOSE_FILE:-$DEPLOY_ROOT/compose.media-backend.yml}
 MEDIA_PROCESSOR_COMPOSE_FILE=${MEDIA_PROCESSOR_COMPOSE_FILE:-$DEPLOY_ROOT/compose.media-processor.yml}
 OCR_PREVIEW_COMPOSE_FILE=${OCR_PREVIEW_COMPOSE_FILE:-$DEPLOY_ROOT/compose.ocr-preview.yml}
+WEB_PUSH_COMPOSE_FILE=${WEB_PUSH_COMPOSE_FILE:-$DEPLOY_ROOT/compose.web-push.yml}
 DEPLOY_ENV_FILE=${DEPLOY_ENV_FILE:-/etc/meal-planner/deploy.env}
 DEPLOY_LOCK_FILE=${DEPLOY_LOCK_FILE:-/run/lock/meal-planner-deploy.lock}
 DEPLOY_LOCK_WAIT_SECONDS=${DEPLOY_LOCK_WAIT_SECONDS:-300}
@@ -102,9 +103,25 @@ compose() {
         compose_files="$compose_files -f $OCR_PREVIEW_COMPOSE_FILE"
         compose_profiles="$compose_profiles --profile ocr-preview"
     fi
+    if web_push_enabled; then
+        require_file "$WEB_PUSH_COMPOSE_FILE"
+        compose_files="$compose_files -f $WEB_PUSH_COMPOSE_FILE"
+        compose_profiles="$compose_profiles --profile web-push"
+    fi
     # Deployment paths are fixed root-owned paths without whitespace.
     # shellcheck disable=SC2086
     docker compose $compose_files $compose_profiles "$@"
+}
+
+compose_web_push_overlay() {
+    require_file "$WEB_PUSH_COMPOSE_FILE"
+    docker compose -f "$COMPOSE_FILE" -f "$WEB_PUSH_COMPOSE_FILE" --profile web-push "$@"
+}
+
+remove_disabled_web_push_worker() {
+    if ! web_push_enabled && [ -r "$WEB_PUSH_COMPOSE_FILE" ]; then
+        compose_web_push_overlay rm --stop --force push-worker >/dev/null
+    fi
 }
 
 account_mail_enabled() {
@@ -127,11 +144,14 @@ ocr_preview_enabled() {
     [ "${OCR_PREVIEW_ENABLED:-false}" = true ]
 }
 
+web_push_enabled() { [ "${WEB_PUSH_ENABLED:-false}" = true ]; }
+
 validate_media_flags() {
     case "${MEDIA_STORAGE_INFRA_ENABLED:-false}" in true|false) ;; *) echo "MEDIA_STORAGE_INFRA_ENABLED must be true or false" >&2; exit 64 ;; esac
     case "${MEDIA_STORAGE_ENABLED:-false}" in true|false) ;; *) echo "MEDIA_STORAGE_ENABLED must be true or false" >&2; exit 64 ;; esac
     case "${MEDIA_PROCESSOR_ENABLED:-false}" in true|false) ;; *) echo "MEDIA_PROCESSOR_ENABLED must be true or false" >&2; exit 64 ;; esac
     case "${OCR_PREVIEW_ENABLED:-false}" in true|false) ;; *) echo "OCR_PREVIEW_ENABLED must be true or false" >&2; exit 64 ;; esac
+    case "${WEB_PUSH_ENABLED:-false}" in true|false) ;; *) echo "WEB_PUSH_ENABLED must be true or false" >&2; exit 64 ;; esac
     if media_storage_enabled && ! media_infra_enabled; then
         echo "MEDIA_STORAGE_ENABLED requires MEDIA_STORAGE_INFRA_ENABLED=true" >&2
         exit 64

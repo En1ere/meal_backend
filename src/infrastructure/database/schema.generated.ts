@@ -1,4 +1,4 @@
-// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029/030/031/032/033 overlays.
+// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029/030/031/032/033/034 overlays.
 import type { ColumnType, Generated } from 'kysely';
 type Timestamp = ColumnType<Date, Date | string, Date | string>;
 type Int64 = ColumnType<string, string | number | bigint, string | number | bigint>;
@@ -6,6 +6,56 @@ type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string
 type OptionalInsert<T> =
     T extends ColumnType<infer S, infer I, infer U> ? ColumnType<S, I | undefined, U> : Generated<T>;
 export interface DatabaseSchema {
+    web_push_policies: {
+        id: OptionalInsert<number>;
+        quiet_start: OptionalInsert<string>;
+        quiet_end: OptionalInsert<string>;
+        critical_ttl: OptionalInsert<number>;
+        important_ttl: OptionalInsert<number>;
+        informational_ttl: OptionalInsert<number>;
+        marketing_ttl: OptionalInsert<number>;
+        updated_at: OptionalInsert<Timestamp>;
+        updated_by: string | null;
+        version: OptionalInsert<Int64>;
+    };
+    runtime_setting_previews: {
+        id: string;
+        actor_id: string;
+        actor_session_id: string;
+        setting_key: string;
+        expected_version: Int64;
+        payload: JsonValue;
+        payload_hash: string;
+        expires_at: Timestamp;
+        consumed_at: Timestamp | null;
+        created_at: OptionalInsert<Timestamp>;
+    };
+    web_push_jobs: {
+        id: string;
+        notification_id: string;
+        subscription_id: string;
+        state: OptionalInsert<'queued' | 'processing' | 'deferred' | 'accepted' | 'unknown' | 'gone' | 'failed'>;
+        attempt_count: OptionalInsert<number>;
+        next_attempt_at: OptionalInsert<Timestamp>;
+        lease_token: string | null;
+        lease_until: Timestamp | null;
+        topic: string;
+        ttl_seconds: number;
+        urgency: 'very-low' | 'low' | 'normal' | 'high';
+        created_at: OptionalInsert<Timestamp>;
+        updated_at: OptionalInsert<Timestamp>;
+        version: OptionalInsert<Int64>;
+    };
+    web_push_attempts: {
+        id: string;
+        job_id: string;
+        attempt: number;
+        outcome: 'accepted' | 'deferred' | 'unknown' | 'gone' | 'failed';
+        http_status: number | null;
+        error_code: string | null;
+        retry_at: Timestamp | null;
+        occurred_at: OptionalInsert<Timestamp>;
+    };
     media_upload_reservations: {
         asset_id: string;
         uploader_id: string;
@@ -2068,6 +2118,9 @@ export interface DatabaseSchema {
         version: OptionalInsert<Int64>;
     };
     push_subscriptions: {
+        endpoint_hash: string;
+        expiration_time: Timestamp | null;
+        updated_at: OptionalInsert<Timestamp>;
         id: string;
         endpoint_encrypted: string;
         keys_encrypted: string;

@@ -21,8 +21,12 @@ import { FamilyChatController } from '../modules/family-chat/family-chat.http.js
 import { FamilyChatService } from '../modules/family-chat/family-chat.service.js';
 import { PersonalizationController } from '../modules/personalization/personalization.http.js';
 import { PersonalizationService } from '../modules/personalization/personalization.service.js';
-import { NotificationsController } from '../modules/notifications/notifications.http.js';
+import {
+    NotificationsController,
+    WebPushSubscriptionsController,
+} from '../modules/notifications/notifications.http.js';
 import { NotificationsService } from '../modules/notifications/notifications.service.js';
+import { WebPushSubscriptionsService } from '../modules/notifications/web-push-subscriptions.service.js';
 import { SupportController } from '../modules/support/support.http.js';
 import { SupportService } from '../modules/support/support.service.js';
 import { AiController } from '../modules/ai/ai.http.js';
@@ -51,6 +55,7 @@ import {
     EMAIL_DELIVERY_PROVIDER,
     WEB_PUSH_DELIVERY_PROVIDER,
 } from '../modules/delivery-infrastructure/delivery-provider.js';
+import { VapidWebPushProvider } from '../modules/delivery-infrastructure/web-push.provider.js';
 import { DisabledOcrProvider, OCR_PROVIDER } from '../modules/ocr-infrastructure/ocr-provider.js';
 import {
     DisabledSecretProvider,
@@ -103,6 +108,8 @@ import { FamilyService } from '../modules/family/family.service.js';
 import { AdminReadController } from '../modules/admin/admin-read.http.js';
 import { AdminReadService } from '../modules/admin/admin-read.service.js';
 import { AdminObservabilityController } from '../modules/admin-observability/admin-observability.http.js';
+import { AdminRuntimeSettingsController } from '../modules/admin-runtime-settings/admin-runtime-settings.http.js';
+import { AdminRuntimeSettingsService } from '../modules/admin-runtime-settings/admin-runtime-settings.service.js';
 import { AdminObservabilityRepository } from '../modules/admin-observability/admin-observability.repository.js';
 import { AdminObservabilityService } from '../modules/admin-observability/admin-observability.service.js';
 import { HostSnapshotReader } from '../modules/admin-observability/host-snapshot.reader.js';
@@ -261,6 +268,8 @@ export class AppModule {
                 ProfilesController,
                 TelemetryController,
                 MediaStorageController,
+                WebPushSubscriptionsController,
+                AdminRuntimeSettingsController,
             ],
             providers: [
                 RecipePolicyService,
@@ -277,6 +286,7 @@ export class AppModule {
                 FamilyChatService,
                 PersonalizationService,
                 NotificationsService,
+                WebPushSubscriptionsService,
                 SupportService,
                 AiService,
                 AiProvider,
@@ -309,10 +319,19 @@ export class AppModule {
                 MediaStorageService,
                 DisabledEmailDeliveryProvider,
                 DisabledWebPushDeliveryProvider,
+                VapidWebPushProvider,
                 DisabledAccountMailOutbox,
                 PostgresAccountMailOutbox,
                 { provide: EMAIL_DELIVERY_PROVIDER, useExisting: DisabledEmailDeliveryProvider },
-                { provide: WEB_PUSH_DELIVERY_PROVIDER, useExisting: DisabledWebPushDeliveryProvider },
+                {
+                    provide: WEB_PUSH_DELIVERY_PROVIDER,
+                    inject: [APP_CONFIG, DisabledWebPushDeliveryProvider, VapidWebPushProvider],
+                    useFactory: (
+                        config: AppConfig,
+                        disabled: DisabledWebPushDeliveryProvider,
+                        vapid: VapidWebPushProvider,
+                    ) => (config.WEB_PUSH_ENABLED ? vapid : disabled),
+                },
                 {
                     provide: ACCOUNT_MAIL_OUTBOX,
                     inject: [APP_CONFIG, DisabledAccountMailOutbox, PostgresAccountMailOutbox],
@@ -378,6 +397,7 @@ export class AppModule {
                 AdminReadBoundary,
                 AdminObservabilityRepository,
                 AdminObservabilityService,
+                AdminRuntimeSettingsService,
                 AdminAcceptanceTestsRepository,
                 AdminAcceptanceTestsService,
                 {

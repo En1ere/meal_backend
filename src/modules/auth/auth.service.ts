@@ -416,6 +416,9 @@ export class AuthService {
                 .returning(['id', 'user_id'])
                 .executeTakeFirst();
             if (row) {
+                await sql`update meal.push_subscriptions set revoked_at=coalesce(revoked_at,now()),updated_at=now(),version=version+1 where session_id=${row.id}::uuid and revoked_at is null`.execute(
+                    tx,
+                );
                 await tx
                     .updateTable('auth_challenges')
                     .set({ revoked_at: new Date() })
@@ -505,6 +508,10 @@ export class AuthService {
                 .where('revoked_at', 'is', null)
                 .returning('id')
                 .execute();
+            if (revoked.length)
+                await sql`update meal.push_subscriptions set revoked_at=coalesce(revoked_at,now()),updated_at=now(),version=version+1 where session_id in (${sql.join(
+                    revoked.map((row) => sql`${row.id}::uuid`),
+                )}) and revoked_at is null`.execute(tx);
             if (revoked.length)
                 await tx
                     .updateTable('auth_challenges')

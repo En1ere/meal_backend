@@ -65,6 +65,7 @@ if [ "$component" = backend ]; then
     if account_mail_enabled; then backend_services="$backend_services mail-worker"; fi
     if media_processor_enabled; then backend_services="$backend_services media-processor"; fi
     if ocr_preview_enabled; then backend_services="$backend_services ocr-preview"; fi
+    if web_push_enabled; then backend_services="$backend_services push-worker"; fi
     # shellcheck disable=SC2086
     compose pull $backend_services
 else
@@ -76,6 +77,7 @@ if [ "$component" = backend ]; then
     if account_mail_enabled; then backend_services="$backend_services mail-worker"; fi
     if media_processor_enabled; then backend_services="$backend_services media-processor"; fi
     if ocr_preview_enabled; then backend_services="$backend_services ocr-preview"; fi
+    if web_push_enabled; then backend_services="$backend_services push-worker"; fi
     # shellcheck disable=SC2086
     compose stop $backend_services
     # The restore point must include every write accepted before maintenance begins.
@@ -97,6 +99,8 @@ SQL
         | compose exec -T postgres psql --username "${POSTGRES_USER:-meal_owner}" \
             --dbname meal_planner_postgres --no-password --set ON_ERROR_STOP=1
     if media_processor_enabled; then MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/provision-media-processor-runtime.sh"; fi
+    if web_push_enabled; then MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/provision-web-push-runtime.sh"; fi
+    remove_disabled_web_push_worker
     MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/proxy-smoke.sh" >"$state_dir/proxy-smoke.txt"
 fi
 
@@ -114,7 +118,7 @@ if ! MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/verify.sh" --component "$component"; then
         [ "$(stat -c %u "${BACKEND_ROLLBACK_EVIDENCE_FILE:-/nonexistent}" 2>/dev/null || echo invalid)" != 0 ] ||
         ! grep -Fqx "previous_image=$previous_image" "$BACKEND_ROLLBACK_EVIDENCE_FILE" ||
         ! grep -Fqx "candidate_image=$candidate_image" "$BACKEND_ROLLBACK_EVIDENCE_FILE" ||
-        ! grep -Fqx 'schema_version=33' "$BACKEND_ROLLBACK_EVIDENCE_FILE";
+        ! grep -Fqx 'schema_version=34' "$BACKEND_ROLLBACK_EVIDENCE_FILE";
     }; then
         echo "Backend verification failed after migration; fail-closed until compatibility evidence authorizes application rollback" >&2
         exit 1
