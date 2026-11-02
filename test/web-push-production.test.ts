@@ -125,6 +125,7 @@ void test('enqueue, claim and send recheck live account, session, sanction and m
 void test('migration and deployment keep durable jobs, append-only attempts and isolated worker', async () => {
     const migration = await readFile('database/migrations/034_web_push_delivery.sql', 'utf8');
     const compose = await readFile('deploy/compose.web-push.yml', 'utf8');
+    const dockerfile = await readFile('Dockerfile', 'utf8');
     const common = await readFile('deploy/common.sh', 'utf8');
     const deploy = await readFile('deploy/deploy.sh', 'utf8');
     const stack = await readFile('deploy/stack.sh', 'utf8');
@@ -141,6 +142,7 @@ void test('migration and deployment keep durable jobs, append-only attempts and 
     assert.match(compose, /read_only: true/);
     assert.match(compose, /cap_drop: \[ALL\]/);
     assert.match(compose, /meal-db, meal-egress/);
+    assert.match(dockerfile, /scripts\/run-web-push-worker\.mjs scripts\/check-web-push-worker-health\.mjs/);
     assert.match(common, /WEB_PUSH_ENABLED:-false/);
     assert.match(common, /compose_web_push_overlay rm --stop --force push-worker/);
     assert.match(deploy, /provision-web-push-runtime\.sh/);
