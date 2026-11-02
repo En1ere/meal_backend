@@ -15,7 +15,11 @@ import {
     type ImmutableLegalDocumentRef,
     type OptionalConsentKind,
 } from './legal-consent.contracts.js';
-import { LEGAL_DOCUMENT_PROVIDER, type LegalDocumentProvider } from './legal-document.provider.js';
+import {
+    demonstrationManifest,
+    LEGAL_DOCUMENT_PROVIDER,
+    type LegalDocumentProvider,
+} from './legal-document.provider.js';
 
 type Tx = Transaction<DatabaseSchema>;
 type Connection = Kysely<DatabaseSchema> | Tx;
@@ -26,20 +30,19 @@ function sameDocument(left: ImmutableLegalDocumentRef, right: ImmutableLegalDocu
     );
 }
 export function consentEvidenceEnables(input: {
-    production: boolean;
+    expectedEvidenceMode: 'approved' | 'demonstration';
     action: 'accepted' | 'revoked' | undefined;
     evidenceMode: 'approved' | 'demonstration' | undefined;
     document: unknown;
-    approvedDocument: ImmutableLegalDocumentRef | undefined;
+    currentDocument: ImmutableLegalDocumentRef | undefined;
 }) {
     if (input.action !== 'accepted') return false;
-    if (!input.production) return true;
     const snapshot = immutableLegalDocumentRefSchema.safeParse(input.document);
     return (
-        input.evidenceMode === 'approved' &&
+        input.evidenceMode === input.expectedEvidenceMode &&
         snapshot.success &&
-        !!input.approvedDocument &&
-        sameDocument(snapshot.data, input.approvedDocument)
+        !!input.currentDocument &&
+        sameDocument(snapshot.data, input.currentDocument)
     );
 }
 
@@ -82,7 +85,7 @@ export class LegalConsentService {
     }
     async validateDocument(kind: string, supplied: ImmutableLegalDocumentRef, tx?: Tx) {
         const parsed = immutableLegalDocumentRefSchema.parse(supplied);
-        if (this.config.NODE_ENV === 'production') {
+        if (this.config.LEGAL_EVIDENCE_MODE === 'approved') {
             if (!tx) throw new ServiceUnavailableException('Atomic legal validation requires a transaction');
             const row = await sql<{
                 documentId: string;
@@ -112,6 +115,8 @@ export class LegalConsentService {
             return { document: { document: actual }, evidenceMode: 'approved' as const };
         }
         const { manifest, document } = await this.currentDocument(kind);
+        if (manifest.status !== 'demonstration' || document.status !== 'demonstration')
+            throw new ServiceUnavailableException('Demonstration legal document unavailable');
         if (!sameDocument(document.document, parsed))
             throw new ConflictException({
                 code: 'LEGAL_DOCUMENT_STALE',
@@ -119,7 +124,7 @@ export class LegalConsentService {
             });
         return {
             document,
-            evidenceMode: manifest.status === 'approved' ? ('approved' as const) : ('demonstration' as const),
+            evidenceMode: 'demonstration' as const,
         };
     }
     async recordRegistrationEvidence(
@@ -185,9 +190,9 @@ export class LegalConsentService {
                    document_snapshot "document",evidence_mode "evidenceMode"
             from meal.legal_consent_events where user_id=${userId}::uuid order by kind,revision desc`.execute(db);
         const byKind = new Map(rows.rows.map((row) => [row.kind, row]));
-        const approvedDocuments = new Map<OptionalConsentKind, ImmutableLegalDocumentRef>();
+        const currentDocuments = new Map<OptionalConsentKind, ImmutableLegalDocumentRef>();
         let approvedDocumentCount = 0;
-        if (this.config.NODE_ENV === 'production') {
+        if (this.config.LEGAL_EVIDENCE_MODE === 'approved') {
             const approved = await sql<{
                 kind: OptionalConsentKind;
                 documentId: string;
@@ -204,7 +209,7 @@ export class LegalConsentService {
             approvedDocumentCount = approved.rows.length;
             for (const row of approved.rows) {
                 if (!kinds.includes(row.kind)) continue;
-                approvedDocuments.set(
+                currentDocuments.set(
                     row.kind,
                     immutableLegalDocumentRefSchema.parse({
                         documentId: row.documentId,
@@ -215,24 +220,29 @@ export class LegalConsentService {
                     }),
                 );
             }
+        } else {
+            for (const document of demonstrationManifest().documents) {
+                if (kinds.includes(document.kind as OptionalConsentKind))
+                    currentDocuments.set(document.kind as OptionalConsentKind, document.document);
+            }
         }
         return consentStateSchema.parse({
             contractVersion: LEGAL_CONSENT_CONTRACT_VERSION,
             manifestStatus:
-                this.config.NODE_ENV === 'production'
+                this.config.LEGAL_EVIDENCE_MODE === 'approved'
                     ? approvedDocumentCount === 6
                         ? 'approved'
                         : 'unavailable'
                     : 'demonstration',
             consents: kinds.map((kind) => {
                 const row = byKind.get(kind);
-                const approved = approvedDocuments.get(kind);
+                const currentDocument = currentDocuments.get(kind);
                 const enabled = consentEvidenceEnables({
-                    production: this.config.NODE_ENV === 'production',
+                    expectedEvidenceMode: this.config.LEGAL_EVIDENCE_MODE,
                     action: row?.action,
                     evidenceMode: row?.evidenceMode,
                     document: row?.document,
-                    approvedDocument: approved,
+                    currentDocument,
                 });
                 return {
                     kind,
@@ -319,7 +329,7 @@ export class LegalConsentService {
                     occurred_at: new Date(),
                     request_id: requestId,
                     idempotency_key: input.idempotencyKey,
-                    evidence_mode: this.config.NODE_ENV === 'production' ? 'approved' : 'demonstration',
+                    evidence_mode: this.config.LEGAL_EVIDENCE_MODE,
                 })
                 .execute();
             return this.state(userId, tx);

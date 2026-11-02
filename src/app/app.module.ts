@@ -41,6 +41,9 @@ import {
     MALWARE_SCANNER_PROVIDER,
     OBJECT_STORAGE_PROVIDER,
 } from '../modules/media-infrastructure/media-provider.js';
+import { DisabledMediaObjectStore, MEDIA_OBJECT_STORE } from '../modules/media-storage/media-object-store.js';
+import { MediaStorageController } from '../modules/media-storage/media-storage.http.js';
+import { MediaStorageService } from '../modules/media-storage/media-storage.service.js';
 import {
     DisabledEmailDeliveryProvider,
     DisabledWebPushDeliveryProvider,
@@ -256,6 +259,7 @@ export class AppModule {
                 StaffAuthController,
                 ProfilesController,
                 TelemetryController,
+                MediaStorageController,
             ],
             providers: [
                 RecipePolicyService,
@@ -289,6 +293,9 @@ export class AppModule {
                 { provide: OBJECT_STORAGE_PROVIDER, useExisting: DisabledObjectStorageProvider },
                 { provide: KEY_MANAGEMENT_PROVIDER, useExisting: DisabledKeyManagementProvider },
                 { provide: MALWARE_SCANNER_PROVIDER, useExisting: DisabledMalwareScannerProvider },
+                DisabledMediaObjectStore,
+                { provide: MEDIA_OBJECT_STORE, useExisting: DisabledMediaObjectStore },
+                MediaStorageService,
                 DisabledEmailDeliveryProvider,
                 DisabledWebPushDeliveryProvider,
                 DisabledAccountMailOutbox,

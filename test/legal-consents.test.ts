@@ -9,21 +9,40 @@ import {
     publicLegalManifestSchema,
     registrationLegalEvidenceSchema,
 } from '../src/modules/legal-consents/legal-consent.contracts.js';
-import { demonstrationDocument } from '../src/modules/legal-consents/legal-document.provider.js';
+import {
+    DatabaseLegalDocumentProvider,
+    demonstrationDocument,
+    demonstrationManifest,
+} from '../src/modules/legal-consents/legal-document.provider.js';
+import type { DatabaseService } from '../src/infrastructure/database/database.service.js';
+import type { LegalDocumentProvider } from '../src/modules/legal-consents/legal-document.provider.js';
 import { marketingDeliveryAllowed } from '../src/modules/admin-news/news-delivery.js';
 import { allergenPreferencesChanged } from '../src/modules/personalization/personalization.service.js';
 import {
     consentEvidenceEnables,
+    LegalConsentService,
     LegalConsentRequiredException,
 } from '../src/modules/legal-consents/legal-consent.service.js';
 
-await test('legal manifest is explicitly demonstration-only outside production', async () => {
+const productionDemonstrationConfig = () =>
+    readConfig({
+        NODE_ENV: 'production',
+        FRONTEND_ORIGIN: 'https://meal.example.test',
+        ADMIN_FRONTEND_ORIGIN: 'https://admin.meal.example.test',
+        DATABASE_URL: 'postgresql://meal:password@database/meal_planner_postgres',
+        SECURITY_KEY: randomBytes(32).toString('base64'),
+        MFA_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+        LEGAL_EVIDENCE_MODE: 'demonstration',
+    });
+
+await test('legal manifest is demonstration-only when explicitly enabled, including production', async () => {
     const app = await createApp(
         readConfig({
             NODE_ENV: 'test',
             LOG_LEVEL: 'silent',
             SECURITY_KEY: randomBytes(32).toString('base64'),
             MFA_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+            LEGAL_EVIDENCE_MODE: 'demonstration',
         }),
     );
     try {
@@ -36,6 +55,46 @@ await test('legal manifest is explicitly demonstration-only outside production',
     } finally {
         await app.close();
     }
+    const productionProvider = new DatabaseLegalDocumentProvider(
+        {} as DatabaseService,
+        productionDemonstrationConfig(),
+    );
+    assert.equal((await productionProvider.manifest()).status, 'demonstration');
+});
+
+await test('approved is the default and never falls back to demonstration without a ready database', async () => {
+    const app = await createApp(
+        readConfig({
+            NODE_ENV: 'test',
+            LOG_LEVEL: 'silent',
+            SECURITY_KEY: randomBytes(32).toString('base64'),
+            MFA_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+        }),
+    );
+    try {
+        const response = await app.inject({ method: 'GET', url: '/api/v1/legal/manifest' });
+        assert.equal(response.statusCode, 503);
+    } finally {
+        await app.close();
+    }
+});
+
+await test('explicit demonstration validates exact registration evidence and rejects stale or mixed refs', async () => {
+    const manifest = demonstrationManifest();
+    const service = new LegalConsentService(
+        {} as DatabaseService,
+        { manifest: () => Promise.resolve(manifest) } satisfies LegalDocumentProvider,
+        productionDemonstrationConfig(),
+    );
+    const offer = manifest.documents.find((item) => item.kind === 'offer')!;
+    const privacy = manifest.documents.find((item) => item.kind === 'privacy_notice')!;
+    assert.equal((await service.validateDocument('offer', offer.document)).evidenceMode, 'demonstration');
+    assert.equal((await service.validateDocument('privacy_notice', privacy.document)).evidenceMode, 'demonstration');
+    await assert.rejects(
+        service.validateDocument('offer', { ...offer.document, documentVersion: offer.document.documentVersion + 1 }),
+        /stale|mismatched/i,
+    );
+    await assert.rejects(service.validateDocument('offer', privacy.document), /stale|mismatched/i);
 });
 
 await test('registration v2 keeps offer acceptance and privacy acknowledgement distinct and immutable', () => {
@@ -83,31 +142,41 @@ await test('production never enables a demonstration, stale or hash-mismatched a
     const current = demonstrationDocument('ai_data_access', 2).document;
     assert.equal(
         consentEvidenceEnables({
-            production: true,
+            expectedEvidenceMode: 'approved',
             action: 'accepted',
             evidenceMode: 'demonstration',
             document: current,
-            approvedDocument: current,
+            currentDocument: current,
         }),
         false,
     );
     assert.equal(
         consentEvidenceEnables({
-            production: true,
+            expectedEvidenceMode: 'approved',
             action: 'accepted',
             evidenceMode: 'approved',
             document: current,
-            approvedDocument: { ...current, documentVersion: 2 },
+            currentDocument: { ...current, documentVersion: 2 },
         }),
         false,
     );
     assert.equal(
         consentEvidenceEnables({
-            production: true,
+            expectedEvidenceMode: 'approved',
             action: 'accepted',
             evidenceMode: 'approved',
             document: current,
-            approvedDocument: current,
+            currentDocument: current,
+        }),
+        true,
+    );
+    assert.equal(
+        consentEvidenceEnables({
+            expectedEvidenceMode: 'demonstration',
+            action: 'accepted',
+            evidenceMode: 'demonstration',
+            document: current,
+            currentDocument: current,
         }),
         true,
     );

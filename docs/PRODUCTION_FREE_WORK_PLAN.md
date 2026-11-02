@@ -97,7 +97,7 @@
 
 ## Уже закрыто
 
-Docker cutover, TLS/Nginx на технических origins, schema v31, least-privilege DB roles, main-to-digest autodeploy, container health/readiness, pre-rollout DB backup/restore drill, admin MFA и theme smoke не выполняются повторно без изменения соответствующего слоя. Backend `0.0.152`, admin `0.0.128` и frontend `0.0.152` прошли CI/CD и сокращённый public/container smoke; custom-domain cutover остаётся отдельным pending шагом до публикации DNS A-записей.
+Docker cutover, TLS/Nginx на технических origins, ранее развёрнутая schema v31, least-privilege DB roles, main-to-digest autodeploy, container health/readiness, pre-rollout DB backup/restore drill, admin MFA и theme smoke не выполняются повторно без изменения соответствующего слоя. Локально подготовленная schema v32 с fail-closed media foundation ещё не применена и требует отдельного rollout/restore evidence. Backend `0.0.152`, admin `0.0.128` и frontend `0.0.152` прошли прежний CI/CD и сокращённый public/container smoke; custom-domain cutover остаётся отдельным pending шагом до публикации DNS A-записей.
 
 Legal checkpoint опубликован как явно неутверждённый draft-каталог: все 11 документов доступны для чтения, содержат единую заглушку `[Тут будут данные]`, закрыты от индексации и не используются как production acceptance evidence.
 

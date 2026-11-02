@@ -115,7 +115,7 @@ void test('component deployment isolates UI rollout from database migration', as
     assert.match(deploy, /create role meal_mail_worker nologin noinherit/);
     assert.match(deploy, /account_mail_enabled/);
     assert.match(deploy, /mail-worker/);
-    assert.match(deploy, /schema_version=31/);
+    assert.match(deploy, /schema_version=32/);
     assert.match(deploy, /image_package_version/);
     assert.match(deploy, /previous\.version/);
     assert.match(deploy, /candidate\.version/);
@@ -164,7 +164,7 @@ void test('component deployment isolates UI rollout from database migration', as
     const proxySmoke = await text('deploy/proxy-smoke.sh');
     assert.match(proxySmoke, /X-Forwarded-For/);
     assert.match(proxySmoke, /Runtime proxy source verified by admin guard/);
-    assert.match(bootstrap, /31\/214\/492\/18/);
+    assert.match(bootstrap, /32\/216\/494\/18/);
     assert.match(bootstrap, /meal_runtime/);
     assert.doesNotMatch(bootstrap, /grant meal_mail_worker to meal_runtime/);
     assert.match(bootstrap, /chown postgres:postgres "\$restore_path"/);

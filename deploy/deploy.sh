@@ -88,7 +88,7 @@ if ! MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/verify.sh" --component "$component"; then
         [ "$(stat -c %u "${BACKEND_ROLLBACK_EVIDENCE_FILE:-/nonexistent}" 2>/dev/null || echo invalid)" != 0 ] ||
         ! grep -Fqx "previous_image=$previous_image" "$BACKEND_ROLLBACK_EVIDENCE_FILE" ||
         ! grep -Fqx "candidate_image=$candidate_image" "$BACKEND_ROLLBACK_EVIDENCE_FILE" ||
-        ! grep -Fqx 'schema_version=31' "$BACKEND_ROLLBACK_EVIDENCE_FILE";
+        ! grep -Fqx 'schema_version=32' "$BACKEND_ROLLBACK_EVIDENCE_FILE";
     }; then
         echo "Backend verification failed after migration; fail-closed until compatibility evidence authorizes application rollback" >&2
         exit 1

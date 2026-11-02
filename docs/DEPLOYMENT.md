@@ -108,7 +108,9 @@ Host Nginx приходит на published backend port через Docker bridge
 sh deploy/bootstrap-restore.sh --dump /approved/path/baseline.dump --sha256 <approved-lowercase-sha256>
 ```
 
-Скрипт отказывается работать с непустой schema, создаёт `meal_app` и `meal_mail_worker` NOLOGIN, а также `meal_runtime LOGIN INHERIT`, восстанавливает dump в PostgreSQL 18 с `--no-owner`, применяет grants и до запуска application traffic сверяет migration/table/FK/PostgreSQL-major counts с manifest проверяемого release. Для schema v31 gate требует `31/214/492/18`; фактическая VPS-приёмка остаётся отдельным шагом deployment. Runtime password читается из отдельного root-owned Docker secret. Backend URL содержит URL-encoded `options=-c role=meal_app`, mail-worker URL — `options=-c role=meal_mail_worker`.
+Скрипт отказывается работать с непустой schema, создаёт `meal_app` и `meal_mail_worker` NOLOGIN, а также `meal_runtime LOGIN INHERIT`, восстанавливает dump в PostgreSQL 18 с `--no-owner`, применяет grants и до запуска application traffic сверяет migration/table/FK/PostgreSQL-major counts с manifest проверяемого release. Для schema v32 gate требует `32/216/494/18`; фактическая VPS-приёмка остаётся отдельным шагом deployment. Runtime password читается из отдельного root-owned Docker secret. Backend URL содержит URL-encoded `options=-c role=meal_app`, mail-worker URL — `options=-c role=meal_mail_worker`.
+
+Encrypted media configuration, exact env variables, fail-closed state, provider preflight and acceptance matrix are documented in [MEDIA_STORAGE.md](MEDIA_STORAGE.md). Storage remains disabled until the reviewed S3 adapter and separate scanner/reconciler checkpoint are present.
 
 Проверенный pre-container backup: `/var/backups/meal-planner/pre-container-20261028T125808Z.dump`, `1,770,608` bytes, SHA-256 `b84bbfa3096e3f2f9faaf660a13070ab97f22e6a82b2192ed94019012a92c9fc`, `root:root`, mode `0600`. Restore drill выполнен pinned image `postgres@sha256:5c4783a8cc3f0074912164f94dfa1be4e043438f0f707cf968d7af9a0d31a2c8`: schema/history/tables/FK `29/209/483`, environment `test`, users `1`, MFA factors `1`, recipes `0`. Evidence `/var/backups/meal-planner/pre-container-20261028T125808Z.restore-drill.txt` имеет SHA-256 `e18578e25aa6c410249dde879eacea96b9e5c082f20807babcb1f9f067f7f1fa`, `root:root`, mode `0600`. Drill подтвердил, что PostgreSQL 18 отказывается от legacy mount `/var/lib/postgresql/data`; рабочий контракт использует единый volume `/var/lib/postgresql`.
 
@@ -222,6 +224,24 @@ certbot renew --dry-run
 На стенде есть один активный подтверждённый аккаунт с frontend email `admin@meal-planner.test`, admin login `admin`, отображаемым именем `Test Administrator` и обязательным admin TOTP. Секреты передаются владельцу отдельно; при утрате TOTP factor перевыпускается, а не отключается.
 
 Тестовые записи помечаются уникальным run namespace. После smoke удаляйте только записи этого namespace проверенным cleanup или восстанавливайте заранее снятый baseline после отдельного подтверждения. Затем сверяйте baseline counters, 30 migration rows, справочники, отсутствие временных ролей/БД/locks и чистый `db:plan`. Для v29 отдельно проверьте backfill `recipe_publications.recipe_id`, включённые `protect_identity`/compatibility triggers и отсутствие дублирующих active publications; для v30 — acceptance run/result/event invariants и точный checksum migration 030. Подробные сценарии: `docs/DATABASE_TESTING.md` и `docs/BACKEND_TESTING.md`.
+
+## Emergency administrator MFA recovery
+
+Публичного reset endpoint нет. Сначала выполните read-only план из защищённого backend-контейнера:
+
+```sh
+npm run admin:mfa-recover -- --login admin --reason "Authenticator device was lost"
+```
+
+Фактический отзыв требует отдельного согласования, точного повтора login и одноразового env-gate:
+
+```sh
+ADMIN_RECOVERY_ENABLED=true npm run admin:mfa-recover -- \
+  --login admin --confirm-login admin \
+  --reason "Authenticator device was lost" --execute
+```
+
+Команда в одной SERIALIZABLE transaction отзывает MFA factors, pending challenges и все user/staff sessions, создаёт operator audit без actor и проверяет zero-active readback. Она не печатает фактор, токены, recovery codes, credentials или reason. При `outcome_unknown` не повторяйте execute до сверки audit/readback по выданному request ID. Следующий парольный вход запускает штатный TOTP enrollment. В постоянной конфигурации `ADMIN_RECOVERY_ENABLED` должен оставаться `false`.
 
 ## Известные production gates
 

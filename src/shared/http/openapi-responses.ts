@@ -235,6 +235,10 @@ import {
     moderatorSupportSchema,
 } from '../../modules/moderator/moderator.contracts.js';
 import { telemetryAcceptedSchema } from '../../modules/telemetry/telemetry.contracts.js';
+import {
+    mediaDownloadTargetResultSchema,
+    mediaReservationResultSchema,
+} from '../../modules/media-storage/media-storage.contracts.js';
 
 const meta = z.strictObject({ requestId: z.uuid() });
 export const principalSchema = z.strictObject({
@@ -303,6 +307,7 @@ export const createdResponseOperationIds = new Set([
     'FamilyController_createOwnershipRequest',
     'FamilyNotesController_create',
     'FamilyChatController_send',
+    'MediaStorageController_reserve',
 ]);
 
 export function documentResponses(document: OpenAPIObject): OpenAPIObject {
@@ -636,6 +641,10 @@ export function documentResponses(document: OpenAPIObject): OpenAPIObject {
         'GET /api/v1/ai/tasks/{id}': aiConversationSchema,
         'POST /api/v1/ai/tasks/{id}/messages': aiConversationSchema,
         'POST /api/v1/ai/package/purchase': aiPurchaseSchema,
+        'POST /api/v1/media/reservations': mediaReservationResultSchema,
+        'GET /api/v1/media/assets/{id}': mediaReservationResultSchema,
+        'PUT /api/v1/media/assets/{id}/content': mediaReservationResultSchema,
+        'POST /api/v1/media/assets/{id}/download-target': mediaDownloadTargetResultSchema,
     };
     type Schema = NonNullable<NonNullable<OpenAPIObject['components']>['schemas']>[string];
     const toSchema = (value: z.ZodType) => z.toJSONSchema(value, { reused: 'inline', target: 'openapi-3.0' }) as Schema;
@@ -645,25 +654,43 @@ export function documentResponses(document: OpenAPIObject): OpenAPIObject {
             if (!operation) continue;
             const key = routes[path];
             const domainResponse = domain[`${method.toUpperCase()} ${path}`];
-            if (!key && !accountSchemas[path] && !domainResponse) throw new Error(`Undocumented response: ${path}`);
+            const mediaDownload = method === 'get' && path === '/api/v1/media/assets/{id}/content';
+            if (!key && !accountSchemas[path] && !domainResponse && !mediaDownload)
+                throw new Error(`Undocumented response: ${path}`);
             const successStatus = createdResponseOperationIds.has(operation.operationId ?? '') ? '201' : '200';
             operation.responses = {
                 [successStatus]: {
                     description: successStatus === '201' ? 'Created' : 'Success',
-                    content: {
-                        'application/json': {
-                            schema: toSchema(
-                                envelope(
-                                    domainResponse ??
-                                        (path === '/api/v1/admin/governance/{section}/{id}' && method === 'post'
-                                            ? governanceResultSchema
-                                            : path === '/api/v1/admin/billing/{section}/{id}' && method === 'post'
-                                              ? billingResultSchema
-                                              : (accountSchemas[path] ?? responseDataSchemas[key!])),
-                                ),
-                            ),
-                        },
-                    },
+                    content: mediaDownload
+                        ? Object.fromEntries(
+                              [
+                                  'image/jpeg',
+                                  'image/png',
+                                  'image/webp',
+                                  'image/heic',
+                                  'image/heif',
+                                  'application/pdf',
+                                  'application/json',
+                                  'text/csv',
+                                  'video/mp4',
+                                  'video/webm',
+                                  'video/quicktime',
+                              ].map((mime) => [mime, { schema: { type: 'string', format: 'binary' } }]),
+                          )
+                        : {
+                              'application/json': {
+                                  schema: toSchema(
+                                      envelope(
+                                          domainResponse ??
+                                              (path === '/api/v1/admin/governance/{section}/{id}' && method === 'post'
+                                                  ? governanceResultSchema
+                                                  : path === '/api/v1/admin/billing/{section}/{id}' && method === 'post'
+                                                    ? billingResultSchema
+                                                    : (accountSchemas[path] ?? responseDataSchemas[key!])),
+                                      ),
+                                  ),
+                              },
+                          },
                 },
             };
             for (const status of [

@@ -41,6 +41,12 @@ export const demonstrationDocument = (kind: (typeof demoKinds)[number], index: n
     jurisdiction: 'demonstration',
     status: 'demonstration',
 });
+export const demonstrationManifest = () =>
+    publicLegalManifestSchema.parse({
+        contractVersion: LEGAL_CONSENT_CONTRACT_VERSION,
+        status: 'demonstration',
+        documents: demoKinds.map(demonstrationDocument),
+    });
 
 @Injectable()
 export class DatabaseLegalDocumentProvider implements LegalDocumentProvider {
@@ -49,12 +55,7 @@ export class DatabaseLegalDocumentProvider implements LegalDocumentProvider {
         @Inject(APP_CONFIG) private readonly config: AppConfig,
     ) {}
     async manifest() {
-        if (this.config.NODE_ENV !== 'production')
-            return publicLegalManifestSchema.parse({
-                contractVersion: LEGAL_CONSENT_CONTRACT_VERSION,
-                status: 'demonstration',
-                documents: demoKinds.map(demonstrationDocument),
-            });
+        if (this.config.LEGAL_EVIDENCE_MODE === 'demonstration') return demonstrationManifest();
         if (!this.database.db || !(await this.database.ready())) throw new ServiceUnavailableException();
         const result = await sql<{
             kind: PublicLegalDocument['kind'];

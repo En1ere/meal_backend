@@ -55,6 +55,48 @@ export const configSchema = z.object({
         .string()
         .regex(/^[A-Za-z0-9+/]{43}=$/)
         .optional(),
+    LEGAL_EVIDENCE_MODE: z.enum(['approved', 'demonstration']).default('approved'),
+    MEDIA_STORAGE_ENABLED: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
+    MEDIA_STORAGE_ENDPOINT: z.url().optional(),
+    MEDIA_STORAGE_BACKEND_PORT: z.coerce.number().int().min(1).max(65535).optional(),
+    MEDIA_STORAGE_REGION: z
+        .string()
+        .regex(/^[a-z0-9][a-z0-9-]{0,62}$/)
+        .optional(),
+    MEDIA_STORAGE_ACCESS_KEY_ID: z
+        .string()
+        .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{2,127}$/)
+        .optional(),
+    MEDIA_STORAGE_SECRET_ACCESS_KEY: z.string().min(32).max(256).optional(),
+    MEDIA_STORAGE_QUARANTINE_BUCKET: z
+        .string()
+        .regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/)
+        .optional(),
+    MEDIA_STORAGE_READY_BUCKET: z
+        .string()
+        .regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/)
+        .optional(),
+    MEDIA_STORAGE_PREFIX: z
+        .string()
+        .regex(/^[a-z0-9](?:[a-z0-9/_-]{0,126}[a-z0-9])?$/)
+        .optional(),
+    MEDIA_STORAGE_FORCE_PATH_STYLE: z
+        .enum(['true', 'false'])
+        .default('true')
+        .transform((value) => value === 'true'),
+    MEDIA_STORAGE_PUBLIC_ORIGIN: z.url().optional(),
+    MEDIA_STORAGE_SIGNING_KEY: z
+        .string()
+        .regex(/^[A-Za-z0-9+/]{43}=$/)
+        .optional(),
+    MEDIA_STORAGE_ENCRYPTION_KEY: z
+        .string()
+        .regex(/^[A-Za-z0-9+/]{43}=$/)
+        .optional(),
+    MEDIA_STORAGE_KEY_VERSION: z.coerce.number().int().min(1).max(32767).optional(),
     AUTH_RATE_LIMIT: z.coerce.number().int().min(1).max(100).default(10),
     PIN_TRUST_DAYS: z.coerce.number().int().min(1).max(365).default(30),
     REGISTRATION_RISK_ENABLED: z
@@ -106,6 +148,9 @@ const secretFiles = {
     SECURITY_KEY: 'SECURITY_KEY_FILE',
     MFA_ENCRYPTION_KEY: 'MFA_ENCRYPTION_KEY_FILE',
     ACCOUNT_MAIL_TOKEN_KEY: 'ACCOUNT_MAIL_TOKEN_KEY_FILE',
+    MEDIA_STORAGE_SECRET_ACCESS_KEY: 'MEDIA_STORAGE_SECRET_ACCESS_KEY_FILE',
+    MEDIA_STORAGE_SIGNING_KEY: 'MEDIA_STORAGE_SIGNING_KEY_FILE',
+    MEDIA_STORAGE_ENCRYPTION_KEY: 'MEDIA_STORAGE_ENCRYPTION_KEY_FILE',
 } as const;
 
 function withSecretFiles(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
@@ -162,6 +207,55 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
     }
     if (config.NODE_ENV === 'production' && config.ACCOUNT_MAIL_ENABLED && !config.ACCOUNT_MAIL_TOKEN_KEY)
         throw new Error('Enabled account mail requires ACCOUNT_MAIL_TOKEN_KEY');
+    const mediaStorageFields = [
+        config.MEDIA_STORAGE_ENDPOINT,
+        config.MEDIA_STORAGE_BACKEND_PORT,
+        config.MEDIA_STORAGE_REGION,
+        config.MEDIA_STORAGE_ACCESS_KEY_ID,
+        config.MEDIA_STORAGE_SECRET_ACCESS_KEY,
+        config.MEDIA_STORAGE_QUARANTINE_BUCKET,
+        config.MEDIA_STORAGE_READY_BUCKET,
+        config.MEDIA_STORAGE_PREFIX,
+        config.MEDIA_STORAGE_PUBLIC_ORIGIN,
+        config.MEDIA_STORAGE_SIGNING_KEY,
+        config.MEDIA_STORAGE_ENCRYPTION_KEY,
+        config.MEDIA_STORAGE_KEY_VERSION,
+    ];
+    const configuredMediaFields = mediaStorageFields.filter((value) => value !== undefined).length;
+    if (!config.MEDIA_STORAGE_ENABLED && configuredMediaFields !== 0)
+        throw new Error('Media storage fields require MEDIA_STORAGE_ENABLED=true');
+    if (config.MEDIA_STORAGE_ENABLED && configuredMediaFields !== mediaStorageFields.length)
+        throw new Error(
+            'Enabled media storage requires the complete endpoint, credential, bucket and key configuration',
+        );
+    if (config.MEDIA_STORAGE_ENABLED) {
+        if (
+            config.NODE_ENV === 'production' &&
+            [env.MEDIA_STORAGE_SECRET_ACCESS_KEY, env.MEDIA_STORAGE_SIGNING_KEY, env.MEDIA_STORAGE_ENCRYPTION_KEY].some(
+                (value) => value !== undefined,
+            )
+        )
+            throw new Error('Production media secrets must use root-owned *_FILE inputs');
+        const endpoint = new URL(config.MEDIA_STORAGE_ENDPOINT!);
+        const publicOrigin = new URL(config.MEDIA_STORAGE_PUBLIC_ORIGIN!);
+        if (endpoint.username || endpoint.password || endpoint.pathname !== '/' || endpoint.search || endpoint.hash)
+            throw new Error('MEDIA_STORAGE_ENDPOINT must be a credential-free HTTP(S) origin without port or path');
+        if (endpoint.port) throw new Error('Configure the S3 port only through MEDIA_STORAGE_BACKEND_PORT');
+        if (!['http:', 'https:'].includes(endpoint.protocol))
+            throw new Error('MEDIA_STORAGE_ENDPOINT must use HTTP or HTTPS');
+        if (publicOrigin.origin !== config.MEDIA_STORAGE_PUBLIC_ORIGIN || publicOrigin.protocol !== 'https:')
+            throw new Error('MEDIA_STORAGE_PUBLIC_ORIGIN must be an exact HTTPS origin');
+        if (
+            config.NODE_ENV === 'production' &&
+            endpoint.protocol !== 'https:' &&
+            (!/^[a-z][a-z0-9-]{1,62}$/.test(endpoint.hostname) || endpoint.hostname === 'localhost')
+        )
+            throw new Error('Plain HTTP media storage is allowed only on an internal Docker DNS hostname');
+        if (config.MEDIA_STORAGE_QUARANTINE_BUCKET === config.MEDIA_STORAGE_READY_BUCKET)
+            throw new Error('Quarantine and ready media buckets must be distinct');
+        if (config.MEDIA_STORAGE_SIGNING_KEY === config.MEDIA_STORAGE_ENCRYPTION_KEY)
+            throw new Error('Media signing and encryption keys must be independent');
+    }
     if (config.DATABASE_URL) {
         let connection: URL;
         try {

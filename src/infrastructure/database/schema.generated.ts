@@ -1,4 +1,4 @@
-// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029/030/031 overlays.
+// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029/030/031/032 overlays.
 import type { ColumnType, Generated } from 'kysely';
 type Timestamp = ColumnType<Date, Date | string, Date | string>;
 type Int64 = ColumnType<string, string | number | bigint, string | number | bigint>;
@@ -6,6 +6,55 @@ type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string
 type OptionalInsert<T> =
     T extends ColumnType<infer S, infer I, infer U> ? ColumnType<S, I | undefined, U> : Generated<T>;
 export interface DatabaseSchema {
+    media_upload_reservations: {
+        asset_id: string;
+        uploader_id: string;
+        purpose:
+            | 'diary_photo'
+            | 'support_attachment'
+            | 'allergen_icon'
+            | 'receipt_source'
+            | 'export_file'
+            | 'billing_document'
+            | 'community_media'
+            | 'profile_avatar';
+        file_name: string;
+        declared_mime: string;
+        declared_size: Int64;
+        retention_class: string;
+        object_key: string;
+        state: 'reserved' | 'uploading' | 'quarantined' | 'expired' | 'failed' | 'deleted';
+        request_hash: string;
+        idempotency_key: string;
+        access_key_id: string;
+        token_nonce: string;
+        expires_at: Timestamp;
+        completed_at: Timestamp | null;
+        failure_code: string | null;
+        created_at: OptionalInsert<Timestamp>;
+        updated_at: OptionalInsert<Timestamp>;
+        version: OptionalInsert<Int64>;
+    };
+    media_asset_bindings: {
+        asset_id: string;
+        purpose:
+            | 'diary_photo'
+            | 'support_attachment'
+            | 'allergen_icon'
+            | 'receipt_source'
+            | 'export_file'
+            | 'billing_document'
+            | 'community_media'
+            | 'profile_avatar';
+        storage_provider: 's3-compatible';
+        key_reference: string;
+        key_version: number;
+        algorithm: 'aes-256-gcm';
+        nonce: string;
+        authentication_tag: string;
+        created_at: OptionalInsert<Timestamp>;
+        version: OptionalInsert<Int64>;
+    };
     account_mail_deliveries: {
         id: string;
         account_token_id: string;

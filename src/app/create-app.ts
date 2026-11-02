@@ -33,7 +33,7 @@ export async function createApp(config: AppConfig) {
         logger: false,
     });
     await app.register(cookie);
-    await app.register(multipart, { limits: { fileSize: 10485760, files: 3, fields: 0, parts: 3 } });
+    await app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024, files: 3, fields: 0, parts: 3 } });
     await app.register(helmet);
     await app.register(rateLimit, { max: 200, timeWindow: '1 minute' });
     adapter.getInstance().addHook('onRoute', (route) => {
@@ -48,7 +48,14 @@ export async function createApp(config: AppConfig) {
         origin: [config.FRONTEND_ORIGIN, ...(config.ADMIN_FRONTEND_ORIGIN ? [config.ADMIN_FRONTEND_ORIGIN] : [])],
         credentials: true,
         methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'X-Csrf-Token', 'X-Admin-Unlock', 'If-Match'],
+        allowedHeaders: [
+            'Content-Type',
+            'X-Csrf-Token',
+            'X-Admin-Unlock',
+            'X-Media-Upload-Token',
+            'X-Media-Download-Token',
+            'If-Match',
+        ],
         exposedHeaders: ['X-Request-Id'],
     });
     adapter.getInstance().addHook('onRequest', (request, reply, done) => {
@@ -72,9 +79,9 @@ export function openApiDocument(app: NestFastifyApplication) {
             new DocumentBuilder()
                 .setTitle('Meal Planner API')
                 .setDescription(
-                    'Backend-owned auth/account/privacy/legal-consent/export/profile/admin/inventory/products/recipes/preserves/shopping/receipts/meal-plan/support/AI and simulated paid Plus/Pro lifecycle including promotion, renewal, downgrade and family combination; private diary, finance, nutrition analytics and Pro export contract; database schema v31; external providers and approved legal evidence pending',
+                    'Backend-owned auth/account/privacy/legal-consent/export/profile/admin/inventory/products/recipes/preserves/shopping/receipts/meal-plan/support/AI and simulated paid Plus/Pro lifecycle including promotion, renewal, downgrade and family combination; private diary, finance, nutrition analytics, Pro export and fail-closed encrypted media quarantine contracts; database schema v32; S3 adapter, malware scanner, publication and approved legal evidence pending',
                 )
-                .setVersion('0.0.61')
+                .setVersion('0.0.62')
                 .addCookieAuth('meal_user', { type: 'apiKey' }, 'meal_user')
                 .addCookieAuth('meal_staff', { type: 'apiKey' }, 'meal_staff')
                 .addCookieAuth('meal_admin', { type: 'apiKey' }, 'meal_admin')

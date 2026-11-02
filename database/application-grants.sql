@@ -1,4 +1,4 @@
--- Apply separately after reviewed restore + migrations 1-31. No owner/superuser privileges.
+-- Apply separately after reviewed restore + migrations 1-32. No owner/superuser privileges.
 BEGIN ISOLATION LEVEL SERIALIZABLE;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='30s';
@@ -300,4 +300,9 @@ GRANT UPDATE(status,attempts,available_at,lease_owner,lease_token,lease_until,pr
  last_error_code,accepted_at,completed_at,updated_at,version)
  ON meal.account_mail_deliveries TO meal_mail_worker;
 GRANT INSERT ON meal.account_mail_attempts TO meal_mail_worker;
+-- v32 encrypted S3-compatible media quarantine. The HTTP role cannot publish, scan or delete metadata.
+GRANT SELECT,INSERT ON meal.media_upload_reservations TO meal_app;
+GRANT UPDATE(state,completed_at,failure_code,updated_at,version) ON meal.media_upload_reservations TO meal_app;
+GRANT INSERT ON meal.media_assets,meal.media_asset_bindings,meal.media_processing_runs TO meal_app;
+GRANT SELECT ON meal.media_asset_bindings,meal.media_processing_runs TO meal_app;
 COMMIT;

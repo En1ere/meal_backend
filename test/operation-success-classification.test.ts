@@ -357,6 +357,11 @@ const providerFailClosed = new Map([
     ['AiController_purchase', 'payment adapter'],
     ['DiaryController_uploadMedia', 'object storage, KMS and malware scanner'],
     ['ExportsController_download', 'protected export storage'],
+    ['MediaStorageController_reserve', 'S3-compatible object adapter is intentionally disabled'],
+    ['MediaStorageController_status', 'schema v32 is prepared but not applied to a provider-backed runtime'],
+    ['MediaStorageController_complete', 'S3-compatible object adapter is intentionally disabled'],
+    ['MediaStorageController_download', 'scanner promotion and S3-compatible object adapter are unavailable'],
+    ['MediaStorageController_downloadTarget', 'scanner promotion and S3-compatible object adapter are unavailable'],
 ]);
 
 const externalSuccessRequired = new Map([
@@ -373,7 +378,7 @@ void test('every OpenAPI operation has an honest success/effect acceptance class
         .flatMap((pathItem) => Object.values(pathItem))
         .filter((operation): operation is Operation & { operationId: string } => Boolean(operation?.operationId));
     const ids = new Set(operations.map((operation) => operation.operationId));
-    assert.equal(ids.size, 351);
+    assert.equal(ids.size, 356);
     assert.equal(operations.length, ids.size, 'operationId values must remain unique');
 
     for (const id of explicitLiveSuccess) assert.ok(ids.has(id), `${id}: explicit live-success operation is absent`);
@@ -397,7 +402,7 @@ void test('every OpenAPI operation has an honest success/effect acceptance class
     );
 
     assert.equal(explicitLiveSuccess.size, 343);
-    assert.equal(providerFailClosed.size, 5);
+    assert.equal(providerFailClosed.size, 10);
     assert.equal(externalSuccessRequired.size, 3);
     assert.equal(pending.length, 0);
     assert.deepEqual(pendingByTag, {});
