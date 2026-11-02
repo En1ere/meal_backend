@@ -279,6 +279,9 @@ void test('component deployment isolates UI rollout from database migration', as
     assert.match(common, /ACCOUNT_MAIL_ENABLED:-false/);
     assert.match(common, /OCR_PREVIEW_ENABLED:-false/);
     assert.match(common, /compose\.ocr-preview\.yml/);
+    assert.match(common, /DEPLOY_LOCK_WAIT_SECONDS:-300/);
+    assert.match(common, /flock -w "\$DEPLOY_LOCK_WAIT_SECONDS" 9/);
+    assert.match(common, /DEPLOY_LOCK_WAIT_SECONDS must be an integer from 1 to 900/);
     assert.match(common, /BACKEND_VERSION=%s/);
     assert.match(common, /docker run --rm --network none --read-only --cap-drop ALL/);
     const rollback = await text('deploy/rollback.sh');

@@ -10,6 +10,7 @@ MEDIA_PROCESSOR_COMPOSE_FILE=${MEDIA_PROCESSOR_COMPOSE_FILE:-$DEPLOY_ROOT/compos
 OCR_PREVIEW_COMPOSE_FILE=${OCR_PREVIEW_COMPOSE_FILE:-$DEPLOY_ROOT/compose.ocr-preview.yml}
 DEPLOY_ENV_FILE=${DEPLOY_ENV_FILE:-/etc/meal-planner/deploy.env}
 DEPLOY_LOCK_FILE=${DEPLOY_LOCK_FILE:-/run/lock/meal-planner-deploy.lock}
+DEPLOY_LOCK_WAIT_SECONDS=${DEPLOY_LOCK_WAIT_SECONDS:-300}
 STATE_ROOT=${STATE_ROOT:-/var/lib/meal-planner/deployments}
 IMAGE_STATE_FILE=${IMAGE_STATE_FILE:-$STATE_ROOT/images.env}
 BACKUP_ROOT=${BACKUP_ROOT:-/var/backups/meal-planner}
@@ -203,10 +204,17 @@ take_lock() {
     if [ "${MEAL_LOCK_HELD:-0}" = 1 ]; then
         return
     fi
+    case "$DEPLOY_LOCK_WAIT_SECONDS" in
+        ''|*[!0-9]*) echo "DEPLOY_LOCK_WAIT_SECONDS must be an integer from 1 to 900" >&2; exit 64 ;;
+    esac
+    if [ "$DEPLOY_LOCK_WAIT_SECONDS" -lt 1 ] || [ "$DEPLOY_LOCK_WAIT_SECONDS" -gt 900 ]; then
+        echo "DEPLOY_LOCK_WAIT_SECONDS must be an integer from 1 to 900" >&2
+        exit 64
+    fi
     mkdir -p "$(dirname "$DEPLOY_LOCK_FILE")"
     exec 9>"$DEPLOY_LOCK_FILE"
-    if ! flock -n 9; then
-        echo "Another Meal Planner deployment is running" >&2
+    if ! flock -w "$DEPLOY_LOCK_WAIT_SECONDS" 9; then
+        echo "Another Meal Planner deployment did not finish within ${DEPLOY_LOCK_WAIT_SECONDS}s" >&2
         exit 75
     fi
 }
