@@ -66,6 +66,7 @@ grant select(id,user_id,revoked_at,expires_at) on meal.sessions to meal_push_wor
 grant select(user_id,scope,revoked_at,starts_at,ends_at) on meal.sanctions to meal_push_worker;
 grant select(user_id,kind,action,revision) on meal.legal_consent_events to meal_push_worker;
 grant insert on meal.web_push_jobs,meal.web_push_attempts to meal_push_worker;
+grant select(job_id,attempt) on meal.web_push_attempts to meal_push_worker;
 grant update(state,attempt_count,next_attempt_at,lease_token,lease_until,updated_at,version) on meal.web_push_jobs to meal_push_worker;
 grant update(revoked_at,updated_at,version) on meal.push_subscriptions to meal_push_worker;
 SQL

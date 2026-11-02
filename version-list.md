@@ -1,5 +1,7 @@
 # Backend version-list
 
+0.0.168 - 11.02.2026 | 20:15 - Web Push worker provisioning дополнен минимальным column-level `SELECT(job_id,attempt)` для безопасного `INSERT ... ON CONFLICT` в append-only attempts. Недостающий privilege обнаружен реальным пустым production-циклом; после точечного grant worker сменил health `degraded` на `ok`. Полный `SELECT` на таблицу и расширение доступа к уведомлениям не выдаются.
+
 0.0.167 - 11.02.2026 | 20:06 - Production image теперь явно включает runtime и healthcheck scripts Web Push worker. Добавлена регрессионная проверка Dockerfile после обнаруженного на VPS fail-closed `MODULE_NOT_FOUND`; до исправления feature был немедленно выключен, push-worker удалён, а основной stack повторно прошёл полный verify.
 
 0.0.166 - 11.02.2026 | 19:50 - Исправлена migration 034 на штатной чистой PostgreSQL: `pgcrypto` теперь устанавливается самой транзакционной миграцией, а SHA-256 backfill использует schema-qualified `public.digest`. Добавлена регрессионная проверка; исправление подтверждено на тестовом VPS в откатываемой диагностической транзакции и не меняет HTTP API.

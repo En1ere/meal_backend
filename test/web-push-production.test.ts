@@ -154,6 +154,7 @@ void test('migration and deployment keep durable jobs, append-only attempts and 
     assert.match(provision, /select\(id,status,archived_at\) on meal\.users/);
     assert.match(provision, /select\(id,user_id,revoked_at,expires_at\) on meal\.sessions/);
     assert.match(provision, /select\(user_id,kind,action,revision\) on meal\.legal_consent_events/);
+    assert.match(provision, /select\(job_id,attempt\) on meal\.web_push_attempts/);
     assert.doesNotMatch(provision, /grant select on meal\.notifications/);
     assert.doesNotMatch(provision, /openssl rand -base64/);
     assert.equal(
