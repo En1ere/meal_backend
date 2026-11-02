@@ -72,8 +72,13 @@ grep -Eq '^[A-Za-z0-9+/]{43}=$' "$SECRETS_ROOT/media-encryption-key-v1" || { ech
 
 stored_secret=$(cat "$SECRETS_ROOT/media-storage-secret-access-key")
 s3_config=$(printf '{"identities":[{"name":"meal-backend","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Read","Write","List"]}]}' "$ACCESS_KEY_ID" "$stored_secret")
-create_secret "$SECRETS_ROOT/seaweedfs-s3-config.json" "$s3_config" root 400
-[ "$(cat "$SECRETS_ROOT/seaweedfs-s3-config.json")" = "$s3_config" ] || {
+s3_config_path="$SECRETS_ROOT/seaweedfs-s3-config.json"
+if [ -f "$s3_config_path" ] && [ ! -L "$s3_config_path" ] && [ "$(stat -c '%u %G %a' "$s3_config_path")" = '0 root 400' ]; then
+    chown root:"$MEDIA_GROUP" "$s3_config_path"
+    chmod 440 "$s3_config_path"
+fi
+create_secret "$s3_config_path" "$s3_config" "$MEDIA_GROUP" 440
+[ "$(cat "$s3_config_path")" = "$s3_config" ] || {
     echo "SeaweedFS identity config does not match the backend credential" >&2
     exit 77
 }

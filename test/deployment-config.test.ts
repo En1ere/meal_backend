@@ -88,6 +88,8 @@ void test('local media provider is isolated from the disabled user media API', a
     assert.match(bootstrap, /media-signing-key-v1/);
     assert.match(bootstrap, /media-encryption-key-v1/);
     assert.match(bootstrap, /seaweedfs-s3-config\.json/);
+    assert.match(bootstrap, /'0 root 400'/);
+    assert.match(bootstrap, /create_secret "\$s3_config_path" "\$s3_config" "\$MEDIA_GROUP" 440/);
     assert.match(bootstrap, /Stored media keys must differ/);
     assert.match(bootstrap, /identity config does not match the backend credential/);
     assert.doesNotMatch(bootstrap, /echo .*access_secret|echo .*signing_key|echo .*encryption_key/);
