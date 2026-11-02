@@ -1,0 +1,49 @@
+[Unit]
+Description=Meal Planner encrypted local backup
+Requires=docker.service
+After=docker.service meal-planner-compose.service
+ConditionPathExists=/etc/meal-planner/secrets/local-backup-password
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+RuntimeDirectory=meal-local-backup
+RuntimeDirectoryMode=0700
+CacheDirectory=meal-planner-restic
+CacheDirectoryMode=0700
+Environment=LOCAL_BACKUP_PASSWORD_FILE=/run/meal-local-backup/password
+Environment=RESTIC_CACHE_DIR=/var/cache/meal-planner-restic
+ExecStart=/usr/local/libexec/meal-planner/local-backup.sh
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=idle
+IOSchedulingPriority=7
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+PrivateNetwork=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_UNIX
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+BindReadOnlyPaths=/etc/meal-planner/secrets/local-backup-password:/run/meal-local-backup/password
+InaccessiblePaths=/etc/meal-planner/secrets
+ReadOnlyPaths=/srv/meal/deployment /etc/meal-planner/deploy.env /var/lib/meal-planner/deployments -/var/lib/meal-planner/media/provider
+ReadWritePaths=/var/backups/meal-planner/local-restic /var/lib/meal-planner/local-backup-staging /var/lib/meal-planner/observability /run/lock
+TasksMax=128
+MemoryMax=512M
+CPUQuota=100%

@@ -110,6 +110,7 @@ import { AdminReadService } from '../modules/admin/admin-read.service.js';
 import { AdminObservabilityController } from '../modules/admin-observability/admin-observability.http.js';
 import { AdminRuntimeSettingsController } from '../modules/admin-runtime-settings/admin-runtime-settings.http.js';
 import { AdminRuntimeSettingsService } from '../modules/admin-runtime-settings/admin-runtime-settings.service.js';
+import { LocalBackupStatusReader } from '../modules/admin-runtime-settings/local-backup-status.reader.js';
 import { AdminObservabilityRepository } from '../modules/admin-observability/admin-observability.repository.js';
 import { AdminObservabilityService } from '../modules/admin-observability/admin-observability.service.js';
 import { HostSnapshotReader } from '../modules/admin-observability/host-snapshot.reader.js';
@@ -398,6 +399,15 @@ export class AppModule {
                 AdminObservabilityRepository,
                 AdminObservabilityService,
                 AdminRuntimeSettingsService,
+                {
+                    provide: LocalBackupStatusReader,
+                    useFactory: () =>
+                        new LocalBackupStatusReader(
+                            config.OBSERVABILITY_HOST_SNAPSHOT_ENABLED
+                                ? '/run/meal-observability/local-backup.json'
+                                : undefined,
+                        ),
+                },
                 AdminAcceptanceTestsRepository,
                 AdminAcceptanceTestsService,
                 {

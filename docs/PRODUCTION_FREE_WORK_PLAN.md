@@ -11,20 +11,20 @@
 
 ## Последовательность
 
-| №   | Checkpoint                          | Статус              | Критерий завершения                                                                                                                   |
-| --- | ----------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Предварительные legal-тексты        | выполнено           | 11 публичных draft-страниц, единая заглушка, `draft_blocked`, нет production acceptance evidence                                      |
-| 2   | Остаточный архитектурный checkpoint | выполнено           | architecture gates трёх репозиториев, декомпозиция подтверждённых hotspots, без wire/URL изменений                                    |
-| 3   | Workers и scheduler                 | выполнено           | отдельный hardened worker container, fail-closed allowlist, PostgreSQL lease/fencing, restart/overlap/timeout/poison tests            |
-| 4   | Observability в admin               | выполнено           | backend/VPS collector и admin UI развёрнуты; auth, real snapshot, Docker/systemd, partial/atomic и CI/CD evidence пройдены            |
-| 5   | Транзакционная почта                | ждёт owner inputs   | Outbox, worker, SMTP adapter и failure semantics развёртываемы; реальная доставка ждёт provider, sender DNS и secret                  |
-| 6   | Storage и malware scanner           | free scope выполнен | 6A и schema v33 развёрнуты; isolated CDR capacity/OOM/restart принят, публикация ждёт scanner/policy                                  |
-| 7   | Локальный OCR                       | выполнено           | RU/EN worker, всегда `requiresReview`, resource limits, duplicate/timeout/OOM tests                                                   |
-| 8   | Web Push                            | подготовлено        | VAPID, encrypted session-bound subscriptions, quiet hours, TTL/topic policy, 404/410 cleanup и admin registry; VPS activation pending |
-| 9   | Локальная backup-структура          | очередь             | encrypted local repository, PostgreSQL/media/manifests, retention, disk guard и restore drill; честный `offsite: false`               |
-| 10  | AI                                  | отложено            | отдельный epic после workers/telemetry/storage; сначала use cases, privacy, quality и resource baseline                               |
-| 11  | Reliability и сквозная приёмка      | очередь             | CI, E2E, provider failure drills, load/OOM/leak tests, browser/accessibility, VPS restart/rollback                                    |
-| 12  | Документация                        | постоянно           | runbook, owner inputs, env/secret inventory, disable/rollback и manual tests обновляются в каждом checkpoint                          |
+| №   | Checkpoint                          | Статус              | Критерий завершения                                                                                                        |
+| --- | ----------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Предварительные legal-тексты        | выполнено           | 11 публичных draft-страниц, единая заглушка, `draft_blocked`, нет production acceptance evidence                           |
+| 2   | Остаточный архитектурный checkpoint | выполнено           | architecture gates трёх репозиториев, декомпозиция подтверждённых hotspots, без wire/URL изменений                         |
+| 3   | Workers и scheduler                 | выполнено           | отдельный hardened worker container, fail-closed allowlist, PostgreSQL lease/fencing, restart/overlap/timeout/poison tests |
+| 4   | Observability в admin               | выполнено           | backend/VPS collector и admin UI развёрнуты; auth, real snapshot, Docker/systemd, partial/atomic и CI/CD evidence пройдены |
+| 5   | Транзакционная почта                | ждёт owner inputs   | Outbox, worker, SMTP adapter и failure semantics развёртываемы; реальная доставка ждёт provider, sender DNS и secret       |
+| 6   | Storage и malware scanner           | free scope выполнен | 6A и schema v33 развёрнуты; isolated CDR capacity/OOM/restart принят, публикация ждёт scanner/policy                       |
+| 7   | Локальный OCR                       | выполнено           | RU/EN worker, всегда `requiresReview`, resource limits, duplicate/timeout/OOM tests                                        |
+| 8   | Web Push                            | выполнено           | VAPID, encrypted session-bound subscriptions, quiet hours, TTL/topic policy, 404/410 cleanup, admin registry и VPS worker  |
+| 9   | Локальная backup-структура          | выполнено           | encrypted local repository, PostgreSQL/media/manifests, retention, disk guard и restore drill; честный `offsite: false`    |
+| 10  | AI                                  | отложено            | отдельный epic после workers/telemetry/storage; сначала use cases, privacy, quality и resource baseline                    |
+| 11  | Reliability и сквозная приёмка      | очередь             | CI, E2E, provider failure drills, load/OOM/leak tests, browser/accessibility, VPS restart/rollback                         |
+| 12  | Документация                        | постоянно           | runbook, owner inputs, env/secret inventory, disable/rollback и manual tests обновляются в каждом checkpoint               |
 
 ## Что потребуется от владельца
 
@@ -85,7 +85,7 @@
 - retention и ответственный за recovery password;
 - позже: S3/SFTP endpoint, bucket/path, region, credentials, immutable retention и отдельный restore target.
 
-Рекомендуемый временный baseline: RPO 24 часа, RTO 4 часа, 7 daily и 4 weekly. Он становится принятой policy только после подтверждения владельцем.
+Принятый временный baseline: запуск ежедневно в `01:00 Asia/Yekaterinburg`, RPO 24 часа, RTO 4 часа, 7 daily и 4 weekly. Recovery password генерируется на VPS и не выводится; независимый offsite target остаётся будущим owner/infrastructure checkpoint.
 
 ### AI — отдельный будущий epic
 
@@ -110,3 +110,7 @@ Observability checkpoint полностью развёрнут и принят �
 Checkpoint 6A закрыт на private SeaweedFS 4.51. Бесплатная часть 6B также принята: schema v33, отдельные DB/SeaweedFS identities, image-only JPEG/PNG/WebP CDR, immutable binding к intake/diary/support/avatar, `inventory_source`, quotas и append-only reconciliation evidence. На VPS подтверждены hardened container bounds, 12 MP JPEG/PNG/WebP, cgroup OOM isolation, стабильный RSS и автоматическое восстановление после crash; очередь осталась пустой, API — healthy. CDR-статус `cdr_reencoded` намеренно не выдаётся за antivirus-clean. Фото чека/инвентаря сначала принадлежат pre-domain `media_intake`; OCR и доменная запись требуют human review. Processor и пользовательский media API снова выключены после drill. PDF/video/HEIC/community publication и ClamAV остаются закрыты до scanner/явно согласованной non-public policy; media backup остаётся checkpoint 9.
 
 Checkpoint 7 закрыт на VPS как несохраняемый OCR preview: RU+EN модели проверяются по manifest/SHA-256 до startup, один job работает в no-egress/no-DB/no-storage sidecar с 512 MiB/0.75 CPU/64 PID. Реальный authenticated HTTPS scan распознал синтетический RU+EN fixture с confidence 96 и literal `requiresReview: true`; счётчики media/intake/recognition/receipt/inventory до/после остались равными. Wrong token дал 401, параллельный job — 503 busy, process crash увеличил restart count и вернул healthy, отдельный 64 MiB OOM drill завершился 137 без остаточного контейнера; full deploy verify и public front/admin health прошли. Durable originals/public assets по-прежнему закрыты checkpoint 6 scanner gate.
+
+Checkpoint 8 закрыт на VPS: VAPID и encryption keys хранятся только в root-owned secrets, schema v34 применена, отдельный least-privilege push-worker развёрнут и после реального empty-cycle имеет health `ok`. Исправлены обнаруженные production gaps упаковки worker scripts, `pgcrypto` migration dependency и узкий column-level privilege для append-only attempts; полный табличный доступ worker не получил.
+
+Checkpoint 9 закрыт на VPS с restic 0.16.4. Persistent systemd timer назначен на `01:00 Asia/Yekaterinburg`; unit имеет systemd exposure `4.3 OK`. Два реальных encrypted snapshot прошли exact readback, repository check и retention без plaintext residue; последний изолированный restore восстановил schema/table/FK/PostgreSQL invariants `34/227/519/18` за 6 секунд, не меняя source. Disposable container и restore directory удалены, полный application verify после backup прошёл. Status хранится `root:meal-observability 0640`, recovery password — `root:root 0600`; admin всегда показывает `offsite=false` и blocker `offsite_target_missing`. Политика, install/disable и restore runbook описаны в `LOCAL_BACKUP.md`.

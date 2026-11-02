@@ -12,6 +12,7 @@ import {
     webPushPolicyInputSchema,
     type WebPushPolicyInput,
 } from './admin-runtime-settings.contracts.js';
+import { LocalBackupStatusReader } from './local-backup-status.reader.js';
 
 const tabs = [
     ['notifications', 'Уведомления'],
@@ -31,6 +32,7 @@ export class AdminRuntimeSettingsService {
     constructor(
         private readonly database: DatabaseService,
         private readonly access: AdminAccessService,
+        private readonly localBackup: LocalBackupStatusReader,
         @Inject(APP_CONFIG) private readonly config: AppConfig,
     ) {}
     private async db() {
@@ -69,6 +71,30 @@ export class AdminRuntimeSettingsService {
         const selectedTab = runtimeSettingsTabSchema.parse(rawTab ?? 'notifications');
         const db = await this.db();
         const policy = await this.policy(db);
+        const localBackup = await this.localBackup.read();
+        const localBackupData = localBackup.availability === 'available' ? localBackup.data : null;
+        const lastSuccessAgeSeconds = localBackupData?.lastSuccessAt
+            ? Math.max(0, Math.floor((Date.now() - Date.parse(localBackupData.lastSuccessAt)) / 1_000))
+            : null;
+        const localBackupBlockers = ['offsite_target_missing'];
+        if (!localBackupData)
+            localBackupBlockers.unshift(
+                `local_backup_status_${localBackup.availability === 'unavailable' ? localBackup.reason : 'invalid'}`,
+            );
+        else {
+            if (localBackupData.state === 'failed')
+                localBackupBlockers.unshift(localBackupData.failureCode ?? 'local_backup_failed');
+            if (lastSuccessAgeSeconds === null) localBackupBlockers.unshift('local_backup_missing');
+            else if (lastSuccessAgeSeconds > localBackupData.policy.rpoSeconds)
+                localBackupBlockers.unshift('local_backup_rpo_exceeded');
+            if (localBackupData.restoreDrill.outcome !== 'passed')
+                localBackupBlockers.unshift('local_backup_restore_unproven');
+        }
+        const localBackupHealthy =
+            localBackupData?.state === 'ok' &&
+            lastSuccessAgeSeconds !== null &&
+            lastSuccessAgeSeconds <= localBackupData.policy.rpoSeconds &&
+            localBackupData.restoreDrill.outcome === 'passed';
         const historyRows = await sql<{
             at: Date;
             actor: string;
@@ -183,6 +209,58 @@ export class AdminRuntimeSettingsService {
                 readiness: 'ready',
                 affectedServices: ['backend', 'frontend', 'admin'],
                 checks: ['digest pinning', 'health verification', 'bounded lock'],
+            }),
+            base({
+                tab: 'deploy_backup',
+                key: 'local-backup',
+                label: 'Локальный encrypted backup',
+                description: 'Restic snapshot PostgreSQL, media и allowlisted manifests на текущем VPS',
+                value: localBackupData ? 'encrypted · local only' : 'not configured',
+                status: localBackupHealthy ? 'active' : localBackupData ? 'partial' : 'blocked',
+                source: 'derived',
+                readiness: localBackupHealthy ? 'external_dependency' : 'disabled',
+                sensitive: true,
+                updatedAt: localBackupData?.observedAt ?? null,
+                version: localBackupData?.schemaVersion ?? null,
+                blockers: [...new Set(localBackupBlockers)],
+                affectedServices: ['postgres', 'media-storage', 'backend'],
+                checks: localBackupData
+                    ? [
+                          `${localBackupData.schedule.localTime} ${localBackupData.schedule.timezone}`,
+                          `${localBackupData.retention.daily} daily + ${localBackupData.retention.weekly} weekly`,
+                          `RPO ${localBackupData.policy.rpoSeconds / 3_600}h / RTO ${localBackupData.policy.rtoSeconds / 3_600}h`,
+                          `last success: ${localBackupData.lastSuccessAt ?? 'never'}`,
+                          `restore drill: ${localBackupData.restoreDrill.outcome}`,
+                          'authenticated encryption',
+                      ]
+                    : ['status file unavailable', 'offsite=false'],
+                instruction:
+                    'Локальный repository защищает от логических ошибок, но не от потери VPS. Recovery key хранится только root-owned; offsite target требуется отдельно.',
+                history: [
+                    ...(localBackupData?.lastSuccessAt
+                        ? [
+                              {
+                                  at: localBackupData.lastSuccessAt,
+                                  actor: 'systemd',
+                                  summary: 'Local backup completed',
+                              },
+                          ]
+                        : []),
+                    ...(localBackupData?.restoreDrill.observedAt
+                        ? [
+                              {
+                                  at: localBackupData.restoreDrill.observedAt,
+                                  actor: 'operations',
+                                  summary: `Restore drill ${localBackupData.restoreDrill.outcome}`,
+                              },
+                          ]
+                        : []),
+                ].slice(0, 20),
+                secret: {
+                    configured: localBackupData?.recoveryKeyConfigured ?? false,
+                    fingerprint: null,
+                    rotatedAt: null,
+                },
             }),
             base({
                 tab: 'deploy_backup',

@@ -1,5 +1,7 @@
 # Backend version-list
 
+0.0.169 - 11.02.2026 | 22:59 - Добавлен authenticated-encrypted локальный backup на restic: ежедневный timer `01:00 Asia/Yekaterinburg`, 7 daily + 4 weekly, disk guard, общий deploy lock, validated PostgreSQL/media/manifests snapshot и изолированный PG18 restore drill с RPO 24h/RTO 4h. Root-owned recovery password никогда не выводится; bounded status безопасно проецируется в admin runtime settings и всегда сохраняет `offsite=false`. Публичный HTTP API и schema v34 не изменены.
+
 0.0.168 - 11.02.2026 | 20:15 - Web Push worker provisioning дополнен минимальным column-level `SELECT(job_id,attempt)` для безопасного `INSERT ... ON CONFLICT` в append-only attempts. Недостающий privilege обнаружен реальным пустым production-циклом; после точечного grant worker сменил health `degraded` на `ok`. Полный `SELECT` на таблицу и расширение доступа к уведомлениям не выдаются.
 
 0.0.167 - 11.02.2026 | 20:06 - Production image теперь явно включает runtime и healthcheck scripts Web Push worker. Добавлена регрессионная проверка Dockerfile после обнаруженного на VPS fail-closed `MODULE_NOT_FOUND`; до исправления feature был немедленно выключен, push-worker удалён, а основной stack повторно прошёл полный verify.

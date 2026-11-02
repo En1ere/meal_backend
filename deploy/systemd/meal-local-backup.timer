@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Meal Planner local backup at 01:00 Asia/Yekaterinburg
+
+[Timer]
+OnCalendar=*-*-* 01:00:00 Asia/Yekaterinburg
+Persistent=true
+AccuracySec=1min
+RandomizedDelaySec=0
+Unit=meal-local-backup.service
+
+[Install]
+WantedBy=timers.target
