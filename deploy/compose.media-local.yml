@@ -30,7 +30,7 @@ services:
         tmpfs:
             - '/tmp:rw,noexec,nosuid,nodev,uid=29003,gid=29003,mode=0700,size=64m'
         healthcheck:
-            test: [CMD, weed, shell, -master=127.0.0.1:9333, -command=cluster.status]
+            test: [CMD-SHELL, "printf 'cluster.status\\n' | weed shell -master=127.0.0.1:9333 >/dev/null 2>&1"]
             interval: 10s
             timeout: 5s
             retries: 18

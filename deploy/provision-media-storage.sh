@@ -14,10 +14,13 @@ compose config --quiet
 compose pull seaweedfs
 compose up -d --no-deps seaweedfs
 
+run_seaweed_shell() {
+    printf '%s\n' "$1" | compose exec -T seaweedfs weed shell -master=127.0.0.1:9333 -filer=127.0.0.1:8888
+}
+
 attempts=30
 while [ "$attempts" -gt 0 ]; do
-    if compose exec -T seaweedfs weed shell -master=127.0.0.1:9333 -filer=127.0.0.1:8888 \
-        -command=cluster.status >/dev/null 2>&1; then
+    if run_seaweed_shell cluster.status >/dev/null 2>&1; then
         break
     fi
     attempts=$((attempts - 1))
@@ -25,13 +28,11 @@ while [ "$attempts" -gt 0 ]; do
 done
 [ "$attempts" -gt 0 ] || { echo "SeaweedFS did not become ready" >&2; exit 1; }
 
-buckets=$(compose exec -T seaweedfs weed shell -master=127.0.0.1:9333 -filer=127.0.0.1:8888 \
-    -command=s3.bucket.list)
+buckets=$(run_seaweed_shell s3.bucket.list)
 for bucket in "${MEDIA_STORAGE_QUARANTINE_BUCKET:-meal-media-quarantine}" \
     "${MEDIA_STORAGE_READY_BUCKET:-meal-media-ready}"; do
     if ! printf '%s\n' "$buckets" | grep -Eq "^  ${bucket}[[:space:]]"; then
-        compose exec -T seaweedfs weed shell -master=127.0.0.1:9333 -filer=127.0.0.1:8888 \
-            -command="s3.bucket.create -name=$bucket" >/dev/null
+        run_seaweed_shell "s3.bucket.create -name=$bucket" >/dev/null
     fi
 done
 

@@ -70,6 +70,8 @@ void test('local media provider is isolated from the disabled user media API', a
     assert.match(provider, /MEAL_MEDIA_SUBNET:-172\.29\.0\.0\/24/);
     assert.doesNotMatch(provider, /ports:/);
     assert.doesNotMatch(provider, /MEDIA_STORAGE_ENABLED/);
+    assert.match(provider, /printf 'cluster\.status\\\\n' \| weed shell/);
+    assert.doesNotMatch(provider, /-command=/);
 
     assert.match(activation, /MEDIA_STORAGE_ENABLED: ['"]true['"]/);
     assert.match(activation, /MEDIA_STORAGE_ENDPOINT: http:\/\/seaweedfs/);
@@ -95,8 +97,10 @@ void test('local media provider is isolated from the disabled user media API', a
     assert.doesNotMatch(bootstrap, /echo .*access_secret|echo .*signing_key|echo .*encryption_key/);
 
     assert.match(provision, /media_infra_enabled/);
+    assert.match(provision, /run_seaweed_shell/);
     assert.match(provision, /s3\.bucket\.list/);
     assert.match(provision, /s3\.bucket\.create -name=\$bucket/);
+    assert.doesNotMatch(provision, /-command=/);
     assert.match(disable, /MEDIA_STORAGE_ENABLED:-false/);
     assert.match(disable, /stop --timeout 120 seaweedfs/);
     assert.match(disable, /Backend is still attached to meal-media/);
