@@ -211,11 +211,19 @@ ufw status verbose
 - аварийное завершение процесса дало restart count 0→1 и healthy на втором probe, очередь сохранила `0:0:0`; после drill processor container удалён, `MEDIA_STORAGE_ENABLED=false`, публичный API не активирован;
 - checkpoint закрывает бесплатный capacity/isolation scope. Malware-clean/publication остаётся fail-closed до scanner либо отдельно утверждённой non-public policy.
 
+### Evidence OCR preview checkpoint 7 2026-11-02
+
+- backend `0.0.162` (`423ded0`) прошёл checks run `41440493316` и build/deploy run `41440493253`; frontend `0.0.155` deploy run `41439061571` завершён success до активации;
+- `ocr-preview` имеет только internal `meal-ocr`, no ports, read-only root, `cap_drop=ALL`, PID 64, memory 512 MiB, CPU 0.75; post-OCR RSS 28.87 MiB, backend 89.4 MiB, PostgreSQL 39.76 MiB;
+- authenticated public HTTPS scan распознал `МОЛОКО 2 ШТ / MILK 100 RUB` с confidence 96, одним warning и literal `requiresReview: true`; media/intake/recognition/receipt/inventory counts остались `0|0|0|0|0`;
+- wrong token вернул 401, второй одновременный request — 503 `OCR_BUSY`; process crash дал restart count `0→1` и healthy, изолированный 64 MiB OOM drill завершился 137 и не оставил container;
+- `verify.sh --component all`, public frontend/admin и backend readiness прошли. OCR preview оставлен включённым; durable media, raw originals и publication остаются выключенными до scanner gate.
+
 ## Rollback
 
 1. Запретить новые мутации или остановить backend, если целостность данных под вопросом.
 2. Для frontend/admin вызвать `deploy/rollback.sh --component <component>`: helper вернёт предыдущий immutable digest и повторит health-check.
-3. Для backend сначала проверить совместимость previous digest с уже применённой схемой. Автоматический rollback разрешён только с точным root-owned compatibility evidence; иначе rollout останавливается fail-closed.
+3. Для backend сначала проверить совместимость previous digest с уже применённой схемой. Если OCR preview включён, сначала штатно отключить его по `docs/OCR_PREVIEW.md`; rollback helper намеренно откажет до этого. Автоматический rollback разрешён только с точным root-owned compatibility evidence; иначе rollout останавливается fail-closed.
 4. Повторить local/public health, login/read smoke и `docker compose ps`; только после этого возобновлять приёмку.
 5. Сохранить failed digest, журналы, request IDs и deploy metadata для анализа; не изменять image на месте.
 

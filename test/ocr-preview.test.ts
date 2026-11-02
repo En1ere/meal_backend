@@ -82,6 +82,29 @@ void test('OCR preview client rejects busy, malformed and review-bypassing respo
     }
 });
 
+void test('OCR preview client aborts a stalled sidecar request at its deadline', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+            const signal = init?.signal;
+            if (!signal) return reject(new Error('missing signal'));
+            const abort = () => reject(new DOMException('aborted', 'AbortError'));
+            if (signal.aborted) abort();
+            else signal.addEventListener('abort', abort, { once: true });
+        });
+    try {
+        await assert.rejects(
+            requestOcrPreview(
+                { url: 'http://ocr-preview:3100', token: 'd'.repeat(64), timeoutMs: 10 },
+                { bytes: Buffer.from([1]), mimeType: 'image/png' },
+            ),
+            (error: unknown) => error instanceof OcrPreviewClientError && error.code === 'timeout',
+        );
+    } finally {
+        globalThis.fetch = originalFetch;
+    }
+});
+
 void test('checked-in RU and EN OCR models match the immutable local manifest', async () => {
     const manifest = JSON.parse(await readFile('resources/ocr/models.manifest.json', 'utf8')) as {
         files: { name: string; sha256: string }[];
@@ -118,6 +141,7 @@ void test('Compose and runtime keep OCR preview isolated, authenticated and reso
     assert.doesNotMatch(compose, /meal-db|meal-egress|meal-media/);
     assert.match(common, /OCR_PREVIEW_ENABLED:-false/);
     assert.match(verify, /OCR preview must use only its private network/);
+    assert.ok(verify.includes("| sed '/^$/d' | sort"));
     assert.match(bootstrap, /openssl rand -hex 32/);
     assert.match(disable, /compose rm -f ocr-preview/);
     assert.match(server, /timingSafeEqual/);

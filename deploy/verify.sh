@@ -149,7 +149,7 @@ if [ "$component" = backend ] || [ "$component" = all ]; then
     if ocr_preview_enabled; then
         ocr_id=$(compose ps -q ocr-preview)
         [ -n "$ocr_id" ] || { echo "Enabled OCR preview is missing" >&2; exit 77; }
-        ocr_networks=$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' "$ocr_id" | sort)
+        ocr_networks=$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' "$ocr_id" | sed '/^$/d' | sort)
         [ "$ocr_networks" = 'meal-ocr' ] || { echo "OCR preview must use only its private network" >&2; exit 77; }
         printf '%s\n' "$backend_networks" | grep -Fqx meal-ocr || {
             echo "Enabled backend is not attached to the OCR preview network" >&2; exit 77;
