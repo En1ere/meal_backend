@@ -1,5 +1,16 @@
 # Полная программа ручной приёмки Meal Planner
 
+## Isolated OCR preview 7 — 02.11.2026
+
+1. Production rejects `INLINE_INGEST_OCR_ENABLED=true` unless the exact internal URL and token file are configured; a direct production token and partial configuration fail startup.
+2. `ocr-preview` has no host port, DB/storage/egress networks or persistent volume; rootfs/capabilities/PID/CPU/memory and one-job concurrency match `docs/OCR_PREVIEW.md`.
+3. Startup verifies the exact RU+EN model manifest/checksums. Missing or changed model/token prevents the listener from becoming healthy.
+4. One raw JPEG/PNG/WebP up to 10 MiB enters the sidecar, passes 12 MP CDR, then bounded Tesseract. Animated/corrupt/bomb/length mismatch/transfer-encoding inputs fail closed.
+5. Missing/wrong token is rejected before body processing; response never includes token, source bytes or logs. Oversized response and any response without literal `requiresReview: true` are rejected by backend.
+6. Backend accepts one scan globally and processes at most three images sequentially. Busy, timeout, abort, crash and malformed worker response release locks/listeners and return bounded recoverable errors.
+7. Successful preview does not write DB, media storage or a domain record. Inventory requires row review; receipt save stays disabled until explicit OCR text confirmation.
+8. Restart and separate OOM drill kill/restart only the sidecar. Backend, PostgreSQL, worker and UI health remain available; disable removes sidecar/network attachment and preserves manual input/table import.
+
 ## Target-bound image storage 6B — 02.11.2026
 
 1. Production starts with `MEDIA_STORAGE_ENABLED=false`, `MEDIA_PROCESSOR_ENABLED=false` and `INLINE_INGEST_OCR_ENABLED=false`; inventory table import remains available, inline image OCR returns stable `INGEST_OCR_DISABLED` without reading multipart bytes or starting a worker.

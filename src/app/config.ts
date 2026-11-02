@@ -101,6 +101,12 @@ export const configSchema = z.object({
         .enum(['true', 'false'])
         .transform((value) => value === 'true')
         .optional(),
+    OCR_PREVIEW_URL: z.url().optional(),
+    OCR_PREVIEW_TOKEN: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/)
+        .optional(),
+    OCR_PREVIEW_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(60_000),
     AUTH_RATE_LIMIT: z.coerce.number().int().min(1).max(100).default(10),
     PIN_TRUST_DAYS: z.coerce.number().int().min(1).max(365).default(30),
     REGISTRATION_RISK_ENABLED: z
@@ -155,6 +161,7 @@ const secretFiles = {
     MEDIA_STORAGE_SECRET_ACCESS_KEY: 'MEDIA_STORAGE_SECRET_ACCESS_KEY_FILE',
     MEDIA_STORAGE_SIGNING_KEY: 'MEDIA_STORAGE_SIGNING_KEY_FILE',
     MEDIA_STORAGE_ENCRYPTION_KEY: 'MEDIA_STORAGE_ENCRYPTION_KEY_FILE',
+    OCR_PREVIEW_TOKEN: 'OCR_PREVIEW_TOKEN_FILE',
 } as const;
 
 function withSecretFiles(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
@@ -178,6 +185,8 @@ function withSecretFiles(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
 }
 
 export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
+    if (env.NODE_ENV === 'production' && env.OCR_PREVIEW_TOKEN)
+        throw new Error('OCR_PREVIEW_TOKEN must use OCR_PREVIEW_TOKEN_FILE in production');
     const result = configSchema.safeParse(withSecretFiles(env));
     if (!result.success) {
         throw new Error(
@@ -188,6 +197,15 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
         ...result.data,
         INLINE_INGEST_OCR_ENABLED: result.data.INLINE_INGEST_OCR_ENABLED ?? result.data.NODE_ENV !== 'production',
     };
+    const ocrPreviewFields = [config.OCR_PREVIEW_URL, config.OCR_PREVIEW_TOKEN].filter(Boolean).length;
+    if (ocrPreviewFields !== 0 && ocrPreviewFields !== 2)
+        throw new Error('OCR_PREVIEW_URL and OCR_PREVIEW_TOKEN must be configured together');
+    if (ocrPreviewFields && !config.INLINE_INGEST_OCR_ENABLED)
+        throw new Error('OCR preview configuration requires explicit OCR enablement');
+    if (config.NODE_ENV === 'production' && config.INLINE_INGEST_OCR_ENABLED) {
+        if (config.OCR_PREVIEW_URL !== 'http://ocr-preview:3100' || !config.OCR_PREVIEW_TOKEN)
+            throw new Error('Production OCR requires the isolated internal preview service');
+    }
     const aiFields = [config.AI_API_BASE_URL, config.AI_API_TOKEN, config.AI_MODEL].filter(Boolean).length;
     if (aiFields !== 0 && aiFields !== 3)
         throw new Error('AI_API_BASE_URL, AI_API_TOKEN and AI_MODEL must be configured together');

@@ -202,6 +202,8 @@ void test('component deployment isolates UI rollout from database migration', as
     assert.match(deploy, /mail-worker/);
     assert.match(deploy, /media_processor_enabled/);
     assert.match(deploy, /media-processor/);
+    assert.match(deploy, /ocr_preview_enabled/);
+    assert.match(deploy, /ocr-preview/);
     assert.match(deploy, /schema_version=33/);
     assert.ok(
         deploy.indexOf('compose stop backend worker') < deploy.indexOf('sh "$SCRIPT_DIR/backup.sh"'),
@@ -275,11 +277,14 @@ void test('component deployment isolates UI rollout from database migration', as
     const common = await text('deploy/common.sh');
     assert.match(common, /compose\.account-mail\.yml/);
     assert.match(common, /ACCOUNT_MAIL_ENABLED:-false/);
+    assert.match(common, /OCR_PREVIEW_ENABLED:-false/);
+    assert.match(common, /compose\.ocr-preview\.yml/);
     assert.match(common, /BACKEND_VERSION=%s/);
     assert.match(common, /docker run --rm --network none --read-only --cap-drop ALL/);
     const rollback = await text('deploy/rollback.sh');
     assert.match(rollback, /image_package_version/);
-    assert.match(rollback, /compose up -d --no-deps backend worker/);
+    assert.match(rollback, /Disable OCR preview before backend image rollback/);
+    assert.match(rollback, /compose up -d --no-deps \$backend_services/);
     const provisionMail = await text('deploy/provision-account-mail-runtime.sh');
     assert.match(provisionMail, /create role meal_mail_runtime login noinherit/);
     assert.match(provisionMail, /revoke meal_app from meal_mail_runtime/);

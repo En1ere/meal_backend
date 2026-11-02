@@ -103,6 +103,13 @@
 - Повтор merge идемпотентен; изменившаяся composition блокирует устаревший preview.
 - Media/import без scanner/storage остаётся fail-closed; не создаётся доверенный asset до проверки.
 
+### OCR preview
+
+1. Отправьте одно, затем три фото RU+EN этикетки/receipt. Ожидается: строгий preview с `requiresReview: true`, нет DB/media/domain mutation.
+2. Повторите с blur, rotation/EXIF, JPEG/PNG/WebP, пустым, corrupt, animated, >10 MiB и >12 MP файлом. Ожидается: bounded 400/413/415/422; нет частичного результа.
+3. Запустите два параллельных scan и timeout. Ожидается: один job, второй получает stable busy/unavailable, worker завершается и следующий запрос работает.
+4. Убейте sidecar и выполните отдельный cgroup OOM drill. Ожидается: перезапуск только `ocr-preview`; backend/PostgreSQL healthy, ручной ввод доступен.
+
 ## 8. Запасы и партии
 
 1. Создайте партии в разных местах хранения, включая expiry.

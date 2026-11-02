@@ -7,6 +7,7 @@ ACCOUNT_MAIL_COMPOSE_FILE=${ACCOUNT_MAIL_COMPOSE_FILE:-$DEPLOY_ROOT/compose.acco
 MEDIA_INFRA_COMPOSE_FILE=${MEDIA_INFRA_COMPOSE_FILE:-$DEPLOY_ROOT/compose.media-local.yml}
 MEDIA_BACKEND_COMPOSE_FILE=${MEDIA_BACKEND_COMPOSE_FILE:-$DEPLOY_ROOT/compose.media-backend.yml}
 MEDIA_PROCESSOR_COMPOSE_FILE=${MEDIA_PROCESSOR_COMPOSE_FILE:-$DEPLOY_ROOT/compose.media-processor.yml}
+OCR_PREVIEW_COMPOSE_FILE=${OCR_PREVIEW_COMPOSE_FILE:-$DEPLOY_ROOT/compose.ocr-preview.yml}
 DEPLOY_ENV_FILE=${DEPLOY_ENV_FILE:-/etc/meal-planner/deploy.env}
 DEPLOY_LOCK_FILE=${DEPLOY_LOCK_FILE:-/run/lock/meal-planner-deploy.lock}
 STATE_ROOT=${STATE_ROOT:-/var/lib/meal-planner/deployments}
@@ -15,10 +16,11 @@ BACKUP_ROOT=${BACKUP_ROOT:-/var/backups/meal-planner}
 MEAL_NETWORK_SUBNET=${MEAL_NETWORK_SUBNET:-172.30.0.0/24}
 MEAL_EGRESS_SUBNET=${MEAL_EGRESS_SUBNET:-172.31.0.0/24}
 MEAL_MEDIA_SUBNET=${MEAL_MEDIA_SUBNET:-172.29.0.0/24}
+MEAL_OCR_SUBNET=${MEAL_OCR_SUBNET:-172.28.0.0/24}
 MEDIA_STORAGE_HOST_ROOT=${MEDIA_STORAGE_HOST_ROOT:-/var/lib/meal-planner/media/provider}
 MEDIA_STORAGE_MIN_FREE_BYTES=${MEDIA_STORAGE_MIN_FREE_BYTES:-5368709120}
 MEDIA_STORAGE_MIN_FREE_PERCENT=${MEDIA_STORAGE_MIN_FREE_PERCENT:-20}
-export MEAL_NETWORK_SUBNET MEAL_EGRESS_SUBNET MEAL_MEDIA_SUBNET
+export MEAL_NETWORK_SUBNET MEAL_EGRESS_SUBNET MEAL_MEDIA_SUBNET MEAL_OCR_SUBNET
 
 require_file() {
     if [ ! -r "$1" ]; then
@@ -94,6 +96,11 @@ compose() {
         compose_files="$compose_files -f $MEDIA_PROCESSOR_COMPOSE_FILE"
         compose_profiles="$compose_profiles --profile media-processor"
     fi
+    if ocr_preview_enabled; then
+        require_file "$OCR_PREVIEW_COMPOSE_FILE"
+        compose_files="$compose_files -f $OCR_PREVIEW_COMPOSE_FILE"
+        compose_profiles="$compose_profiles --profile ocr-preview"
+    fi
     # Deployment paths are fixed root-owned paths without whitespace.
     # shellcheck disable=SC2086
     docker compose $compose_files $compose_profiles "$@"
@@ -115,10 +122,15 @@ media_processor_enabled() {
     [ "${MEDIA_PROCESSOR_ENABLED:-false}" = true ]
 }
 
+ocr_preview_enabled() {
+    [ "${OCR_PREVIEW_ENABLED:-false}" = true ]
+}
+
 validate_media_flags() {
     case "${MEDIA_STORAGE_INFRA_ENABLED:-false}" in true|false) ;; *) echo "MEDIA_STORAGE_INFRA_ENABLED must be true or false" >&2; exit 64 ;; esac
     case "${MEDIA_STORAGE_ENABLED:-false}" in true|false) ;; *) echo "MEDIA_STORAGE_ENABLED must be true or false" >&2; exit 64 ;; esac
     case "${MEDIA_PROCESSOR_ENABLED:-false}" in true|false) ;; *) echo "MEDIA_PROCESSOR_ENABLED must be true or false" >&2; exit 64 ;; esac
+    case "${OCR_PREVIEW_ENABLED:-false}" in true|false) ;; *) echo "OCR_PREVIEW_ENABLED must be true or false" >&2; exit 64 ;; esac
     if media_storage_enabled && ! media_infra_enabled; then
         echo "MEDIA_STORAGE_ENABLED requires MEDIA_STORAGE_INFRA_ENABLED=true" >&2
         exit 64

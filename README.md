@@ -22,7 +22,7 @@ npm run openapi
 - Административное решение по удалению аккаунта принимает обязательный UUID `idempotencyKey`: точный повтор возвращает прежнюю проекцию без второго review/audit, а повтор ключа с другим payload отвечает `409`.
 - Объединение каталожных карточек повторно блокирует и сверяет обе версии внутри effect-транзакции; решение `not-duplicate` связано с точной парой версий и перестаёт блокировать сравнение только после изменения карточки.
 - Платёжный provider, AI, email/push, storage и scanner не заменяются фиктивным успехом.
-- Вложения и OCR ограничены размером/типом, проходят безопасную обработку и ручное подтверждение; provenance runtime — `resources/ocr/README.md`.
+- Вложения и OCR ограничены размером/типом, проходят безопасную обработку и ручное подтверждение; provenance runtime — `resources/ocr/README.md`, production boundary и disable procedure — `docs/OCR_PREVIEW.md`.
 - Телеметрия не содержит токены, содержимое документов и чувствительные payloads; правила — `docs/telemetry.md`.
 - Worker topology и maintenance-команды описаны в `docs/operational-maintenance.md`.
 - Admin-only observability snapshot и host collector описаны в `docs/observability-runbook.md`; приложение не получает Docker socket.

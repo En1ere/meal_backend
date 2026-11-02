@@ -48,6 +48,7 @@ case "$component" in
         require_running postgres; require_running backend; wait_healthy worker
         if account_mail_enabled; then wait_healthy mail-worker; fi
         if media_processor_enabled; then wait_healthy media-processor; fi
+        if ocr_preview_enabled; then wait_healthy ocr-preview; fi
         if media_infra_enabled; then wait_healthy seaweedfs; fi
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready ;;
@@ -57,6 +58,7 @@ case "$component" in
         require_running postgres; require_running backend; wait_healthy worker; require_running frontend; require_running admin
         if account_mail_enabled; then wait_healthy mail-worker; fi
         if media_processor_enabled; then wait_healthy media-processor; fi
+        if ocr_preview_enabled; then wait_healthy ocr-preview; fi
         if media_infra_enabled; then wait_healthy seaweedfs; fi
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready
@@ -79,6 +81,7 @@ if [ "$component" = backend ] || [ "$component" = all ]; then
     application_services='backend worker frontend admin postgres'
     if account_mail_enabled; then application_services="$application_services mail-worker"; fi
     if media_processor_enabled; then application_services="$application_services media-processor"; fi
+    if ocr_preview_enabled; then application_services="$application_services ocr-preview"; fi
     for application_service in $application_services; do
         application_id=$(compose ps -q "$application_service")
         [ -z "$application_id" ] && continue
@@ -142,6 +145,22 @@ if [ "$component" = backend ] || [ "$component" = all ]; then
             }
         fi
     fi
+    backend_networks=$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' "$backend_id")
+    if ocr_preview_enabled; then
+        ocr_id=$(compose ps -q ocr-preview)
+        [ -n "$ocr_id" ] || { echo "Enabled OCR preview is missing" >&2; exit 77; }
+        ocr_networks=$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' "$ocr_id" | sort)
+        [ "$ocr_networks" = 'meal-ocr' ] || { echo "OCR preview must use only its private network" >&2; exit 77; }
+        printf '%s\n' "$backend_networks" | grep -Fqx meal-ocr || {
+            echo "Enabled backend is not attached to the OCR preview network" >&2; exit 77;
+        }
+        ocr_security=$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}/{{.HostConfig.PidsLimit}}/{{.HostConfig.Memory}}/{{.HostConfig.NanoCpus}}/{{json .HostConfig.PortBindings}}' "$ocr_id")
+        [ "$ocr_security" = 'true/64/536870912/750000000/{}' ] || [ "$ocr_security" = 'true/64/536870912/750000000/null' ] || {
+            echo "OCR preview runtime limits differ from the reviewed policy" >&2; exit 77;
+        }
+    elif printf '%s\n' "$backend_networks" | grep -Fqx meal-ocr; then
+        echo "Disabled OCR preview must not attach backend to the OCR network" >&2; exit 77
+    fi
     case "${OBSERVABILITY_HOST_SNAPSHOT_ENABLED:-true}" in
         true)
             compose exec -T backend node --input-type=module -e "const {HostSnapshotReader}=await import('./dist/src/modules/admin-observability/host-snapshot.reader.js');const snapshot=await new HostSnapshotReader('/run/meal-observability/current.json').read();if(snapshot.freshness.state!=='fresh'||!['ok','partial'].includes(snapshot.collectorStatus))process.exit(1)" || {
@@ -152,9 +171,8 @@ if [ "$component" = backend ] || [ "$component" = all ]; then
         false) printf '%s\n' 'Host observability is explicitly disabled; safe read-only mount remains required and snapshot may be absent' ;;
         *) echo "OBSERVABILITY_HOST_SNAPSHOT_ENABLED must be true or false" >&2; exit 64 ;;
     esac
-    gateways=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{if .Gateway}}{{.Gateway}}{{"\n"}}{{end}}{{end}}' "$backend_id" \
-        | grep -E '^[0-9]{1,3}(\.[0-9]{1,3}){3}$' | sort -u)
-    expected=$(printf '%s\n' "$gateways" | sed '/^$/d;s/$/\/32/' | sort | paste -sd, -)
+    gateway=$(docker inspect --format '{{with index .NetworkSettings.Networks "meal-egress"}}{{.Gateway}}{{end}}' "$backend_id")
+    expected=$(printf '%s\n' "$gateway" | grep -E '^[0-9]{1,3}(\.[0-9]{1,3}){3}$' | sed 's/$/\/32/')
     configured=$(printf '%s' "${TRUSTED_PROXY_CIDRS:-}" | tr ',' '\n' | sed '/^$/d' | sort | paste -sd, -)
     [ -n "$expected" ] && [ "$configured" = "$expected" ] || {
         echo "TRUSTED_PROXY_CIDRS must equal the exact Docker gateway /32 addresses" >&2

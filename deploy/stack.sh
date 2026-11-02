@@ -17,6 +17,7 @@ case "$action" in
             validate_network_route meal-media "$MEAL_MEDIA_SUBNET"
             verify_media_host_storage
         fi
+        if ocr_preview_enabled; then validate_network_route meal-ocr "$MEAL_OCR_SUBNET"; fi
         compose config --quiet
         compose up -d
         ;;

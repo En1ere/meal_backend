@@ -1,0 +1,62 @@
+services:
+    backend:
+        environment:
+            INLINE_INGEST_OCR_ENABLED: 'true'
+            OCR_PREVIEW_URL: http://ocr-preview:3100
+            OCR_PREVIEW_TOKEN_FILE: /run/secrets/ocr_preview_token
+            OCR_PREVIEW_TIMEOUT_MS: ${OCR_PREVIEW_TIMEOUT_MS:-60000}
+        secrets: [ocr_preview_token]
+        depends_on:
+            ocr-preview:
+                condition: service_healthy
+        networks:
+            meal-ocr: {}
+
+    ocr-preview:
+        image: ${BACKEND_IMAGE:?immutable backend digest reference is required}
+        profiles: [ocr-preview]
+        init: true
+        user: node
+        read_only: true
+        cap_drop: [ALL]
+        security_opt: [no-new-privileges:true]
+        pids_limit: 64
+        mem_limit: 512m
+        mem_reservation: 384m
+        cpus: 0.75
+        restart: unless-stopped
+        group_add: ['${MEAL_SECRETS_GID:-29001}']
+        environment:
+            NODE_ENV: production
+            OCR_PREVIEW_HOST: 0.0.0.0
+            OCR_PREVIEW_PORT: '3100'
+            OCR_PREVIEW_TIMEOUT_MS: ${OCR_PREVIEW_TIMEOUT_MS:-60000}
+            OCR_PREVIEW_TOKEN_FILE: /run/secrets/ocr_preview_token
+            OCR_MODELS_PATH: /app/resources/ocr
+            NODE_OPTIONS: --max-old-space-size=192
+            VIPS_CONCURRENCY: '1'
+            MALLOC_ARENA_MAX: '2'
+        secrets: [ocr_preview_token]
+        tmpfs:
+            - '/tmp:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=0700,size=64m'
+        healthcheck:
+            test: [CMD, node, scripts/check-ocr-preview-health.mjs]
+            interval: 15s
+            timeout: 3s
+            retries: 4
+            start_period: 30s
+        stop_grace_period: 15s
+        networks: [meal-ocr]
+        command: [node, scripts/run-ocr-preview-server.mjs]
+
+networks:
+    meal-ocr:
+        name: meal-ocr
+        internal: true
+        ipam:
+            config:
+                - subnet: ${MEAL_OCR_SUBNET:-172.28.0.0/24}
+
+secrets:
+    ocr_preview_token:
+        file: ${OCR_PREVIEW_TOKEN_FILE:-/etc/meal-planner/secrets/ocr-preview-token}

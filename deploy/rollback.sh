@@ -16,6 +16,10 @@ case "$component" in backend|frontend|admin) ;; *) echo "--component is required
     echo "Set ALLOW_APPLICATION_ROLLBACK=true only after confirming schema compatibility" >&2; exit 77;
 }
 load_deploy_environment
+if [ "$component" = backend ] && ocr_preview_enabled; then
+    echo "Disable OCR preview before backend image rollback" >&2
+    exit 77
+fi
 take_lock
 if media_infra_enabled; then
     verify_media_host_storage
@@ -30,11 +34,17 @@ image=$(cat "$state_dir/previous.image")
 require_digest_reference "$component rollback image" "$image"
 set_component_image "$component" "$image"
 if [ "$component" = backend ]; then
-    if account_mail_enabled; then compose pull backend worker mail-worker; else compose pull backend worker; fi
+    backend_services='backend worker'
+    if account_mail_enabled; then backend_services="$backend_services mail-worker"; fi
+    if media_processor_enabled; then backend_services="$backend_services media-processor"; fi
+    if ocr_preview_enabled; then backend_services="$backend_services ocr-preview"; fi
+    # shellcheck disable=SC2086
+    compose pull $backend_services
     BACKEND_VERSION=$(image_package_version "$image")
     require_semver rollback-backend-version "$BACKEND_VERSION"
     export BACKEND_VERSION
-    if account_mail_enabled; then compose up -d --no-deps backend worker mail-worker; else compose up -d --no-deps backend worker; fi
+    # shellcheck disable=SC2086
+    compose up -d --no-deps $backend_services
 else
     compose pull "$component"
     compose up -d --no-deps "$component"

@@ -53,6 +53,7 @@ if [ "$component" = backend ]; then
         verify_media_host_storage
         validate_network_route meal-media "$MEAL_MEDIA_SUBNET"
     fi
+    if ocr_preview_enabled; then validate_network_route meal-ocr "$MEAL_OCR_SUBNET"; fi
 fi
 compose config --quiet
 if [ "$component" = backend ]; then
@@ -63,6 +64,7 @@ if [ "$component" = backend ]; then
     backend_services='backend worker'
     if account_mail_enabled; then backend_services="$backend_services mail-worker"; fi
     if media_processor_enabled; then backend_services="$backend_services media-processor"; fi
+    if ocr_preview_enabled; then backend_services="$backend_services ocr-preview"; fi
     # shellcheck disable=SC2086
     compose pull $backend_services
 else
@@ -73,6 +75,7 @@ if [ "$component" = backend ]; then
     backend_services='backend worker'
     if account_mail_enabled; then backend_services="$backend_services mail-worker"; fi
     if media_processor_enabled; then backend_services="$backend_services media-processor"; fi
+    if ocr_preview_enabled; then backend_services="$backend_services ocr-preview"; fi
     # shellcheck disable=SC2086
     compose stop $backend_services
     # The restore point must include every write accepted before maintenance begins.

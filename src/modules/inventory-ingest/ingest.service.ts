@@ -15,6 +15,7 @@ import { sql } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import { ingestLimitsSchema, importPreviewSchema, scanPreviewSchema } from './ingest.contracts.js';
+import { OcrPreviewClientError, requestOcrPreview } from './ocr-preview.client.js';
 
 @Injectable()
 export class InventoryIngestService {
@@ -23,6 +24,7 @@ export class InventoryIngestService {
         @Inject(APP_CONFIG) private readonly config: AppConfig,
     ) {}
     private active = 0;
+    private scanActive = false;
     private readonly users = new Set<string>();
     readonly limits = ingestLimitsSchema.parse({
         ...Object.fromEntries(
@@ -52,15 +54,16 @@ export class InventoryIngestService {
             this.database.db,
         );
         if (!access.rows[0]?.allowed) throw new ForbiddenException('Доступен только просмотр');
-        if (this.active >= 2 || this.users.has(userId))
+        if (this.active >= 2 || this.users.has(userId) || (kind === 'scan' && this.scanActive))
             throw new ServiceUnavailableException({
                 code: 'INGEST_BUSY',
                 message: 'Обработка занята. Повторите позже.',
             });
         this.active++;
+        if (kind === 'scan') this.scanActive = true;
         this.users.add(userId);
         try {
-            const files: { filename: string; bytes: Buffer }[] = [];
+            const files: { filename: string; mimetype: string; bytes: Buffer }[] = [];
             for await (const part of request.parts({
                 limits: {
                     fileSize: this.limits.fileBytes,
@@ -75,9 +78,53 @@ export class InventoryIngestService {
                     throw new BadRequestException('Пустой или слишком большой файл');
                 if (kind === 'scan' && !['image/jpeg', 'image/png', 'image/webp'].includes(part.mimetype))
                     throw new BadRequestException('Нужны JPEG, PNG или WebP');
-                files.push({ filename: part.filename.replace(/[\\/\u0000-\u001f]/g, '_').slice(0, 200), bytes });
+                files.push({
+                    filename: part.filename.replace(/[\\/\u0000-\u001f]/g, '_').slice(0, 200),
+                    mimetype: part.mimetype,
+                    bytes,
+                });
             }
             if (!files.length) throw new BadRequestException('Выберите файл');
+            if (kind === 'scan' && this.config.OCR_PREVIEW_URL && this.config.OCR_PREVIEW_TOKEN) {
+                const abortController = new AbortController();
+                const abort = () => abortController.abort();
+                request.raw.once('aborted', abort);
+                try {
+                    const images = [];
+                    const warnings = new Set<string>();
+                    for (const file of files) {
+                        const preview = await requestOcrPreview(
+                            {
+                                url: this.config.OCR_PREVIEW_URL,
+                                token: this.config.OCR_PREVIEW_TOKEN,
+                                timeoutMs: this.config.OCR_PREVIEW_TIMEOUT_MS,
+                            },
+                            { bytes: file.bytes, mimeType: file.mimetype },
+                            abortController.signal,
+                        );
+                        images.push({ filename: file.filename, text: preview.text, confidence: preview.confidence });
+                        preview.warnings.forEach((warning) => warnings.add(warning));
+                    }
+                    return scanPreviewSchema.parse({ images, warnings: [...warnings], requiresReview: true });
+                } catch (error) {
+                    if (!(error instanceof OcrPreviewClientError)) throw error;
+                    if (error.code === 'invalid_file')
+                        throw new BadRequestException({
+                            code: 'INGEST_INVALID_FILE',
+                            message: 'Фотографию не удалось безопасно распознать.',
+                        });
+                    if (error.code === 'timeout')
+                        throw new RequestTimeoutException(
+                            'Распознавание заняло слишком много времени. Попробуйте ещё раз.',
+                        );
+                    throw new ServiceUnavailableException({
+                        code: error.code === 'busy' ? 'INGEST_BUSY' : 'INGEST_OCR_UNAVAILABLE',
+                        message: 'Распознавание временно недоступно. Повторите позже или заполните данные вручную.',
+                    });
+                } finally {
+                    request.raw.off('aborted', abort);
+                }
+            }
             const result = await new Promise<unknown>((resolve, reject) => {
                 const worker = new Worker(new URL('./ingest.worker.js', import.meta.url), {
                     workerData: {
@@ -128,6 +175,7 @@ export class InventoryIngestService {
             return kind === 'table' ? importPreviewSchema.parse(result) : scanPreviewSchema.parse(result);
         } finally {
             this.active--;
+            if (kind === 'scan') this.scanActive = false;
             this.users.delete(userId);
         }
     }

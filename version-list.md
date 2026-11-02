@@ -1,5 +1,7 @@
 # Backend version-list
 
+0.0.162 - 11.02.2026 | 16:48 - Подготовлен production-safe OCR preview checkpoint: отдельный no-egress/no-storage/no-DB sidecar с one-job concurrency, 512 MiB/0.75 CPU/64 PID, root-owned token, RU+EN model checksum gate, 12 MP CDR и strict bounded response. Production не позволяет inline OCR без точного internal endpoint/secret; каждый ответ требует `requiresReview: true`, не пишет в БД/storage и не меняет domain state. Добавлены enable/disable/rollback runbook и regression tests; активация остаётся выключенной до VPS drill и совместимого frontend rollout.
+
 0.0.150 - 10.29.2026 | 20:15 - Синхронизированы production runbook, OpenAPI metadata и readiness tracker с фактическими автодеплоями: schema v30/миграция 030, 30/212/488 migration/table/FK counts, backend 0.0.149 и admin 0.0.125 evidence, завершённая observability-приёмка. Recovery contract v5, bootstrap restore и reference-data gate теперь fail-closed требуют точную schema v30; технические origins явно отмечены как текущие, custom-domain cutover — pending до DNS. Публичный HTTP API не изменён.
 
 0.0.149 - 10.29.2026 | 17:05 - Добавлен versioned admin acceptance checklist для 83 кейсов БД/backend/admin/frontend: semantic catalog IDs и checksums, отдельный run на catalog version, CAS/idempotency, bounded comments, reset без удаления истории, append-only events и admin-only live MFA/session/role recheck. Миграция 030 добавляет три least-privilege таблицы; OpenAPI 0.0.61 расширен тремя согласованными endpoint-ами, manual test docs и regression coverage синхронизированы.

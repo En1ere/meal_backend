@@ -138388,11 +138388,18 @@
                           "items": {
                             "type": "string"
                           }
+                        },
+                        "requiresReview": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
                         }
                       },
                       "required": [
                         "images",
-                        "warnings"
+                        "warnings",
+                        "requiresReview"
                       ],
                       "additionalProperties": false
                     },

@@ -40,6 +40,7 @@ export function readWorkerApplicationConfig(env: NodeJS.ProcessEnv): AppConfig {
         MEDIA_STORAGE_ENABLED: false,
         MEDIA_STORAGE_FORCE_PATH_STYLE: true,
         INLINE_INGEST_OCR_ENABLED: false,
+        OCR_PREVIEW_TIMEOUT_MS: 60_000,
         AUTH_RATE_LIMIT: 10,
         PIN_TRUST_DAYS: 30,
         REGISTRATION_RISK_ENABLED: false,

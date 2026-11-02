@@ -32,16 +32,29 @@ void test('legacy inline OCR is enabled by default only outside production and r
         }).INLINE_INGEST_OCR_ENABLED,
         false,
     );
-    assert.equal(
-        readConfig({
-            NODE_ENV: 'production',
-            FRONTEND_ORIGIN: 'https://meal.example.test',
-            DATABASE_URL: 'postgresql://meal_app:test@localhost/meal_planner_postgres',
-            SECURITY_KEY: randomBytes(32).toString('base64'),
-            MFA_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
-            INLINE_INGEST_OCR_ENABLED: 'true',
-        }).INLINE_INGEST_OCR_ENABLED,
-        true,
+    assert.throws(
+        () =>
+            readConfig({
+                NODE_ENV: 'production',
+                FRONTEND_ORIGIN: 'https://meal.example.test',
+                DATABASE_URL: 'postgresql://meal_app:test@localhost/meal_planner_postgres',
+                SECURITY_KEY: randomBytes(32).toString('base64'),
+                MFA_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+                INLINE_INGEST_OCR_ENABLED: 'true',
+            }),
+        /isolated internal preview service/,
+    );
+    const preview = readConfig({
+        NODE_ENV: 'test',
+        INLINE_INGEST_OCR_ENABLED: 'true',
+        OCR_PREVIEW_URL: 'http://ocr-preview:3100',
+        OCR_PREVIEW_TOKEN: 'a'.repeat(64),
+    });
+    assert.equal(preview.OCR_PREVIEW_URL, 'http://ocr-preview:3100');
+    assert.equal(preview.OCR_PREVIEW_TIMEOUT_MS, 60_000);
+    assert.throws(
+        () => readConfig({ NODE_ENV: 'test', OCR_PREVIEW_URL: 'http://ocr-preview:3100' }),
+        /configured together/,
     );
     assert.throws(() => readConfig({ INLINE_INGEST_OCR_ENABLED: 'yes' }), /INLINE_INGEST_OCR_ENABLED/);
 });
