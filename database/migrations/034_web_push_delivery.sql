@@ -2,11 +2,16 @@
 SET LOCAL lock_timeout = '3s';
 SET LOCAL statement_timeout = '30s';
 
+-- pgcrypto is a trusted PostgreSQL extension and is available in the supported
+-- image. Install it explicitly so upgrades from a clean database do not depend
+-- on an out-of-band bootstrap step.
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+
 ALTER TABLE meal.push_subscriptions
   ADD COLUMN endpoint_hash char(64),
   ADD COLUMN expiration_time timestamptz,
   ADD COLUMN updated_at timestamptz NOT NULL DEFAULT now();
-UPDATE meal.push_subscriptions SET endpoint_hash=encode(digest(endpoint_encrypted,'sha256'),'hex') WHERE endpoint_hash IS NULL;
+UPDATE meal.push_subscriptions SET endpoint_hash=encode(public.digest(endpoint_encrypted,'sha256'),'hex') WHERE endpoint_hash IS NULL;
 ALTER TABLE meal.push_subscriptions ALTER COLUMN endpoint_hash SET NOT NULL;
 ALTER TABLE meal.push_subscriptions ADD CONSTRAINT ck_push_endpoint_hash CHECK (endpoint_hash ~ '^[0-9a-f]{64}$');
 CREATE UNIQUE INDEX uq_push_active_endpoint ON meal.push_subscriptions(endpoint_hash) WHERE revoked_at IS NULL;

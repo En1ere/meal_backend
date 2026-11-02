@@ -136,6 +136,8 @@ void test('migration and deployment keep durable jobs, append-only attempts and 
     assert.match(migration, /web_push_jobs/);
     assert.match(migration, /append-only/);
     assert.match(migration, /404|gone/);
+    assert.match(migration, /CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public/);
+    assert.match(migration, /public\.digest\(endpoint_encrypted,'sha256'\)/);
     assert.match(compose, /read_only: true/);
     assert.match(compose, /cap_drop: \[ALL\]/);
     assert.match(compose, /meal-db, meal-egress/);
