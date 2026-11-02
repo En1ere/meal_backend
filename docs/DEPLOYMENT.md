@@ -192,6 +192,15 @@ ufw status verbose
 - `deploy/verify.sh --component backend` и `--component admin` прошли; active immutable registry digests по-прежнему читаются только из root-owned `images.env`, а не из этого документа;
 - custom domains ещё не включены: оба имени Meal Planner находятся в `NXDOMAIN`, технические origins продолжают отвечать `200`.
 
+### Evidence storage checkpoint 6A 2026-11-02
+
+- backend `0.0.158` (`6b49cf2`) прошёл checks run `41409742965` и build/deploy run `41409742853`; running image совпадает с immutable digest в root-owned `images.env`;
+- `MEDIA_STORAGE_INFRA_ENABLED=true`, но `MEDIA_STORAGE_ENABLED=false`: backend не подключён к `meal-media`, пользовательские reservation/upload endpoints остаются fail-closed;
+- SeaweedFS 4.51 healthy, работает как UID/GID `29003`, без host ports и Docker socket, с read-only rootfs и единственным writable bind `/var/lib/meal-planner/media/provider`;
+- private buckets `meal-media-quarantine` и `meal-media-ready` существуют; суммарное число строк в `media_upload_reservations`, `media_asset_bindings` и `media_assets` после smoke равно нулю;
+- реальный `disable-media-storage.sh` → `provision-media-storage.sh` drill сохранил provider files, четыре storage key/config checksum и оба bucket; backend health/readiness всё время оставались доступны;
+- `/var/backups/meal-planner/control-plane-storage6a-20261102T0742Z` сохранён, временный staging удалён. Media по-прежнему исключено из backup и считается disposable test data до checkpoint 9.
+
 ## Rollback
 
 1. Запретить новые мутации или остановить backend, если целостность данных под вопросом.

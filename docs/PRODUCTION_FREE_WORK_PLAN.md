@@ -1,6 +1,6 @@
 # План бесплатных production-checkpoint Meal Planner
 
-Актуально на 29 октября 2026 года. Этот файл — последовательный tracker работ, которые не требуют покупки платёжного, кассового, AI или инфраструктурного сервиса. Корень `test-roject` остаётся read-only; изменения выполняются в самостоятельных репозиториях.
+Актуально на 2 ноября 2026 года. Этот файл — последовательный tracker работ, которые не требуют покупки платёжного, кассового, AI или инфраструктурного сервиса. Корень `test-roject` остаётся read-only; изменения выполняются в самостоятельных репозиториях.
 
 ## Правила выполнения
 
@@ -18,7 +18,7 @@
 | 3   | Workers и scheduler                 | выполнено         | отдельный hardened worker container, fail-closed allowlist, PostgreSQL lease/fencing, restart/overlap/timeout/poison tests |
 | 4   | Observability в admin               | выполнено         | backend/VPS collector и admin UI развёрнуты; auth, real snapshot, Docker/systemd, partial/atomic и CI/CD evidence пройдены |
 | 5   | Транзакционная почта                | ждёт owner inputs | Outbox, worker, SMTP adapter и failure semantics развёртываемы; реальная доставка ждёт provider, sender DNS и secret       |
-| 6   | Storage и malware scanner           | 6A в реализации   | Private local S3 foundation без user traffic; target binding/scanner/retention остаются отдельными gates                   |
+| 6   | Storage и malware scanner           | 6A выполнено      | Private local S3 foundation без user traffic развёрнут; 6B target binding/scanner/retention ждёт отдельного согласования   |
 | 7   | Локальный OCR                       | очередь           | RU/EN worker, всегда `requiresReview`, resource limits, duplicate/timeout/OOM tests                                        |
 | 8   | Web Push                            | очередь           | VAPID, subscription lifecycle, quiet hours, TTL/topic policy, 404/410 cleanup                                              |
 | 9   | Локальная backup-структура          | очередь           | encrypted local repository, PostgreSQL/media/manifests, retention, disk guard и restore drill; честный `offsite: false`    |
@@ -97,7 +97,7 @@
 
 ## Уже закрыто
 
-Docker cutover, TLS/Nginx на технических origins, ранее развёрнутая schema v31, least-privilege DB roles, main-to-digest autodeploy, container health/readiness, pre-rollout DB backup/restore drill, admin MFA и theme smoke не выполняются повторно без изменения соответствующего слоя. Локально подготовленная schema v32 с fail-closed media foundation ещё не применена и требует отдельного rollout/restore evidence. Backend `0.0.152`, admin `0.0.128` и frontend `0.0.152` прошли прежний CI/CD и сокращённый public/container smoke; custom-domain cutover остаётся отдельным pending шагом до публикации DNS A-записей.
+Docker cutover, TLS/Nginx на технических origins, schema v32, least-privilege DB roles, main-to-digest autodeploy, container health/readiness, pre-rollout DB backup/restore drill, admin MFA и theme smoke не выполняются повторно без изменения соответствующего слоя. Backend `0.0.158`, admin `0.0.130` и frontend `0.0.153` прошли CI/CD и сокращённый public/container smoke; custom-domain cutover остаётся отдельным pending шагом до публикации DNS A-записей.
 
 Legal checkpoint опубликован как явно неутверждённый draft-каталог: все 11 документов доступны для чтения, содержат единую заглушку `[Тут будут данные]`, закрыты от индексации и не используются как production acceptance evidence.
 
@@ -107,4 +107,4 @@ Observability checkpoint полностью развёрнут и принят �
 
 Транзакционная account-mail foundation подготовлена в backend `0.0.151+`: migration 031, atomic PostgreSQL outbox, append-only attempts, отдельные token/runtime credentials, lease/CAS, bounded retry, terminal `unknown`, deterministic Message-ID, verified TLS/timeouts и четыре allowlisted шаблона. Mail-worker остаётся выключенным до получения SMTP provider credentials, sender domain, SPF/DKIM/DMARC и реального test inbox; это внешняя активация, а не незавершённая имитация доставки.
 
-Storage-аудит подтвердил, что schema v32 и provider-neutral byte lifecycle уже развёрнуты, но generic reservation пока не связан с diary/support/receipt/avatar target. Checkpoint 6A добавляет S3 adapter и отдельный private SeaweedFS provider на текущем VPS; infrastructure и user API имеют независимые feature gates. На диске остаётся только application-encrypted ciphertext, host port отсутствует, а `MEDIA_STORAGE_ENABLED=false` запрещает пользовательские загрузки. ClamAV на текущих 1.9 GiB RAM production-safe не включается. Фактический user traffic требует target binding, quotas, reconciliation и scanner/manual-review policy; media backup остаётся checkpoint 9.
+Storage-аудит подтвердил, что schema v32 и provider-neutral byte lifecycle развёрнуты, но generic reservation пока не связан с diary/support/receipt/avatar target. Checkpoint 6A закрыт на backend `0.0.158`: AWS SDK adapter и private SeaweedFS 4.51 работают на текущем VPS, infrastructure и user API имеют независимые feature gates, immutable image/health/no-host-port/network isolation/two private buckets/empty media tables и disable/re-enable preservation drill подтверждены. На диске остаётся только application-encrypted ciphertext, а `MEDIA_STORAGE_ENABLED=false` запрещает пользовательские загрузки. ClamAV на текущих 1.9 GiB RAM production-safe не включается. Фактический user traffic требует target binding, quotas, reconciliation и scanner/manual-review policy; media backup остаётся checkpoint 9.

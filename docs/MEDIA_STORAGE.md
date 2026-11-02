@@ -2,12 +2,12 @@
 
 ## Current safety state
 
-Schema v32 and API contract `0.0.62` define an S3-compatible, provider-neutral lifecycle. Backend `0.0.156` contains a reviewed AWS-SDK adapter, while the production control plane separates two independent gates:
+Schema v32 and API contract `0.0.62` define an S3-compatible, provider-neutral lifecycle. Backend `0.0.158` contains a reviewed AWS-SDK adapter, while the production control plane separates two independent gates:
 
 - `MEDIA_STORAGE_INFRA_ENABLED=true` starts the private local SeaweedFS provider only;
 - `MEDIA_STORAGE_ENABLED=true` additionally connects the backend and enables reservation/upload endpoints.
 
-Checkpoint 6A deploys only the first gate. User reservations continue to return HTTP 503 and the backend is not attached to the media network. Malware scanning, target binding, promotion from `quarantine` to `ready` and public delivery are not implemented in this checkpoint. This is fail-closed, not a partially working publication path.
+Checkpoint 6A has deployed only the first gate. User reservations continue to return HTTP 503 and the backend is not attached to the media network. Malware scanning, target binding, promotion from `quarantine` to `ready` and public delivery are not implemented in this checkpoint. This is fail-closed, not a partially working publication path.
 
 The temporary VPS provider stores application-encrypted ciphertext in SeaweedFS. A later S3-compatible move changes endpoint, credentials, buckets and region without exposing provider SDK types to domain services.
 
@@ -45,7 +45,7 @@ Until the dedicated scanner/reconciler checkpoint exists, there is no automatic 
 
 ## Required deployment environment
 
-Do not commit values. Production rejects inline storage, signing and encryption secrets. Store the three secret values in root-owned Docker secret files (`0400`) and pass the `_FILE` variables to the backend container.
+Do not commit values. Production rejects inline storage, signing and encryption secrets. Store the three backend secret values as `root:meal-secrets 0640` Docker secret files and pass the `_FILE` variables to the backend container. The provider identity configuration is a separate `root:meal-media 0440` file readable only by the non-root SeaweedFS group.
 
 ```dotenv
 MEDIA_STORAGE_ENABLED=true
@@ -71,6 +71,8 @@ MEDIA_STORAGE_KEY_VERSION=1
 `deploy/compose.media-local.yml` defines a non-root, read-only SeaweedFS container on an internal network without host ports. Its only writable mount is `/var/lib/meal-planner/media/provider`. `deploy/compose.media-backend.yml` is a separate activation overlay and is deliberately not selected while the API gate is false.
 
 The host bootstrap creates independent storage credential, signing key and encryption key files, rejects symlinks/unsafe paths and requires at least 5 GiB and 20% free disk. Provider provisioning creates the two private buckets. Media is explicitly excluded from the current PostgreSQL-only backup and must be treated as disposable test data until checkpoint 9.
+
+Production evidence for backend `0.0.158`: GitHub checks run `41409742965` and build/deploy run `41409742853` completed successfully; the running backend image matches the root-owned digest manifest. SeaweedFS 4.51 is healthy on the internal `meal-media` network, publishes no host port, mounts only the provider directory writable, and retains both private buckets across the tested disable/re-enable cycle. Storage key checksums and provider files stayed unchanged during the cycle, all three media tables remained empty, and public liveness/readiness returned HTTP 200. The control-plane backup is retained under the dated root-only backup directory; the upload API remains disabled.
 
 Preflight:
 
