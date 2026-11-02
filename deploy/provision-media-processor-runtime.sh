@@ -24,7 +24,7 @@ trap 'docker exec --user root "$postgres_id" rm -f "$container_secret" >/dev/nul
 docker cp "$MEDIA_PASSWORD_FILE" "$postgres_id:$container_secret"
 docker exec --user root "$postgres_id" chown postgres:postgres "$container_secret"
 docker exec --user root "$postgres_id" chmod 0600 "$container_secret"
-docker exec --user postgres "$postgres_id" sh -ec '
+docker exec -i --user postgres "$postgres_id" sh -ec '
   media_password=$(cat "$1")
   exec psql --username "$POSTGRES_USER" --dbname meal_planner_postgres --no-password \
     --set ON_ERROR_STOP=1 --set media_password="$media_password"

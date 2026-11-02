@@ -15,6 +15,8 @@
 
 Автоматические проверки: `test/media-storage.test.ts`, `test/media-storage-service.test.ts`, `test/image-cdr.test.ts`, `test/media-processor.test.ts`, `test/inventory-ingest.test.ts`, `test/deployment-config.test.ts`.
 
+VPS evidence 02.11.2026: hardened processor topology verified; five idle samples held RSS at 50.74–50.82 MiB with 1041–1076 MiB host memory available and `/healthz` 200. A networkless same-image 384 MiB drill ended with `OOMKilled=true`/137 without affecting the service. Three sequential 12 MP runs per JPEG/PNG/WebP peaked at 139648/105028/127604 KiB respectively. An unexpected process crash changed restart count 0→1 and recovered healthy on probe 2; media job counts remained `0:0:0`. The transient processor was then removed and public media stayed disabled. Automated backend check passed 372/372; no production queue fixtures were inserted.
+
 ## Encrypted local storage foundation 0.0.156 — 02.11.2026
 
 1. При обоих media-флагах `false` resolved Compose не содержит SeaweedFS, backend не подключён к `meal-media`, а reservation отвечает 503 без строк/объектов.

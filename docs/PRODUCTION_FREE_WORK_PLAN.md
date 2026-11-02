@@ -11,20 +11,20 @@
 
 ## Последовательность
 
-| №   | Checkpoint                          | Статус            | Критерий завершения                                                                                                        |
-| --- | ----------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Предварительные legal-тексты        | выполнено         | 11 публичных draft-страниц, единая заглушка, `draft_blocked`, нет production acceptance evidence                           |
-| 2   | Остаточный архитектурный checkpoint | выполнено         | architecture gates трёх репозиториев, декомпозиция подтверждённых hotspots, без wire/URL изменений                         |
-| 3   | Workers и scheduler                 | выполнено         | отдельный hardened worker container, fail-closed allowlist, PostgreSQL lease/fencing, restart/overlap/timeout/poison tests |
-| 4   | Observability в admin               | выполнено         | backend/VPS collector и admin UI развёрнуты; auth, real snapshot, Docker/systemd, partial/atomic и CI/CD evidence пройдены |
-| 5   | Транзакционная почта                | ждёт owner inputs | Outbox, worker, SMTP adapter и failure semantics развёртываемы; реальная доставка ждёт provider, sender DNS и secret       |
-| 6   | Storage и malware scanner           | 6B в работе       | 6A развёрнут; schema v33, target binding, quotas и isolated image CDR подготовлены, activation/capacity drill ещё впереди  |
-| 7   | Локальный OCR                       | очередь           | RU/EN worker, всегда `requiresReview`, resource limits, duplicate/timeout/OOM tests                                        |
-| 8   | Web Push                            | очередь           | VAPID, subscription lifecycle, quiet hours, TTL/topic policy, 404/410 cleanup                                              |
-| 9   | Локальная backup-структура          | очередь           | encrypted local repository, PostgreSQL/media/manifests, retention, disk guard и restore drill; честный `offsite: false`    |
-| 10  | AI                                  | отложено          | отдельный epic после workers/telemetry/storage; сначала use cases, privacy, quality и resource baseline                    |
-| 11  | Reliability и сквозная приёмка      | очередь           | CI, E2E, provider failure drills, load/OOM/leak tests, browser/accessibility, VPS restart/rollback                         |
-| 12  | Документация                        | постоянно         | runbook, owner inputs, env/secret inventory, disable/rollback и manual tests обновляются в каждом checkpoint               |
+| №   | Checkpoint                          | Статус              | Критерий завершения                                                                                                        |
+| --- | ----------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Предварительные legal-тексты        | выполнено           | 11 публичных draft-страниц, единая заглушка, `draft_blocked`, нет production acceptance evidence                           |
+| 2   | Остаточный архитектурный checkpoint | выполнено           | architecture gates трёх репозиториев, декомпозиция подтверждённых hotspots, без wire/URL изменений                         |
+| 3   | Workers и scheduler                 | выполнено           | отдельный hardened worker container, fail-closed allowlist, PostgreSQL lease/fencing, restart/overlap/timeout/poison tests |
+| 4   | Observability в admin               | выполнено           | backend/VPS collector и admin UI развёрнуты; auth, real snapshot, Docker/systemd, partial/atomic и CI/CD evidence пройдены |
+| 5   | Транзакционная почта                | ждёт owner inputs   | Outbox, worker, SMTP adapter и failure semantics развёртываемы; реальная доставка ждёт provider, sender DNS и secret       |
+| 6   | Storage и malware scanner           | free scope выполнен | 6A и schema v33 развёрнуты; isolated CDR capacity/OOM/restart принят, публикация ждёт scanner/policy                       |
+| 7   | Локальный OCR                       | очередь             | RU/EN worker, всегда `requiresReview`, resource limits, duplicate/timeout/OOM tests                                        |
+| 8   | Web Push                            | очередь             | VAPID, subscription lifecycle, quiet hours, TTL/topic policy, 404/410 cleanup                                              |
+| 9   | Локальная backup-структура          | очередь             | encrypted local repository, PostgreSQL/media/manifests, retention, disk guard и restore drill; честный `offsite: false`    |
+| 10  | AI                                  | отложено            | отдельный epic после workers/telemetry/storage; сначала use cases, privacy, quality и resource baseline                    |
+| 11  | Reliability и сквозная приёмка      | очередь             | CI, E2E, provider failure drills, load/OOM/leak tests, browser/accessibility, VPS restart/rollback                         |
+| 12  | Документация                        | постоянно           | runbook, owner inputs, env/secret inventory, disable/rollback и manual tests обновляются в каждом checkpoint               |
 
 ## Что потребуется от владельца
 
@@ -107,4 +107,4 @@ Observability checkpoint полностью развёрнут и принят �
 
 Транзакционная account-mail foundation подготовлена в backend `0.0.151+`: migration 031, atomic PostgreSQL outbox, append-only attempts, отдельные token/runtime credentials, lease/CAS, bounded retry, terminal `unknown`, deterministic Message-ID, verified TLS/timeouts и четыре allowlisted шаблона. Mail-worker остаётся выключенным до получения SMTP provider credentials, sender domain, SPF/DKIM/DMARC и реального test inbox; это внешняя активация, а не незавершённая имитация доставки.
 
-Checkpoint 6A закрыт на private SeaweedFS 4.51. Для 6B согласована image-only модель: JPEG/PNG/WebP, immutable binding к intake/diary/support/avatar, отдельный `inventory_source`, per-user/global quotas, append-only reconciliation evidence и CDR-статус `cdr_reencoded`, который не выдаётся за antivirus-clean. Фото чека/инвентаря сначала принадлежат pre-domain `media_intake`; OCR и доменная запись требуют отдельного human review. Legacy inline OCR в production выключен. Изолированный processor остаётся default-off до отдельной SeaweedFS identity, применения schema v33, worst-case RAM/OOM drill и проверки restart/unknown PUT/DB commit. PDF/video/HEIC/community publication и ClamAV остаются закрыты. `MEDIA_STORAGE_ENABLED=false` сохраняется до полного activation gate; media backup остаётся checkpoint 9.
+Checkpoint 6A закрыт на private SeaweedFS 4.51. Бесплатная часть 6B также принята: schema v33, отдельные DB/SeaweedFS identities, image-only JPEG/PNG/WebP CDR, immutable binding к intake/diary/support/avatar, `inventory_source`, quotas и append-only reconciliation evidence. На VPS подтверждены hardened container bounds, 12 MP JPEG/PNG/WebP, cgroup OOM isolation, стабильный RSS и автоматическое восстановление после crash; очередь осталась пустой, API — healthy. CDR-статус `cdr_reencoded` намеренно не выдаётся за antivirus-clean. Фото чека/инвентаря сначала принадлежат pre-domain `media_intake`; OCR и доменная запись требуют human review. Processor и пользовательский media API снова выключены после drill. PDF/video/HEIC/community publication и ClamAV остаются закрыты до scanner/явно согласованной non-public policy; media backup остаётся checkpoint 9.

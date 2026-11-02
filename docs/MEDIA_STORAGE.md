@@ -8,7 +8,7 @@ Schema v33 extends the S3-compatible lifecycle with pre-domain intakes, immutabl
 - `MEDIA_STORAGE_ENABLED=true` additionally connects the backend and enables target-bound reservation/upload endpoints;
 - `MEDIA_PROCESSOR_ENABLED=true` starts the isolated, concurrency-one image CDR worker through its own Compose profile and secrets.
 
-Checkpoint 6A deployed only the provider gate. Schema/API/processor changes in 6B do not themselves enable traffic. User reservations continue to return HTTP 503 while `MEDIA_STORAGE_ENABLED=false`. CDR strips metadata and re-encodes a bounded image, but is not an antivirus verdict; raw originals are never published. Promotion to public/downloadable `ready`, malware scanning and public delivery remain closed.
+Checkpoint 6A deployed only the provider gate. The free capacity/isolation part of 6B was accepted on the VPS on 2026-11-02, but schema/API/processor changes do not themselves enable traffic. User reservations continue to return HTTP 503 while `MEDIA_STORAGE_ENABLED=false`. CDR strips metadata and re-encodes a bounded image, but is not an antivirus verdict; raw originals are never published. Promotion to public/downloadable `ready`, malware scanning and public delivery remain closed.
 
 The temporary VPS provider stores application-encrypted ciphertext in SeaweedFS. A later S3-compatible move changes endpoint, credentials, buckets and region without exposing provider SDK types to domain services.
 
@@ -106,6 +106,18 @@ Before enabling traffic, verify all of the following:
 ## Gate for checkpoint 6B
 
 Before `MEDIA_STORAGE_ENABLED=true`, schema v33 and least-privilege roles must be applied, the dedicated processor identity/buckets must pass exact permissions, and the processor must pass JPEG/PNG/WebP worst-case memory, timeout, kill, restart, stale-lease, ambiguous PUT/commit and no-growth drills on the 1.9 GiB VPS. Public/downloadable readiness remains blocked until a real malware scanner or an explicitly approved non-public policy exists. OCR is a separate checkpoint and always produces `requiresReview=true`.
+
+### VPS capacity/isolation evidence — 2026-11-02
+
+- schema v33 and the dedicated `meal_media_runtime` login are provisioned; the role is `LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`, can assume only `meal_media_worker`, and is not a member of application or mail roles;
+- the transient processor was healthy with 384 MiB memory, 0.75 CPU, 64 PID, read-only root, `cap_drop=ALL`, no host ports and exactly `meal-db` plus `meal-media` networks;
+- five idle samples held processor RSS at 50.74–50.82 MiB, backend RSS near 98 MiB, host available memory at 1041–1076 MiB and public `/healthz` at HTTP 200 in 0.057–0.102 seconds;
+- a separate networkless same-image cgroup drill reached the 384 MiB boundary and exited `137` with `OOMKilled=true`; backend, PostgreSQL, SeaweedFS and the real processor stayed healthy;
+- three sequential 12 MP runs per format completed under the same 384 MiB/0.75 CPU/64 PID boundary: peak RSS was 139648 KiB for JPEG, 105028 KiB for PNG and 127604 KiB for WebP; every output was canonical 1600×1200 JPEG/PNG and the process showed no unbounded per-run growth;
+- an unexpected process crash increased restart count from 0 to 1 and returned healthy on the second five-second probe; the durable queue stayed `0:0:0` for total/processing/failed and `/healthz` remained 200;
+- timeout TERM/KILL, stale lease, fencing, exact-key readback and ambiguous PUT/commit classifications remain covered by the automated processor/storage suite. No synthetic production rows or objects were created for this empty-queue capacity drill.
+
+After the drill the transient processor container was removed. Production remains deliberately at `MEDIA_STORAGE_INFRA_ENABLED=true`, `MEDIA_STORAGE_ENABLED=false`, with no persistent processor flag. The remaining activation blocker is malware-clean/publication policy, not VPS capacity.
 
 ## Acceptance matrix
 

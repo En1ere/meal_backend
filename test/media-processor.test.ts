@@ -167,6 +167,7 @@ void test('CDR child and compose overlay preserve the isolated disabled-by-defau
     assert.match(dockerfile, /scripts\/run-image-cdr-child\.mjs/);
     assert.match(provision, /meal_media_worker nologin noinherit/);
     assert.match(provision, /meal_media_runtime login noinherit/);
+    assert.match(provision, /docker exec -i --user postgres/);
     assert.match(provision, /role%%3Dmeal_media_worker/);
     assert.match(provision, /granted\.rolname in \('meal_app','meal_mail_worker'\)/);
     assert.match(grants, /GRANT USAGE ON SCHEMA meal TO meal_media_worker/);

@@ -201,6 +201,14 @@ ufw status verbose
 - реальный `disable-media-storage.sh` → `provision-media-storage.sh` drill сохранил provider files, четыре storage key/config checksum и оба bucket; backend health/readiness всё время оставались доступны;
 - `/var/backups/meal-planner/control-plane-storage6a-20261102T0742Z` сохранён, временный staging удалён. Media по-прежнему исключено из backup и считается disposable test data до checkpoint 9.
 
+### Evidence media processor checkpoint 6B 2026-11-02
+
+- исправленный provisioning передаёт SQL через `docker exec -i`, после чего readback подтвердил отдельный `meal_media_runtime` как `LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS` без application/mail membership;
+- transient container подтвердил memory 402653184 bytes, CPU 0.75, PID 64, read-only root, `cap_drop=ALL`, отсутствие ports и только `meal-db`/`meal-media`; пять idle samples дали 50.74–50.82 MiB RSS и `/healthz` 200;
+- same-image networkless OOM container завершился 137 с `OOMKilled=true`, не затронув production services; 12 MP JPEG/PNG/WebP по три прохода уложились максимум в 139648/105028/127604 KiB;
+- аварийное завершение процесса дало restart count 0→1 и healthy на втором probe, очередь сохранила `0:0:0`; после drill processor container удалён, `MEDIA_STORAGE_ENABLED=false`, публичный API не активирован;
+- checkpoint закрывает бесплатный capacity/isolation scope. Malware-clean/publication остаётся fail-closed до scanner либо отдельно утверждённой non-public policy.
+
 ## Rollback
 
 1. Запретить новые мутации или остановить backend, если целостность данных под вопросом.
