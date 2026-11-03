@@ -1,6 +1,6 @@
 # План бесплатных production-checkpoint Meal Planner
 
-Актуально на 2 ноября 2026 года. Этот файл — последовательный tracker работ, которые не требуют покупки платёжного, кассового, AI или инфраструктурного сервиса. Корень `test-roject` остаётся read-only; изменения выполняются в самостоятельных репозиториях.
+Актуально на 3 ноября 2026 года. Этот файл — последовательный tracker работ, которые не требуют покупки платёжного, кассового, AI или инфраструктурного сервиса. Корень `test-roject` остаётся read-only; изменения выполняются в самостоятельных репозиториях.
 
 ## Правила выполнения
 
@@ -23,8 +23,19 @@
 | 8   | Web Push                            | выполнено           | VAPID, encrypted session-bound subscriptions, quiet hours, TTL/topic policy, 404/410 cleanup, admin registry и VPS worker  |
 | 9   | Локальная backup-структура          | выполнено           | encrypted local repository, PostgreSQL/media/manifests, retention, disk guard и restore drill; честный `offsite: false`    |
 | 10  | AI                                  | отложено            | отдельный epic после workers/telemetry/storage; сначала use cases, privacy, quality и resource baseline                    |
-| 11  | Reliability и сквозная приёмка      | очередь             | CI, E2E, provider failure drills, load/OOM/leak tests, browser/accessibility, VPS restart/rollback                         |
+| 11  | Reliability и сквозная приёмка      | выполнено           | CI, E2E, provider failure drills, load/OOM/leak tests, browser/accessibility, VPS restart/rollback                         |
 | 12  | Документация                        | постоянно           | runbook, owner inputs, env/secret inventory, disable/rollback и manual tests обновляются в каждом checkpoint               |
+
+## Checkpoint 11: итог 3 ноября 2026
+
+- Backend `npm run check` прошёл полностью: architecture gate, typecheck, lint/format и 395/395 тестов. Dependency audit — 0 уязвимостей. OpenAPI `0.0.65`, schema `v34` и generated client фронта сверены; расхождение устаревшего frontend snapshot `0.0.64` устранено без изменения backend wire-контракта.
+- Admin Edge desktop/mobile: основной reliability pack 28/28 и отдельный recipe moderation pack 10/10. Client Edge desktop/mobile: ранее пройденные 20 сценариев плюс возобновлённые 61/66 и исправленный focused повтор 6/6; пять первоначальных падений были устаревшими assertions, а не runtime-дефектами.
+- Production budgets прошли: admin max gzip chunk 88,287 B, total gzip 224,641 B; client max gzip chunk 124,355 B, total gzip 878,982 B, max route 377,960 B. Сохранённое evidence 30-минутного browser soak подтверждает bounded heap/DOM/listeners без линейного роста.
+- На VPS PostgreSQL и семь application/storage containers контролируемо перезапущены. Schema/users/recipes до и после совпали (`34|1|0`), все containers вернулись в `healthy`, `verify.sh --component all` прошёл. Frontend application-only rollback на предыдущий immutable digest и roll-forward на текущий digest прошли без изменения PostgreSQL.
+- Три read-only load-волны подтвердили нормальную обработку первых 600 запросов; затем публичный `/health/ready` корректно сработал по глобальному лимиту 200 запросов/минуту на IP и вернул `429`. После окна limiter `ready`, frontend и admin снова вернули `200`; RSS/PID остались bounded, полный deployment verify повторно прошёл.
+- `meal-local-backup.timer` включён и активен, последний service result — success, два encrypted restic snapshot читаются, следующий запуск назначен на 01:00 Asia/Yekaterinburg. Unit намеренно называется `meal-local-backup.*`, а не `meal-planner-local-backup.*`.
+
+Внешними release gates остаются только явно исключённые owner/provider задачи: payment/ККТ, реальные SMTP и sender DNS, external AI, malware scanner/public media policy, offsite backup, финальные юридические реквизиты, custom-domain DNS cutover и физическая screen-reader/device приёмка. Архитектурный этап после этого checkpoint не начат и требует отдельного согласования правил.
 
 ## Что потребуется от владельца
 

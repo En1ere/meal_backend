@@ -291,3 +291,14 @@
 5. SMTP acceptance сохраняет `accepted`; 450 планирует backoff, 550 даёт `failed`, timeout после неопределённой acceptance даёт terminal `unknown` без автоматической повторной отправки.
 6. Перезапуск после send до DB commit заканчивает истёкший lease как `unknown`. Одинаковый delivery всегда использует одинаковый Message-ID.
 7. Проверить четыре ссылки и subject в Mailpit/local sink, HTML/text parts и только HTTPS public origin.
+
+# Reliability checkpoint 11 — production acceptance 03.11.2026
+
+1. Выполнить `npm run check`, `npm run build` и `npm run audit:dependencies`. Ожидается: architecture/type/lint/format PASS, 395/395 unit/integration tests PASS, audit 0 vulnerabilities.
+2. Сверить backend `contracts/openapi.json` с обоими consumers. Frontend generator должен сообщить OpenAPI `0.0.65` и 288 разрешённых операций; admin — 109. Нормализованный diff не допускается.
+3. Подтвердить provider boundaries: без реального adapter операции оплаты, SMTP, external AI, scanner/public storage завершаются fail-closed и не создают частичный DB/audit/idempotency эффект. Web Push/OCR проверяются отдельными включёнными workers и их runbooks.
+4. На VPS до restart записать schema version и безопасные агрегаты строк. Перезапустить PostgreSQL, storage и application containers, дождаться `healthy`, сравнить агрегаты и выполнить `sh /srv/meal/deployment/verify.sh --component all`.
+5. Для frontend/admin выполнить application-only rollback на предыдущий immutable digest и roll-forward на зафиксированный current digest. PostgreSQL не откатывать; после каждого переключения обязательны component verify и финальный all verify.
+6. Выполнить bounded public load. Глобальный backend limiter допускает не более 200 запросов/минуту на IP и после исчерпания возвращает `429`; это ожидаемая защита, а не повод повторять мутации. После окна limiter public ready/UI должны вернуться к `200`, RSS/PID и PostgreSQL sessions — к плато.
+7. Проверить `meal-local-backup.timer`: enabled/active, последний `meal-local-backup.service` завершён с `Result=success`, restic snapshots читаются, следующий запуск — 01:00 Asia/Yekaterinburg. Не использовать несуществующее имя `meal-planner-local-backup.timer`.
+8. Зафиксировать оставшиеся внешние gates отдельно: physical screen reader/device, production RUM/APM/cardinality, payment/ККТ, SMTP/DNS, external AI, scanner, offsite backup и юридическое approval.
