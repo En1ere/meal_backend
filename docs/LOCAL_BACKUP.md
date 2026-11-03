@@ -58,6 +58,8 @@ The drill restores to a fixed root-only temporary directory and starts the pinne
 
 The atomic JSON status contains schema version `1`; `ok`/`failed` state; attempt, success, snapshot and observation timestamps; snapshot ID; non-negative repository and artifact counts; recovery-key presence; the fixed schedule, retention and RPO/RTO/offsite policy; restore outcome and duration; and one bounded failure code. Failure codes are `disk_guard`, `postgres_unavailable`, `media_unsafe`, `snapshot_failed`, `verification_failed`, `restore_failed` and `runtime_failed`. It contains no filesystem paths, usernames, connection strings, image values, filenames or raw errors. The backend reads it through the existing read-only observability mount with strict owner/group/mode/size/mtime/symlink validation. Local readiness must not remove the independent `offsite_target_missing` blocker.
 
+Admin exposes a separate read-only `Recovery-доступ` tab. It shows the fixed password-file and repository locations, root-only viewing command, password-manager checklist, local-only limitation and safe rotation sequence. The API returns only recovery-key presence; it never reads or returns the password value, and it cannot claim that an independent owner-controlled copy has been created.
+
 ## Disable and recovery
 
 Disable future runs without deleting evidence:

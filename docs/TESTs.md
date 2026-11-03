@@ -826,6 +826,7 @@ Revoked-role проверка account-deletion переиспользует от
 | BKP-04 | Verification и retention     | Exact snapshot readback и `restic check` проходят до forget/prune; остаются 7 daily + 4 weekly  | Ошибка check не запускает retention и публикует bounded failure status; plaintext staging удаляется                                         |
 | BKP-05 | Изолированный restore drill  | Exact 64-char snapshot восстанавливается в no-network PG18 и даёт `34/227/519/18`               | Нет host port/source mounts; hash mismatch, RTO >4h или DB invariant mismatch → failed; container и exact temp directory удаляются          |
 | BKP-06 | Admin runtime status         | Admin видит schedule, retention, RPO/RTO, last success, drill и recovery-key presence           | Status с неверными owner/group/mode/schema/mtime отклоняется; `offsite_target_missing` остаётся даже при healthy local snapshot             |
+| BKP-07 | Admin recovery-key guidance  | Отдельная вкладка показывает безопасный путь просмотра, сохранения и ротации recovery password  | Secret value/fingerprint отсутствуют; независимая копия не объявляется подтверждённой; ручная замена password file явно запрещена           |
 
 ## Реестр найденных расхождений
 

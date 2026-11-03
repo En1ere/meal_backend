@@ -20,6 +20,7 @@ const tabs = [
     ['storage', 'Хранилище и OCR'],
     ['security', 'Безопасность'],
     ['deploy_backup', 'Деплой и backup'],
+    ['backup_recovery', 'Recovery-доступ'],
     ['integrations', 'Интеграции'],
     ['legal', 'Юридические данные'],
 ] as const;
@@ -235,7 +236,7 @@ export class AdminRuntimeSettingsService {
                       ]
                     : ['status file unavailable', 'offsite=false'],
                 instruction:
-                    'Локальный repository защищает от логических ошибок, но не от потери VPS. Recovery key хранится только root-owned; offsite target требуется отдельно.',
+                    'Локальный repository защищает от логических ошибок, но не от потери VPS. Инструкция по recovery password находится во вкладке «Recovery-доступ»; offsite target требуется отдельно.',
                 history: [
                     ...(localBackupData?.lastSuccessAt
                         ? [
@@ -272,6 +273,41 @@ export class AdminRuntimeSettingsService {
                 readiness: 'owner_input',
                 blockers: ['offsite_target_missing'],
                 affectedServices: ['postgres', 'media-storage'],
+            }),
+            base({
+                tab: 'backup_recovery',
+                key: 'local-backup-recovery-access',
+                label: 'Recovery-доступ к локальному backup',
+                description: 'Где получить, как независимо сохранить и как безопасно ротировать recovery password',
+                value: localBackupData?.recoveryKeyConfigured
+                    ? 'ключ настроен на VPS · независимая копия не подтверждена'
+                    : 'ключ недоступен',
+                status: localBackupData?.recoveryKeyConfigured ? 'partial' : 'blocked',
+                source: 'vps_secret',
+                readiness: 'owner_input',
+                sensitive: true,
+                updatedAt: localBackupData?.observedAt ?? null,
+                blockers: [
+                    ...(localBackupData?.recoveryKeyConfigured ? [] : ['recovery_password_missing']),
+                    'offline_recovery_copy_unconfirmed',
+                ],
+                affectedServices: ['restic', 'local-backup'],
+                checks: [
+                    'password file: /etc/meal-planner/secrets/local-backup-password',
+                    'repository: /var/backups/meal-planner/local-restic',
+                    'root:root 0600',
+                    'значение не передаётся в admin API',
+                    'Bitwarden, 1Password или эквивалентная encrypted secure note',
+                    'никаких Git, .env, email, чатов или plaintext-копий',
+                    'rotation: restic key add → exact readback → isolated restore drill → удалить старый key',
+                ],
+                instruction:
+                    'Подключитесь к текущему VPS по SSH под root и выполните: cat /etc/meal-planner/secrets/local-backup-password. Сохраните значение в защищённой заметке с названием «Meal Planner — restic recovery password», адресом текущего VPS, repository /var/backups/meal-planner/local-restic и датой. Admin не получает значение и не может подтвердить независимую копию. Не редактируйте password file вручную: ротация выполняется только через restic key management с проверенным snapshot и isolated restore drill до удаления старого key.',
+                secret: {
+                    configured: localBackupData?.recoveryKeyConfigured ?? false,
+                    fingerprint: null,
+                    rotatedAt: null,
+                },
             }),
             base({
                 tab: 'integrations',
