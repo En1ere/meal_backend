@@ -19,10 +19,10 @@ export class AiContentRetentionService {
                   from meal.ai_tasks task
                   join meal.ai_conversations conversation on conversation.id=task.conversation_id
                  where task.content_purged_at is null
-                   and task.created_at<=${clock}-interval '30 days'
+                   and task.created_at<=${clock}::timestamptz-interval '30 days'
                    and not exists(
                        select 1 from meal.ai_operations operation
-                        where operation.task_id=task.id and operation.expires_at>${clock}
+                        where operation.task_id=task.id and operation.expires_at>${clock}::timestamptz
                    )
                    and not exists(
                        select 1 from meal.legal_requests hold

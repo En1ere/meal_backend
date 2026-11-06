@@ -25,8 +25,8 @@ void test('schema v38 records irreversible AI content purge without deleting fin
 
 void test('AI retention is bounded, leased, legal-hold aware and idempotent', () => {
     assert.match(service, /maximumBatchSize = 100/);
-    assert.match(service, /task\.created_at<=\$\{clock\}-interval '30 days'/);
-    assert.match(service, /operation\.expires_at>\$\{clock\}/);
+    assert.match(service, /task\.created_at<=\$\{clock\}::timestamptz-interval '30 days'/);
+    assert.match(service, /operation\.expires_at>\$\{clock\}::timestamptz/);
     assert.match(service, /hold\.kind='legal_hold' and hold\.status in\('active','approved'\)/);
     assert.match(service, /for update of task skip locked/i);
     assert.match(service, /task\.content_purged_at is null/);
