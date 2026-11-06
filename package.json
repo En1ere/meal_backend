@@ -1,6 +1,6 @@
 {
     "name": "meal-planner-back",
-    "version": "0.0.269",
+    "version": "0.0.270",
     "private": true,
     "type": "module",
     "engines": {
@@ -34,6 +34,7 @@
         "ops:diary-portions": "node scripts/process-operational-maintenance.mjs diary-portions",
         "ops:topology": "npm run build && node scripts/print-worker-topology.mjs",
         "ops:readiness": "npm run build && node scripts/print-operational-readiness.mjs",
+        "ai:eval": "npm run build && node scripts/evaluate-ai-model-evidence.mjs",
         "legal:readiness": "npm run build && node scripts/print-legal-readiness.mjs",
         "admin:mfa-recover": "node scripts/admin-mfa-recover.mjs",
         "check:secrets": "node scripts/check-secrets.mjs"

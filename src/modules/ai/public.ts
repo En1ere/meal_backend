@@ -9,6 +9,16 @@ export { AiReconciliationService } from './ai-reconciliation.service.js';
 export { readAiWorkerConfig, type AiWorkerConfig } from './ai-worker.config.js';
 export { AiOperationProcessor } from './ai-operation.processor.js';
 export {
+    AI_EVALUATION_FIXTURES,
+    AI_EVALUATION_SUITE_VERSION,
+    aiEvaluationCaseEvidenceSchema,
+    aiEvaluationFixtureSchema,
+    aiEvaluationRunEvidenceSchema,
+    summarizeAiEvaluation,
+    type AiEvaluationFixture,
+    type AiEvaluationRunEvidence,
+} from './ai-evaluation.js';
+export {
     AI_PROVIDER_PROFILES,
     aiFormatMoneyUnits,
     aiMoneyUnits,
