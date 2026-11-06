@@ -1,6 +1,6 @@
 # План бесплатных production-checkpoint Meal Planner
 
-Актуально на 3 ноября 2026 года. Этот файл — последовательный tracker работ, которые не требуют покупки платёжного, кассового, AI или инфраструктурного сервиса. Корень `test-roject` остаётся read-only; изменения выполняются в самостоятельных репозиториях.
+Актуально на 7 ноября 2026 года. Этот файл — последовательный tracker работ, которые не требуют покупки платёжного, кассового, AI или инфраструктурного сервиса. Корень `test-roject` остаётся read-only; изменения выполняются в самостоятельных репозиториях.
 
 ## Правила выполнения
 
@@ -11,20 +11,20 @@
 
 ## Последовательность
 
-| №   | Checkpoint                          | Статус              | Критерий завершения                                                                                                        |
-| --- | ----------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Предварительные legal-тексты        | выполнено           | 11 публичных draft-страниц, единая заглушка, `draft_blocked`, нет production acceptance evidence                           |
-| 2   | Остаточный архитектурный checkpoint | выполнено           | architecture gates трёх репозиториев, декомпозиция подтверждённых hotspots, без wire/URL изменений                         |
-| 3   | Workers и scheduler                 | выполнено           | отдельный hardened worker container, fail-closed allowlist, PostgreSQL lease/fencing, restart/overlap/timeout/poison tests |
-| 4   | Observability в admin               | выполнено           | backend/VPS collector и admin UI развёрнуты; auth, real snapshot, Docker/systemd, partial/atomic и CI/CD evidence пройдены |
-| 5   | Транзакционная почта                | ждёт owner inputs   | Outbox, worker, SMTP adapter и failure semantics развёртываемы; реальная доставка ждёт provider, sender DNS и secret       |
-| 6   | Storage и malware scanner           | free scope выполнен | 6A и schema v33 развёрнуты; isolated CDR capacity/OOM/restart принят, публикация ждёт scanner/policy                       |
-| 7   | Локальный OCR                       | выполнено           | RU/EN worker, всегда `requiresReview`, resource limits, duplicate/timeout/OOM tests                                        |
-| 8   | Web Push                            | выполнено           | VAPID, encrypted session-bound subscriptions, quiet hours, TTL/topic policy, 404/410 cleanup, admin registry и VPS worker  |
-| 9   | Локальная backup-структура          | выполнено           | encrypted local repository, PostgreSQL/media/manifests, retention, disk guard и restore drill; честный `offsite: false`    |
-| 10  | AI                                  | отложено            | отдельный epic после workers/telemetry/storage; сначала use cases, privacy, quality и resource baseline                    |
-| 11  | Reliability и сквозная приёмка      | выполнено           | CI, E2E, provider failure drills, load/OOM/leak tests, browser/accessibility, VPS restart/rollback                         |
-| 12  | Документация                        | постоянно           | runbook, owner inputs, env/secret inventory, disable/rollback и manual tests обновляются в каждом checkpoint               |
+| №   | Checkpoint                          | Статус              | Критерий завершения                                                                                                                                          |
+| --- | ----------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Предварительные legal-тексты        | выполнено           | 11 публичных draft-страниц, единая заглушка, `draft_blocked`, нет production acceptance evidence                                                             |
+| 2   | Остаточный архитектурный checkpoint | выполнено           | architecture gates трёх репозиториев, декомпозиция подтверждённых hotspots, без wire/URL изменений                                                           |
+| 3   | Workers и scheduler                 | выполнено           | отдельный hardened worker container, fail-closed allowlist, PostgreSQL lease/fencing, restart/overlap/timeout/poison tests                                   |
+| 4   | Observability в admin               | выполнено           | backend/VPS collector и admin UI развёрнуты; auth, real snapshot, Docker/systemd, partial/atomic и CI/CD evidence пройдены                                   |
+| 5   | Транзакционная почта                | ждёт owner inputs   | Outbox, worker, SMTP adapter и failure semantics развёртываемы; реальная доставка ждёт provider, sender DNS и secret                                         |
+| 6   | Storage и malware scanner           | free scope выполнен | 6A и schema v33 развёрнуты; isolated CDR capacity/OOM/restart принят, публикация ждёт scanner/policy                                                         |
+| 7   | Локальный OCR                       | выполнено           | RU/EN worker, всегда `requiresReview`, resource limits, duplicate/timeout/OOM tests                                                                          |
+| 8   | Web Push                            | выполнено           | VAPID, encrypted session-bound subscriptions, quiet hours, TTL/topic policy, 404/410 cleanup, admin registry и VPS worker                                    |
+| 9   | Локальная backup-структура          | выполнено           | encrypted local repository, PostgreSQL/media/manifests, retention, disk guard и restore drill; честный `offsite: false`                                      |
+| 10  | AI                                  | free scope выполнен | тарифные task/context policies, async lifecycle, worker isolation, stop-loss, eval-контур и retention развёрнуты; реальный provider ждёт key/budget/evidence |
+| 11  | Reliability и сквозная приёмка      | выполнено           | CI, E2E, provider failure drills, load/OOM/leak tests, browser/accessibility, VPS restart/rollback                                                           |
+| 12  | Документация                        | постоянно           | runbook, owner inputs, env/secret inventory, disable/rollback и manual tests обновляются в каждом checkpoint                                                 |
 
 ## Checkpoint 11: итог 3 ноября 2026
 
@@ -35,7 +35,7 @@
 - Три read-only load-волны подтвердили нормальную обработку первых 600 запросов; затем публичный `/health/ready` корректно сработал по глобальному лимиту 200 запросов/минуту на IP и вернул `429`. После окна limiter `ready`, frontend и admin снова вернули `200`; RSS/PID остались bounded, полный deployment verify повторно прошёл.
 - `meal-local-backup.timer` включён и активен, последний service result — success, два encrypted restic snapshot читаются, следующий запуск назначен на 01:00 Asia/Yekaterinburg. Unit намеренно называется `meal-local-backup.*`, а не `meal-planner-local-backup.*`.
 
-Внешними release gates остаются только явно исключённые owner/provider задачи: payment/ККТ, реальные SMTP и sender DNS, external AI, malware scanner/public media policy, offsite backup, финальные юридические реквизиты, custom-domain DNS cutover и физическая screen-reader/device приёмка. Архитектурный этап после этого checkpoint не начат и требует отдельного согласования правил.
+Внешними release gates остаются только явно исключённые owner/provider задачи: payment/ККТ, реальные SMTP и sender DNS, активация OpenAI и provider evidence, malware scanner/public media policy, offsite backup, финальные юридические реквизиты, custom-domain DNS cutover и физическая screen-reader/device приёмка. Архитектурный этап выполнен по согласованным правилам; оставшееся операторское действие для `unknown/reconciliation_hold` требует отдельного решения из-за финансовых последствий.
 
 ## Что потребуется от владельца
 
@@ -98,13 +98,15 @@
 
 Принятый временный baseline: запуск ежедневно в `01:00 Asia/Yekaterinburg`, RPO 24 часа, RTO 4 часа, 7 daily и 4 weekly. Recovery password генерируется на VPS и не выводится; независимый offsite target остаётся будущим owner/infrastructure checkpoint.
 
-### AI — отдельный будущий epic
+### AI — активация внешнего provider
 
-- точный список use cases и разрешённые данные для каждого;
-- local/external/hybrid режим;
-- задержка, quality baseline, moderation и consent policy;
-- provider/model/region/training/retention;
-- per-user и месячный budget/stop-loss.
+- production OpenAI API key, переданный только через root-owned secret/GitHub Environment;
+- положительный месячный `AI_MONTHLY_BUDGET_USD` и владелец budget alerts;
+- подтверждение допустимого региона и provider data controls для Responses API с `store: false`;
+- реальный Luna evidence на неизменном `ai-model-eval-v1`; Sol сравнивается только на тех же fixtures и не включается автоматически;
+- решение по операторскому readback/release для `unknown/reconciliation_hold`: без ручной подделки success и без повторного provider submit.
+
+Принятый baseline уже зафиксирован: OpenAI Responses API, `gpt-6-luna` с low reasoning, профиль `openai-gpt-6-luna-standard-2026-11-07`, доступность задач строго по текущему тарифу и минимизированный versioned context. Контент AI очищается через 30 дней с учётом legal hold; финансовое и provider evidence сохраняется. Пока нет key, положительного бюджета и provider evidence, AI-worker остаётся fail-closed.
 
 ## Уже закрыто
 
@@ -125,3 +127,5 @@ Checkpoint 7 закрыт на VPS как несохраняемый OCR preview
 Checkpoint 8 закрыт на VPS: VAPID и encryption keys хранятся только в root-owned secrets, schema v34 применена, отдельный least-privilege push-worker развёрнут и после реального empty-cycle имеет health `ok`. Исправлены обнаруженные production gaps упаковки worker scripts, `pgcrypto` migration dependency и узкий column-level privilege для append-only attempts; полный табличный доступ worker не получил.
 
 Checkpoint 9 закрыт на VPS с restic 0.16.4. Persistent systemd timer назначен на `01:00 Asia/Yekaterinburg`; unit имеет systemd exposure `4.3 OK`. Два реальных encrypted snapshot прошли exact readback, repository check и retention без plaintext residue; последний изолированный restore восстановил schema/table/FK/PostgreSQL invariants `34/227/519/18` за 6 секунд, не меняя source. Disposable container и restore directory удалены, полный application verify после backup прошёл. Status хранится `root:meal-observability 0640`, recovery password — `root:root 0600`; admin всегда показывает `offsite=false` и blocker `offsite_target_missing`. Политика, install/disable и restore runbook описаны в `LOCAL_BACKUP.md`.
+
+Checkpoint 10 закрыт в бесплатном техническом scope на schema v38. `ai-task-policy-v3` авторизует 18 типов задач по effective Free/Plus/Pro entitlement, а `ai-context-policy-v1` фиксирует минимизированные источники и consent evidence; две задачи без достоверного source contract остаются fail-closed. Canonical async operations используют отдельный least-privilege AI worker, lease/fencing, Background Responses readback, независимые lifecycle/financial states и conservative monthly stop-loss. Admin получает только агрегированный read-only control plane. Offline `ai-model-eval-v1` сравнивает Luna/Sol на восьми одинаковых safety/quality fixtures без raw prompt/result, а daily retention необратимо очищает AI content после 30 дней, сохраняя legal hold и финансово-операционное evidence. На VPS применены 38 миграций (`228` таблиц, `522` FK), retention smoke и общий deployment verify прошли; реальный provider call намеренно не выполнялся без key и утверждённого бюджета.

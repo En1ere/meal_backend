@@ -1,5 +1,7 @@
 # Backend version-list
 
+0.0.273 - 11.07.2026 | 03:58 - Синхронизирован production tracker с фактически закрытым бесплатным AI checkpoint: зафиксированы OpenAI Responses/store=false, Luna/low baseline, тарифные task/context policies, canonical async lifecycle, isolated worker, stop-loss, offline eval и 30-дневный retention на schema v38. Реальный provider остаётся fail-closed до production key, положительного месячного бюджета и evidence; операторский `unknown/reconciliation_hold` явно оставлен отдельным финансово значимым решением. Runtime, OpenAPI и schema не изменены.
+
 0.0.272 - 11.07.2026 | 03:33 - Исправлена PostgreSQL-типизация runtime clock в AI content retention: параметры cutoff и operation expiry теперь явно приводятся к `timestamptz`, что исключает неоднозначный вывод типа `interval`. Регрессия обнаружена fail-closed smoke-запуском на VPS до обработки данных; ежедневная задача оставалась отключённой до исправления.
 
 0.0.271 - 11.07.2026 | 03:02 - Реализован schema v38 AI content retention: отдельный daily worker под общим lease/fencing и telemetry-контуром bounded-пачками необратимо очищает только истёкшие prompt/context/message/result payloads, фиксирует `content_purged_at`, пропускает active/approved legal hold и задачи с неистёкшими operations. Provider identity, token/cost evidence, ledger, lifecycle и financial state сохраняются; повторный запуск идемпотентен, continuation после purge fail-closed. Worker остаётся opt-in через явный allowlist, OpenAPI повышен до 0.0.72.
