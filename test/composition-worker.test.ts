@@ -111,7 +111,7 @@ import {
     MALWARE_SCANNER_PROVIDER,
     OBJECT_STORAGE_PROVIDER,
 } from '../src/modules/media-infrastructure/public.js';
-import { AiProvider, AiReconciliationService, AiService } from '../src/modules/ai/public.js';
+import { AiContentRetentionService, AiProvider, AiReconciliationService, AiService } from '../src/modules/ai/public.js';
 import { AiAppealsService } from '../src/modules/ai-appeals/public.js';
 import {
     ACCOUNT_MAIL_OUTBOX,
@@ -195,7 +195,7 @@ void test('worker composition remains an exact isolated process scope', () => {
     const worker = WorkerModule.configure(config);
     const workerProviders = (worker.providers ?? []).map(providerToken);
     assert.deepEqual(worker.imports ?? [], []);
-    assert.equal(workerProviders.length, 18);
+    assert.equal(workerProviders.length, 19);
 
     const httpProviderTokens = new Set<unknown>();
     const visitedModules = new Set<unknown>();
@@ -253,7 +253,8 @@ void test('worker composition remains an exact isolated process scope', () => {
         'TelemetryService',
         'WorkerRuntimeFactory',
     ]);
-    assert.equal(processScopedOverlap.length, workerProviders.length);
+    assert.equal(processScopedOverlap.length, workerProviders.length - 1);
+    assert.equal(httpProviderTokens.has(AiContentRetentionService), false);
     assert.equal(((worker.imports ?? []) as unknown[]).includes(TelemetryCapabilityModule), false);
     assert.equal(((worker.imports ?? []) as unknown[]).includes(ProviderObservationCapabilityModule), false);
     assert.equal(workerProviders.includes(ProviderObserver), false);
@@ -318,6 +319,7 @@ void test('worker composition remains an exact isolated process scope', () => {
     assert.equal(((worker.imports ?? []) as unknown[]).includes(AiCapabilityModule), false);
     assert.equal(workerProviders.includes(AiService), false);
     assert.equal(workerProviders.includes(AiReconciliationService), false);
+    assert.equal(workerProviders.includes(AiContentRetentionService), true);
     assert.equal(((worker.imports ?? []) as unknown[]).includes(ProOverviewCapabilityModule), false);
     assert.equal(workerProviders.includes(ProOverviewService), false);
     assert.equal(((worker.imports ?? []) as unknown[]).includes(PaymentProviderCapabilityModule), false);

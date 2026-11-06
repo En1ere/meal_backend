@@ -8,6 +8,7 @@ export const scheduledTaskIdSchema = z.enum([
     'scheduled-sanctions',
     'diary-portions',
     'cooking-lifecycle',
+    'ai-content-retention',
 ]);
 export type ScheduledTaskId = z.infer<typeof scheduledTaskIdSchema>;
 
@@ -17,6 +18,7 @@ const intervalEnvironment: Record<ScheduledTaskId, string> = {
     'scheduled-sanctions': 'WORKER_SCHEDULE_SANCTIONS_SECONDS',
     'diary-portions': 'WORKER_SCHEDULE_DIARY_PORTIONS_SECONDS',
     'cooking-lifecycle': 'WORKER_SCHEDULE_COOKING_SECONDS',
+    'ai-content-retention': 'WORKER_SCHEDULE_AI_RETENTION_SECONDS',
 };
 
 export type WorkerSchedule = Readonly<{

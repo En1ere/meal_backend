@@ -157,9 +157,12 @@ GRANT INSERT(id,status,result_snapshot,started_at,finished_at,provider_cost,idem
  ON meal.ai_operations TO meal_app;
 GRANT UPDATE(title,archived_at,version) ON meal.ai_conversations TO meal_app;
 GRANT UPDATE(status,accepted_at,version) ON meal.ai_tasks TO meal_app;
+GRANT UPDATE(goal,preview,content_purged_at,version) ON meal.ai_tasks TO meal_app;
+GRANT UPDATE(body,content_purged_at,version) ON meal.ai_messages TO meal_app;
 GRANT UPDATE(clarifications_used,status,version) ON meal.ai_intervals TO meal_app;
 GRANT UPDATE(status,result_snapshot,started_at,finished_at,provider_cost,lifecycle_state,financial_state,
  failure_category,failure_retryable,updated_at,version) ON meal.ai_operations TO meal_app;
+GRANT UPDATE(result_snapshot,content_purged_at,version) ON meal.ai_operations TO meal_app;
 GRANT UPDATE(granted,balance_projection,reserved_projection,version) ON meal.ai_buckets TO meal_app;
 GRANT SELECT,INSERT ON meal.ai_transfers,meal.ai_reserve_consents TO meal_app;
 GRANT UPDATE(status,accepted_at,version) ON meal.ai_transfers TO meal_app;

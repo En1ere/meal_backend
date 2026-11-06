@@ -164,6 +164,12 @@
 - Prompt/context ограничен, очищен от лишних private-данных и проходит policy.
 - Safety refusal не маскируется как success.
 - Внешний AI provider без конфигурации fail-closed.
+- Retention до 30 дней ничего не очищает; на границе срока удаляет только prompt/context/messages/result и ставит `content_purged_at`.
+- Действующий `legal_hold` оставляет всё AI-содержимое без изменений; после снятия hold следующий запуск очищает его ровно один раз.
+- Task с хотя бы одной неистёкшей operation не очищается; archive не продлевает TTL.
+- После purge новая continuation блокируется, canonical readback сохраняет lifecycle/financial/cost/token evidence и возвращает `result=null`.
+- Два параллельных retention worker используют lease + `SKIP LOCKED`, обрабатывают не более 100 задач и не создают частичный purge.
+- Повторный запуск даёт нулевые изменения; provider identifiers, ledger, safety/audit evidence и агрегаты стоимости сохраняются.
 
 ## 13. Подписки, квоты и платежи
 

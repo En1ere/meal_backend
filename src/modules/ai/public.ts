@@ -6,6 +6,7 @@ export {
     type AiProviderFailureDisposition,
 } from './ai-provider.js';
 export { AiReconciliationService } from './ai-reconciliation.service.js';
+export { AiContentRetentionService } from './ai-content-retention.service.js';
 export { readAiWorkerConfig, type AiWorkerConfig } from './ai-worker.config.js';
 export { AiOperationProcessor } from './ai-operation.processor.js';
 export {

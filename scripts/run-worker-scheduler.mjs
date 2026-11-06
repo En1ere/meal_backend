@@ -17,7 +17,7 @@ const executor = {
     run(task, hardTimeoutMs) {
         if (active) return Promise.reject(new Error('Scheduler executor is busy'));
         return new Promise((resolve) => {
-            const child = spawn(process.execPath, ['scripts/run-scheduled-task.mjs', task], {
+            const child = spawn(process.execPath, ['scripts/run-scheduled-task.mjs', task, '--apply'], {
                 shell: false,
                 stdio: ['ignore', 'pipe', 'inherit'],
                 env: { ...process.env, AI_RECONCILIATION_ENABLED: 'false', COOKING_LIFECYCLE_ENABLED: 'false' },

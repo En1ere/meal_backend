@@ -12,6 +12,7 @@ export const workerTaskIdSchema = z.enum([
     'exports',
     'account-retention',
     'ai-reconciliation',
+    'ai-content-retention',
     'cooking-lifecycle',
 ]);
 export type WorkerTaskId = z.infer<typeof workerTaskIdSchema>;
@@ -205,6 +206,20 @@ const topology = workerTopologySchema.parse({
             timeoutSeconds: 60,
             minimumIntervalSeconds: 60,
             requirements: commonRequirements,
+        },
+        {
+            id: 'ai-content-retention',
+            executionMode: 'external_one_shot',
+            argv: ['node', 'scripts/run-scheduled-task.mjs', 'ai-content-retention', '--apply'],
+            activationEnvironment: null,
+            defaultEnabled: false,
+            mutating: true,
+            destructive: true,
+            overlapPolicy: 'skip_locked',
+            batchLimit: 100,
+            timeoutSeconds: 300,
+            minimumIntervalSeconds: 86_400,
+            requirements: [...commonRequirements, 'published_retention_policy', 'admin_approval', 'legal_hold_check'],
         },
         {
             id: 'cooking-lifecycle',

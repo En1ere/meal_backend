@@ -7,8 +7,8 @@ import { WorkerRuntimeFactory } from '../dist/src/infrastructure/workers/worker-
 import { scheduledTaskIdSchema } from '../dist/src/modules/operational-runtime/public.js';
 
 const parsed = scheduledTaskIdSchema.safeParse(process.argv[2]);
-if (!parsed.success || process.argv.length !== 3) {
-    console.error('Scheduled task rejected: expected one allowlisted task identifier.');
+if (!parsed.success || process.argv.length !== 4 || process.argv[3] !== '--apply') {
+    console.error('Scheduled task rejected: expected one allowlisted task identifier and --apply.');
     process.exitCode = 64;
 } else if (process.env.AI_RECONCILIATION_ENABLED === 'true' || process.env.COOKING_LIFECYCLE_ENABLED === 'true') {
     console.error('Scheduled task rejected: embedded worker modes must be disabled.');
@@ -64,6 +64,18 @@ if (!parsed.success || process.argv.length !== 3) {
                 task,
                 () => app.get(OperationalMaintenanceService).restoreExpiredIncidentIgnores(250),
                 (result) => ({ attempted: result.inspected, succeeded: result.restored, deferred: 0, failed: 0 }),
+            );
+        } else if (task === 'ai-content-retention') {
+            const { AiContentRetentionService } = await import('../dist/src/modules/ai/public.js');
+            execution = await runtime.oneShot(
+                task,
+                () => app.get(AiContentRetentionService).purgeExpired(100),
+                (result) => ({
+                    attempted: result.attempted,
+                    succeeded: result.purgedTasks,
+                    deferred: result.attempted - result.purgedTasks,
+                    failed: 0,
+                }),
             );
         } else {
             const { CookingLifecycleService } = await import('../dist/src/modules/cooking/public.js');

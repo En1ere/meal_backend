@@ -190,6 +190,11 @@
             "version": 37,
             "file": "037_ai_operation_lifecycle.sql",
             "sha256": "2ce2a4b8858ea44e7f0514b9efa58207aeb53b8a80c8cca186a28cce4db1b5ed"
+        },
+        {
+            "version": 38,
+            "file": "038_ai_content_retention.sql",
+            "sha256": "2358421eedda99f750b22f49734a3f7f298a6ff426ac229ce705f7e582418d0c"
         }
     ]
 }

@@ -17,6 +17,7 @@ import {
 import { DiaryService } from '../modules/diary/public.js';
 import { ProAccessService } from '../modules/pro-overview/public.js';
 import { CookingLifecycleService } from '../modules/cooking/public.js';
+import { AiContentRetentionService } from '../modules/ai/public.js';
 
 @Module({})
 export class WorkerModule {
@@ -42,6 +43,7 @@ export class WorkerModule {
                 ProAccessService,
                 DiaryService,
                 CookingLifecycleService,
+                AiContentRetentionService,
             ],
         };
     }

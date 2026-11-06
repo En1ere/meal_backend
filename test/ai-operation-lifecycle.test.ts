@@ -74,9 +74,12 @@ void test('schema v37 manifest hash and counts bind the prepared migration', () 
     assert.equal(manifest.domainTables, 223);
     assert.equal(manifest.totalTables, 228);
     assert.equal(manifest.foreignKeys, 522);
-    assert.deepEqual(manifest.migrations.at(-1), {
-        version: 37,
-        file: '037_ai_operation_lifecycle.sql',
-        sha256: createHash('sha256').update(migration).digest('hex'),
-    });
+    assert.deepEqual(
+        manifest.migrations.find((candidate) => candidate.version === 37),
+        {
+            version: 37,
+            file: '037_ai_operation_lifecycle.sql',
+            sha256: createHash('sha256').update(migration).digest('hex'),
+        },
+    );
 });

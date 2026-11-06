@@ -239286,8 +239286,8 @@
                           "additionalProperties": false
                         },
                         "workers": {
-                          "minItems": 10,
-                          "maxItems": 10,
+                          "minItems": 11,
+                          "maxItems": 11,
                           "type": "array",
                           "items": {
                             "type": "object",
@@ -239304,6 +239304,7 @@
                                   "exports",
                                   "account-retention",
                                   "ai-reconciliation",
+                                  "ai-content-retention",
                                   "cooking-lifecycle"
                                 ]
                               },
@@ -378567,8 +378568,8 @@
   },
   "info": {
     "title": "Meal Planner API",
-    "description": "Backend-owned auth/account/privacy/legal-consent/export/profile/admin/inventory/products/recipes/preserves/shopping/receipts/meal-plan/support/AI and simulated paid Plus/Pro lifecycle including promotion, renewal, downgrade and family combination; private diary, finance, nutrition analytics, Pro export and fail-closed target-bound image intake and Web Push contracts; database schema v37; storage/CDR activation, malware scanning, publication and approved legal evidence pending",
-    "version": "0.0.71",
+    "description": "Backend-owned auth/account/privacy/legal-consent/export/profile/admin/inventory/products/recipes/preserves/shopping/receipts/meal-plan/support/AI and simulated paid Plus/Pro lifecycle including promotion, renewal, downgrade and family combination; private diary, finance, nutrition analytics, Pro export and fail-closed target-bound image intake and Web Push contracts; database schema v38; storage/CDR activation, malware scanning, publication and approved legal evidence pending",
+    "version": "0.0.72",
     "contact": {}
   },
   "tags": [],

@@ -1897,6 +1897,7 @@ export interface DatabaseSchema {
         version: OptionalInsert<Int64>;
     };
     ai_tasks: {
+        content_purged_at: OptionalInsert<Timestamp | null>;
         id: string;
         goal: string;
         status: string;
@@ -1921,6 +1922,7 @@ export interface DatabaseSchema {
         version: OptionalInsert<Int64>;
     };
     ai_messages: {
+        content_purged_at: OptionalInsert<Timestamp | null>;
         id: string;
         role: string;
         body: string;
@@ -1959,6 +1961,7 @@ export interface DatabaseSchema {
         provider_profile_version: OptionalInsert<string>;
         updated_at: OptionalInsert<Timestamp>;
         expires_at: OptionalInsert<Timestamp>;
+        content_purged_at: OptionalInsert<Timestamp | null>;
         id: string;
         status: string;
         result_snapshot: JsonValue | null;

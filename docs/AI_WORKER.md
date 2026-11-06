@@ -35,7 +35,7 @@ AI_WORKER_LEASE_SECONDS=180
 
 1. Создать token-файл с указанными owner/mode; не печатать значение в shell history.
 2. Добавить non-secret настройки и `AI_WORKER_ENABLED=true` в root-owned `deploy.env`.
-3. Выполнить обычный backend rollout. Он применит schema v37, вызовет `provision-ai-worker-runtime.sh`, поднимет `ai-worker` и дождётся healthcheck.
+3. Выполнить обычный backend rollout. Он применит schema v38, вызовет `provision-ai-worker-runtime.sh`, поднимет `ai-worker` и дождётся healthcheck.
 4. Проверить `docker compose ... ps ai-worker`, отсутствие host ports и сети `meal-db, meal-egress`.
 5. Выполнить первичный и continuation запросы: каждый POST должен дать `202/queued`; polling — `queued → running → succeeded`; платный интервал меняет баланс `reserved → captured`, включённое уточнение сохраняет `financialState=none`.
 

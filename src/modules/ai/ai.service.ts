@@ -1336,7 +1336,7 @@ export class AiService {
                     usePersonalData: boolean;
                     personalContext: unknown;
                     cost: number;
-                }>`select t.id,t.status,t.conversation_id as "conversationId",t.preview->>'taskType' as "taskType",coalesce((t.preview->>'usePersonalData')::boolean,false) as "usePersonalData",coalesce(t.preview->'personalContext','[]'::jsonb) as "personalContext",t.accepted_cost::integer cost from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id where t.id=${taskId}::uuid and c.user_id=${userId}::uuid and t.accepted_at is not null for update of t`.execute(
+                }>`select t.id,t.status,t.conversation_id as "conversationId",t.preview->>'taskType' as "taskType",coalesce((t.preview->>'usePersonalData')::boolean,false) as "usePersonalData",coalesce(t.preview->'personalContext','[]'::jsonb) as "personalContext",t.accepted_cost::integer cost from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id where t.id=${taskId}::uuid and c.user_id=${userId}::uuid and t.accepted_at is not null and t.content_purged_at is null for update of t`.execute(
                     tx,
                 )
             ).rows[0];
@@ -1526,7 +1526,7 @@ export class AiService {
                 return { item: this.item(existing) };
             }
             const task = (
-                await sql<PreviewRow>`select t.id,t.conversation_id as "conversationId",t.goal as prompt,t.preview->>'taskType' as "taskType",coalesce((t.preview->>'usePersonalData')::boolean,false) as "usePersonalData",coalesce(t.preview->'personalContext','[]'::jsonb) as "personalContext",t.preview->>'expiresAt' as "expiresAt",t.accepted_cost::integer cost from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id where t.id=${previewId}::uuid and c.user_id=${userId}::uuid and t.status='preview' for update of t`.execute(
+                await sql<PreviewRow>`select t.id,t.conversation_id as "conversationId",t.goal as prompt,t.preview->>'taskType' as "taskType",coalesce((t.preview->>'usePersonalData')::boolean,false) as "usePersonalData",coalesce(t.preview->'personalContext','[]'::jsonb) as "personalContext",t.preview->>'expiresAt' as "expiresAt",t.accepted_cost::integer cost from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id where t.id=${previewId}::uuid and c.user_id=${userId}::uuid and t.status='preview' and t.content_purged_at is null for update of t`.execute(
                     tx,
                 )
             ).rows[0];
