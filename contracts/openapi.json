@@ -240362,7 +240362,7 @@
                         "schemaVersion": {
                           "type": "number",
                           "enum": [
-                            2
+                            3
                           ]
                         },
                         "generatedAt": {
@@ -240389,12 +240389,23 @@
                             "model": {
                               "nullable": true,
                               "type": "string"
+                            },
+                            "profileVersion": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "monthlyBudgetUsd": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^\\d{1,7}\\.\\d{8}$"
                             }
                           },
                           "required": [
                             "configured",
                             "kind",
-                            "model"
+                            "model",
+                            "profileVersion",
+                            "monthlyBudgetUsd"
                           ],
                           "additionalProperties": false
                         },
@@ -240529,6 +240540,58 @@
                           "required": [
                             "last24Hours",
                             "last30Days"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "cost": {
+                          "type": "object",
+                          "properties": {
+                            "monthStartsAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "actualUsd": {
+                              "type": "string",
+                              "pattern": "^\\d{1,7}\\.\\d{8}$"
+                            },
+                            "heldUsd": {
+                              "type": "string",
+                              "pattern": "^\\d{1,7}\\.\\d{8}$"
+                            },
+                            "spentOrHeldUsd": {
+                              "type": "string",
+                              "pattern": "^\\d{1,7}\\.\\d{8}$"
+                            },
+                            "remainingUsd": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^\\d{1,7}\\.\\d{8}$"
+                            },
+                            "utilizationPercent": {
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100000
+                            },
+                            "stopLossState": {
+                              "type": "string",
+                              "enum": [
+                                "unconfigured",
+                                "disabled",
+                                "ready",
+                                "exhausted"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "monthStartsAt",
+                            "actualUsd",
+                            "heldUsd",
+                            "spentOrHeldUsd",
+                            "remainingUsd",
+                            "utilizationPercent",
+                            "stopLossState"
                           ],
                           "additionalProperties": false
                         },
@@ -240756,6 +240819,7 @@
                         "provider",
                         "policies",
                         "usage",
+                        "cost",
                         "statuses",
                         "operations",
                         "tasks"
@@ -378504,7 +378568,7 @@
   "info": {
     "title": "Meal Planner API",
     "description": "Backend-owned auth/account/privacy/legal-consent/export/profile/admin/inventory/products/recipes/preserves/shopping/receipts/meal-plan/support/AI and simulated paid Plus/Pro lifecycle including promotion, renewal, downgrade and family combination; private diary, finance, nutrition analytics, Pro export and fail-closed target-bound image intake and Web Push contracts; database schema v37; storage/CDR activation, malware scanning, publication and approved legal evidence pending",
-    "version": "0.0.70",
+    "version": "0.0.71",
     "contact": {}
   },
   "tags": [],

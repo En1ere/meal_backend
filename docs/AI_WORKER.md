@@ -29,6 +29,8 @@ AI_WORKER_LEASE_SECONDS=180
 
 Текущий Luna Standard profile использует pricing snapshot `$0.10 / 1M input` и `$0.50 / 1M output`. Перед каждым новым submit worker сериализует budget check, учитывает actual cost завершённых запросов и conservative estimate pending/unknown. Лимит считается по UTC calendar month. При исчерпании лимита provider не вызывается, пользовательский AI-резерв освобождается, а операция получает безопасную категорию `provider_error` с внутренним кодом `provider_budget_exhausted`.
 
+Админка читает те же данные через schema v3 AI control plane: профиль и модель, configured/readiness, месячный лимит, actual cost, conservative held cost, остаток, utilization и `unconfigured/disabled/ready/exhausted`. Это read-only aggregate без API key, endpoint credentials, prompt, context, result и provider request identity.
+
 ## Активация
 
 1. Создать token-файл с указанными owner/mode; не печатать значение в shell history.

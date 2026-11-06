@@ -237,7 +237,7 @@ GET /api/v1/admin/ai/control-plane
 2. Versioned context/source registry and structured result schemas.
 3. Additive async operations/readback and schema v37 durable queue while legacy routes remain. **Реализовано.**
 4. Frontend typed adapter, stable attempts, queued/running UI and bounded polling/SSE fallback. **Реализованы canonical initial/continuation mutations, owner-scoped readback, bounded polling и явные queued/running/unknown/terminal состояния. SSE остаётся необязательной будущей оптимизацией и не является условием корректности.**
-5. Read-only admin control plane. **Реализован агрегированный schema v2 без prompt/context/result и персональных данных.**
+5. Read-only admin control plane. **Реализован агрегированный schema v3 без prompt/context/result и персональных данных: выбранный provider profile, явный месячный budget, actual/held/remaining cost, utilization и stop-loss state доступны оператору.**
 6. Reconciliation worker, retention worker, provider telemetry and stop-loss. **Lease-expiry → unknown/reconciliation-hold, provider cost evidence и fail-closed месячный stop-loss реализованы. Конкретная сумма остаётся обязательным внешним owner input; retention deletion и операторское reconcile-действие остаются fail-closed до утверждения policy.**
 7. Production provider success/eval evidence.
 8. Remove legacy routes only after client rollout, usage drain and explicit deprecation evidence.

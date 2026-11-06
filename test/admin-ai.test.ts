@@ -11,10 +11,16 @@ import { adminAiControlPlaneSchema } from '../src/modules/admin-ai/public.js';
 
 void test('admin AI control plane projects every task without secrets or arbitrary provider fields', () => {
     const parsed = adminAiControlPlaneSchema.parse({
-        schemaVersion: 2,
+        schemaVersion: 3,
         generatedAt: '2026-11-06T17:20:00.000Z',
         executionAvailable: true,
-        provider: { configured: true, kind: 'openai_compatible', model: 'gpt-6-luna' },
+        provider: {
+            configured: true,
+            kind: 'openai_compatible',
+            model: 'gpt-6-luna',
+            profileVersion: 'openai-gpt-6-luna-standard-2026-11-07',
+            monthlyBudgetUsd: '10.00000000',
+        },
         policies: {
             task: { version: AI_TASK_RULE_VERSION, effectiveAt: '2026-11-06T00:00:00.000Z' },
             context: { version: AI_CONTEXT_POLICY_VERSION, effectiveAt: '2026-11-06T00:00:00.000Z' },
@@ -22,6 +28,15 @@ void test('admin AI control plane projects every task without secrets or arbitra
         usage: {
             last24Hours: { tasks: 1, actions: 2, completed: 1, refunded: 0, failed: 0 },
             last30Days: { tasks: 2, actions: 4, completed: 1, refunded: 1, failed: 0 },
+        },
+        cost: {
+            monthStartsAt: '2026-11-01T00:00:00.000Z',
+            actualUsd: '0.12000000',
+            heldUsd: '0.03000000',
+            spentOrHeldUsd: '0.15000000',
+            remainingUsd: '9.85000000',
+            utilizationPercent: 1.5,
+            stopLossState: 'ready',
         },
         statuses: [{ status: 'completed', count: 1 }],
         operations: {
@@ -50,6 +65,7 @@ void test('admin AI control plane projects every task without secrets or arbitra
     });
     assert.equal(parsed.tasks.length, 18);
     assert.equal(parsed.operations.reconciliationHoldCount, 1);
+    assert.equal(parsed.cost.remainingUsd, '9.85000000');
     assert.equal('token' in parsed.provider, false);
 });
 
@@ -65,6 +81,7 @@ void test('admin AI endpoint is read-only, MFA guarded, audited and aggregate-on
     assert.match(service, /admin\.ai\.read/);
     assert.match(service, /count\(t\.id\)/);
     assert.match(service, /financial_state='reconciliation_hold'/);
+    assert.match(service, /sum\(provider_cost\)/);
     assert.doesNotMatch(service, /prompt|goal|personalContext|AI_API_TOKEN/);
     assert.match(boundary, /'admin\.ai\.read'/);
 });

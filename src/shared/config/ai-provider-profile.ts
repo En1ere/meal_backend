@@ -32,7 +32,8 @@ const decimalUnits = (value: string) => {
     return BigInt(whole ?? '0') * 100_000_000n + BigInt(fraction.padEnd(8, '0'));
 };
 
-const formatUnits = (units: bigint) => {
+export const aiFormatMoneyUnits = (units: bigint) => {
+    if (units < 0n) throw new Error('AI money cannot be negative');
     const whole = units / 100_000_000n;
     const fraction = (units % 100_000_000n).toString().padStart(8, '0');
     return `${whole}.${fraction}`;
@@ -56,5 +57,5 @@ export function aiProviderCost(
     const inputRateUnits = decimalUnits(profile.inputUsdPerMillionTokens);
     const outputRateUnits = decimalUnits(profile.outputUsdPerMillionTokens);
     const numerator = BigInt(usage.inputTokens) * inputRateUnits + BigInt(usage.outputTokens) * outputRateUnits;
-    return formatUnits((numerator + 999_999n) / 1_000_000n);
+    return aiFormatMoneyUnits((numerator + 999_999n) / 1_000_000n);
 }

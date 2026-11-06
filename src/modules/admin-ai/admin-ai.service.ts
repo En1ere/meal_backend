@@ -9,6 +9,8 @@ import {
     aiTaskAvailable,
     aiTaskContextPolicies,
     aiTasks,
+    aiFormatMoneyUnits,
+    aiMoneyUnits,
 } from '../ai/public.js';
 import { adminAiControlPlaneSchema } from './admin-ai.contracts.js';
 
@@ -41,7 +43,8 @@ export class AdminAiService {
             requestId,
             { action: 'admin.ai.read', targetType: 'ai-control-plane' },
             async (tx) => {
-                const [rules, usage, statuses, lifecycle, financial, operationAges] = await Promise.all([
+                const monthStartsAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+                const [rules, usage, costs, statuses, lifecycle, financial, operationAges] = await Promise.all([
                     sql<{
                         kind: string;
                         version: string;
@@ -50,6 +53,12 @@ export class AdminAiService {
                         tx,
                     ),
                     sql<UsageRow>`with windows(window,since) as (values ('last24Hours',${new Date(now.getTime() - 86_400_000)}::timestamptz),('last30Days',${new Date(now.getTime() - 30 * 86_400_000)}::timestamptz)) select w.window,count(t.id)::text tasks,coalesce(sum(t.accepted_cost),0)::text actions,count(t.id) filter(where t.status='completed')::text completed,count(t.id) filter(where t.status='refunded')::text refunded,count(t.id) filter(where t.status='failed')::text failed from windows w left join meal.ai_tasks t on t.created_at>=w.since group by w.window`.execute(
+                        tx,
+                    ),
+                    sql<{
+                        actualUsd: string;
+                        heldUsd: string;
+                    }>`select coalesce(sum(provider_cost) filter(where lifecycle_state in ('succeeded','failed','cancelled')),0)::text "actualUsd",coalesce(sum(provider_cost) filter(where lifecycle_state in ('accepted','queued','running','unknown')),0)::text "heldUsd" from meal.ai_operations where created_at>=${monthStartsAt}`.execute(
                         tx,
                     ),
                     sql<{
@@ -93,11 +102,28 @@ export class AdminAiService {
                 const taskRule = rule('cost');
                 const contextRule = rule('context');
                 const provider = this.provider.status();
+                const actualUnits = aiMoneyUnits(costs.rows[0]?.actualUsd ?? '0');
+                const heldUnits = aiMoneyUnits(costs.rows[0]?.heldUsd ?? '0');
+                const totalUnits = actualUnits + heldUnits;
+                const budgetUnits = provider.monthlyBudgetUsd ? aiMoneyUnits(provider.monthlyBudgetUsd) : null;
+                const remainingUnits =
+                    budgetUnits === null ? null : budgetUnits > totalUnits ? budgetUnits - totalUnits : 0n;
+                const stopLossState =
+                    budgetUnits === null
+                        ? ('unconfigured' as const)
+                        : !provider.configured
+                          ? ('disabled' as const)
+                          : totalUnits >= budgetUnits
+                            ? ('exhausted' as const)
+                            : ('ready' as const);
                 return adminAiControlPlaneSchema.parse({
-                    schemaVersion: 2,
+                    schemaVersion: 3,
                     generatedAt: now.toISOString(),
                     executionAvailable: provider.configured && Boolean(taskRule) && Boolean(contextRule),
-                    provider,
+                    provider: {
+                        ...provider,
+                        monthlyBudgetUsd: budgetUnits === null ? null : aiFormatMoneyUnits(budgetUnits),
+                    },
                     policies: {
                         task: {
                             version: AI_TASK_RULE_VERSION,
@@ -109,6 +135,21 @@ export class AdminAiService {
                         },
                     },
                     usage: { last24Hours: projectUsage('last24Hours'), last30Days: projectUsage('last30Days') },
+                    cost: {
+                        monthStartsAt: monthStartsAt.toISOString(),
+                        actualUsd: aiFormatMoneyUnits(actualUnits),
+                        heldUsd: aiFormatMoneyUnits(heldUnits),
+                        spentOrHeldUsd: aiFormatMoneyUnits(totalUnits),
+                        remainingUsd: remainingUnits === null ? null : aiFormatMoneyUnits(remainingUnits),
+                        utilizationPercent:
+                            budgetUnits === null
+                                ? null
+                                : Math.min(
+                                      100_000,
+                                      Number((totalUnits * 10_000n + budgetUnits / 2n) / budgetUnits) / 100,
+                                  ),
+                        stopLossState,
+                    },
                     statuses: statuses.rows,
                     operations: {
                         lifecycle: lifecycle.rows.map((row) => ({ state: row.state, count: count(row.count) })),

@@ -107,17 +107,20 @@ export class AiProvider {
         >,
     ) {}
     status() {
+        const selected = Boolean(
+            this.config.AI_API_BASE_URL && this.config.AI_MODEL && this.config.AI_PROVIDER_PROFILE_VERSION,
+        );
         const configured = Boolean(
-            this.config.AI_API_BASE_URL &&
-            this.config.AI_MODEL &&
+            selected &&
+            this.config.AI_MONTHLY_BUDGET_USD &&
             (this.config.AI_API_TOKEN || this.config.AI_BACKGROUND_EXECUTION_ENABLED),
         );
         return {
             configured,
-            kind: configured ? ('openai_compatible' as const) : ('disabled' as const),
-            model: configured ? this.config.AI_MODEL! : null,
-            profileVersion: configured ? (this.config.AI_PROVIDER_PROFILE_VERSION ?? null) : null,
-            monthlyBudgetUsd: configured ? (this.config.AI_MONTHLY_BUDGET_USD ?? null) : null,
+            kind: selected ? ('openai_compatible' as const) : ('disabled' as const),
+            model: selected ? this.config.AI_MODEL! : null,
+            profileVersion: selected ? this.config.AI_PROVIDER_PROFILE_VERSION! : null,
+            monthlyBudgetUsd: selected ? (this.config.AI_MONTHLY_BUDGET_USD ?? null) : null,
         };
     }
     legacyConfigured() {

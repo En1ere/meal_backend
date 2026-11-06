@@ -10,6 +10,7 @@ export { readAiWorkerConfig, type AiWorkerConfig } from './ai-worker.config.js';
 export { AiOperationProcessor } from './ai-operation.processor.js';
 export {
     AI_PROVIDER_PROFILES,
+    aiFormatMoneyUnits,
     aiMoneyUnits,
     aiProviderCost,
     aiProviderProfile,
