@@ -18,6 +18,9 @@ const provider = new AiProvider({
     AI_API_TOKEN: config.apiToken,
     AI_API_BASE_URL: config.AI_API_BASE_URL,
     AI_MODEL: config.AI_MODEL,
+    AI_PROVIDER_PROFILE_VERSION: config.AI_PROVIDER_PROFILE_VERSION,
+    AI_MONTHLY_BUDGET_USD: config.AI_MONTHLY_BUDGET_USD,
+    AI_BACKGROUND_EXECUTION_ENABLED: true,
 });
 const processor = new AiOperationProcessor(db, config, provider);
 let stopping = false;

@@ -51,6 +51,8 @@ export interface AppConfig {
     AI_API_BASE_URL?: string | undefined;
     AI_API_TOKEN?: string | undefined;
     AI_MODEL?: string | undefined;
+    AI_PROVIDER_PROFILE_VERSION?: string | undefined;
+    AI_MONTHLY_BUDGET_USD?: string | undefined;
     AI_BACKGROUND_EXECUTION_ENABLED: boolean;
     AI_RECONCILIATION_ENABLED: boolean;
     TRUSTED_PROXY_CIDRS: string[];

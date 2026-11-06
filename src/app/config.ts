@@ -3,6 +3,7 @@ import { isIP } from 'node:net';
 import { isAbsolute } from 'node:path';
 import { readFileSync } from 'node:fs';
 import type { AppConfig } from '../shared/config/app-config.js';
+import { aiMoneyUnits, aiProviderProfile } from '../shared/config/ai-provider-profile.js';
 
 export { APP_CONFIG, type AppConfig } from '../shared/config/app-config.js';
 
@@ -146,6 +147,14 @@ export const configSchema = z.object({
         .optional(),
     AI_API_TOKEN: z.string().min(1).optional(),
     AI_MODEL: z.string().min(1).max(200).optional(),
+    AI_PROVIDER_PROFILE_VERSION: z.string().min(1).max(128).optional(),
+    AI_MONTHLY_BUDGET_USD: z.preprocess(
+        (value) => (value === '' ? undefined : value),
+        z
+            .string()
+            .regex(/^\d{1,7}(?:\.\d{1,8})?$/)
+            .optional(),
+    ),
     AI_BACKGROUND_EXECUTION_ENABLED: z
         .enum(['true', 'false'])
         .default('false')
@@ -234,13 +243,24 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
         if (config.OCR_PREVIEW_URL !== 'http://ocr-preview:3100' || !config.OCR_PREVIEW_TOKEN)
             throw new Error('Production OCR requires the isolated internal preview service');
     }
-    const aiEndpointFields = [config.AI_API_BASE_URL, config.AI_MODEL].filter(Boolean).length;
-    if (aiEndpointFields !== 0 && aiEndpointFields !== 2)
-        throw new Error('AI_API_BASE_URL and AI_MODEL must be configured together');
-    if (config.AI_API_TOKEN && aiEndpointFields !== 2)
-        throw new Error('AI_API_TOKEN requires AI_API_BASE_URL and AI_MODEL');
-    if (config.AI_BACKGROUND_EXECUTION_ENABLED && aiEndpointFields !== 2)
-        throw new Error('AI background execution requires AI_API_BASE_URL and AI_MODEL');
+    const aiEndpointFields = [config.AI_API_BASE_URL, config.AI_MODEL, config.AI_PROVIDER_PROFILE_VERSION].filter(
+        Boolean,
+    ).length;
+    if (aiEndpointFields !== 0 && aiEndpointFields !== 3)
+        throw new Error('AI_API_BASE_URL, AI_MODEL and AI_PROVIDER_PROFILE_VERSION must be configured together');
+    if (config.AI_API_TOKEN && aiEndpointFields !== 3)
+        throw new Error('AI_API_TOKEN requires AI endpoint, model and provider profile');
+    if (config.AI_PROVIDER_PROFILE_VERSION) {
+        const profile = aiProviderProfile(config.AI_PROVIDER_PROFILE_VERSION);
+        if (profile.model !== config.AI_MODEL) throw new Error('AI provider profile must match AI_MODEL');
+    }
+    if (config.AI_MONTHLY_BUDGET_USD !== undefined && aiMoneyUnits(config.AI_MONTHLY_BUDGET_USD) <= 0n)
+        throw new Error('AI_MONTHLY_BUDGET_USD must be greater than zero');
+    if (
+        config.AI_BACKGROUND_EXECUTION_ENABLED &&
+        (aiEndpointFields !== 3 || config.AI_MONTHLY_BUDGET_USD === undefined)
+    )
+        throw new Error('AI background execution requires endpoint, model, provider profile and monthly budget');
     if (!config.ADMIN_FRONTEND_ORIGIN && config.NODE_ENV !== 'production')
         config.ADMIN_FRONTEND_ORIGIN = 'http://localhost:3002';
     if (config.ADMIN_FRONTEND_ORIGIN) {

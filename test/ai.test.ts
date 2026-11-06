@@ -273,6 +273,7 @@ void test('AI provider calls Responses with a strict result schema and reads out
             AI_API_BASE_URL: 'https://api.openai.test/v1/',
             AI_API_TOKEN: 'test-token',
             AI_MODEL: 'gpt-6-luna',
+            AI_PROVIDER_PROFILE_VERSION: 'openai-gpt-6-luna-standard-2026-11-07',
         }),
     );
     const originalFetch = globalThis.fetch;
@@ -360,6 +361,7 @@ void test('AI provider fails closed for provider errors and responses without ou
             AI_API_BASE_URL: 'https://api.openai.test/v1/',
             AI_API_TOKEN: 'test-token',
             AI_MODEL: 'gpt-6-luna',
+            AI_PROVIDER_PROFILE_VERSION: 'openai-gpt-6-luna-standard-2026-11-07',
         }),
     );
     const originalFetch = globalThis.fetch;
@@ -406,6 +408,7 @@ void test('AI provider distinguishes confirmed rejection from an unknown transpo
             AI_API_BASE_URL: 'https://api.openai.test/v1/',
             AI_API_TOKEN: 'test-token',
             AI_MODEL: 'gpt-6-luna',
+            AI_PROVIDER_PROFILE_VERSION: 'openai-gpt-6-luna-standard-2026-11-07',
         }),
     );
     const originalFetch = globalThis.fetch;
@@ -434,6 +437,7 @@ void test('AI provider submits and polls background Responses with stable reques
             AI_API_BASE_URL: 'https://api.openai.test/v1/',
             AI_API_TOKEN: 'test-token',
             AI_MODEL: 'gpt-6-luna',
+            AI_PROVIDER_PROFILE_VERSION: 'openai-gpt-6-luna-standard-2026-11-07',
         }),
     );
     const originalFetch = globalThis.fetch;
@@ -521,6 +525,7 @@ void test('background provider keeps ambiguous HTTP and retrieval outcomes on ho
             AI_API_BASE_URL: 'https://api.openai.test/v1/',
             AI_API_TOKEN: 'test-token',
             AI_MODEL: 'gpt-6-luna',
+            AI_PROVIDER_PROFILE_VERSION: 'openai-gpt-6-luna-standard-2026-11-07',
         }),
     );
     const originalFetch = globalThis.fetch;

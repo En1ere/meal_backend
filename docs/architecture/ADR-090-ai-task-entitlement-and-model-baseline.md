@@ -29,7 +29,7 @@ Adopt `ai-task-policy-v3` as the immutable entitlement baseline.
 
 Use OpenAI Responses API with `store: false`. Keep `gpt-6-luna` with low reasoning as the launch baseline because the workload is frequent and scoped. Build representative evals before enabling `gpt-6.1-sol` for heavy tasks; a quality escalation must be a versioned provider profile, not a hard-coded task branch. GPT-6 Astra is not part of the launch cost baseline.
 
-The model profile must eventually persist requested/actual model, reasoning effort, input/output/reasoning tokens, provider request id, latency and estimated/actual provider cost. Secrets stay in root-owned runtime secret files and are never returned by user or admin APIs.
+The versioned model profile persists requested/actual model, input/output/reasoning tokens, provider request id, latency and estimated/actual provider cost. The launch profile is `openai-gpt-6-luna-standard-2026-11-07`; a positive explicit monthly budget is mandatory and enforced before provider dispatch. Secrets stay in root-owned runtime secret files and are never returned by user or admin APIs.
 
 ## Consequences
 

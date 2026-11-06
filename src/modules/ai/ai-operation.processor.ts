@@ -6,6 +6,7 @@ import { aiTaskTypeSchema, type AiTaskType } from './ai.contracts.js';
 import { aiTask, aiTaskAvailable, aiTokenBudget } from './ai-orchestration.js';
 import { parseAiContextSnapshot, renderAiContext } from './ai-context.js';
 import type { AiWorkerConfig } from './ai-worker.config.js';
+import { aiMoneyUnits, aiProviderCost } from '../../shared/config/ai-provider-profile.js';
 
 type Db = Kysely<DatabaseSchema>;
 type Tx = Transaction<DatabaseSchema>;
@@ -30,6 +31,7 @@ type Claimed = {
     providerRequestId: string | null;
     leaseToken: string;
     startedAt: Date;
+    localFailureCode: string | null;
 };
 
 const planRank = { free: 0, plus: 1, pro: 2 } as const;
@@ -152,6 +154,15 @@ export class AiOperationProcessor {
             .transaction()
             .setIsolationLevel('serializable')
             .execute(async (tx) => {
+                await sql`select pg_advisory_xact_lock(187731,1)`.execute(tx);
+                const spending = (
+                    await sql<{
+                        spent: string;
+                    }>`select coalesce(sum(provider_cost),0)::text spent from meal.ai_operations where created_at>=date_trunc('month',now() at time zone 'UTC') at time zone 'UTC'`.execute(
+                        tx,
+                    )
+                ).rows[0];
+                let heldUnits = aiMoneyUnits(spending?.spent ?? '0');
                 const candidates = await sql<{
                     id: string;
                     userId: string;
@@ -169,7 +180,8 @@ export class AiOperationProcessor {
                     attemptCount: number;
                     providerRequestId: string | null;
                     requestedModel: string | null;
-                }>`select o.id,o.user_id "userId",o.task_id "taskId",o.interval_id "intervalId",t.conversation_id "conversationId",o.message_id "messageId",o.command_kind "commandKind",t.preview->>'taskType' "taskType",t.goal prompt,t.preview->'personalContext' "personalContext",coalesce((t.preview->>'usePersonalData')::boolean,false) "usePersonalData",t.accepted_cost::integer cost,o.result_snapshot "resultSnapshot",o.attempt_count::integer "attemptCount",o.provider_request_id "providerRequestId",o.requested_model "requestedModel" from meal.ai_operations o join meal.ai_tasks t on t.id=o.task_id where o.contract_version=1 and o.lifecycle_state='queued' and o.next_attempt_at<=now() and o.expires_at>now() order by o.next_attempt_at,o.created_at,o.id limit ${this.config.AI_WORKER_BATCH_SIZE} for update of o skip locked`.execute(
+                    providerProfileVersion: string;
+                }>`select o.id,o.user_id "userId",o.task_id "taskId",o.interval_id "intervalId",t.conversation_id "conversationId",o.message_id "messageId",o.command_kind "commandKind",t.preview->>'taskType' "taskType",t.goal prompt,t.preview->'personalContext' "personalContext",coalesce((t.preview->>'usePersonalData')::boolean,false) "usePersonalData",t.accepted_cost::integer cost,o.result_snapshot "resultSnapshot",o.attempt_count::integer "attemptCount",o.provider_request_id "providerRequestId",o.requested_model "requestedModel",o.provider_profile_version "providerProfileVersion" from meal.ai_operations o join meal.ai_tasks t on t.id=o.task_id where o.contract_version=1 and o.lifecycle_state='queued' and o.next_attempt_at<=now() and o.expires_at>now() order by o.next_attempt_at,o.created_at,o.id limit ${this.config.AI_WORKER_BATCH_SIZE} for update of o skip locked`.execute(
                     tx,
                 );
                 const claimed: Claimed[] = [];
@@ -188,8 +200,30 @@ export class AiOperationProcessor {
                     const leaseToken = randomUUID();
                     const clientRequestId = randomUUID();
                     const attemptNo = candidate.providerRequestId ? candidate.attemptCount : candidate.attemptCount + 1;
+                    const tokenBudget = aiTokenBudget(cost);
+                    const estimatedCost = candidate.providerRequestId
+                        ? null
+                        : aiProviderCost(this.config.providerProfile, {
+                              inputTokens: tokenBudget.maxInputTokens,
+                              outputTokens: tokenBudget.maxOutputTokens,
+                          });
+                    let localFailureCode: string | null = null;
+                    if (
+                        candidate.providerProfileVersion !== this.config.AI_PROVIDER_PROFILE_VERSION ||
+                        candidate.requestedModel !== this.config.AI_MODEL
+                    )
+                        localFailureCode = candidate.providerRequestId
+                            ? 'provider_profile_mismatch_after_submit'
+                            : 'provider_profile_mismatch';
+                    else if (
+                        estimatedCost !== null &&
+                        heldUnits + aiMoneyUnits(estimatedCost) > this.config.monthlyBudgetUnits
+                    )
+                        localFailureCode = 'provider_budget_exhausted';
+                    const heldCost = localFailureCode ? '0.00000000' : estimatedCost;
+                    if (heldCost !== null) heldUnits += aiMoneyUnits(heldCost);
                     const updated =
-                        await sql`update meal.ai_operations set lifecycle_state='running',lease_owner=${this.config.AI_WORKER_OWNER_ID},lease_token=${leaseToken}::uuid,lease_until=now()+${this.config.AI_WORKER_LEASE_SECONDS}*interval '1 second',attempt_count=${attemptNo},provider_client_request_id=coalesce(provider_client_request_id,${clientRequestId}::uuid),version=version+1 where id=${candidate.id}::uuid and lifecycle_state='queued'`.execute(
+                        await sql`update meal.ai_operations set lifecycle_state='running',lease_owner=${this.config.AI_WORKER_OWNER_ID},lease_token=${leaseToken}::uuid,lease_until=now()+${this.config.AI_WORKER_LEASE_SECONDS}*interval '1 second',attempt_count=${attemptNo},provider_client_request_id=coalesce(provider_client_request_id,${clientRequestId}::uuid),provider_cost=coalesce(provider_cost,${heldCost}),version=version+1 where id=${candidate.id}::uuid and lifecycle_state='queued'`.execute(
                             tx,
                         );
                     if (!updated.numAffectedRows) continue;
@@ -212,7 +246,7 @@ export class AiOperationProcessor {
                         startedAt = attempt.startedAt;
                     } else {
                         attemptId = randomUUID();
-                        await sql`insert into meal.ai_operation_attempts(id,operation_id,attempt_no,state,client_request_id,lease_token,requested_model,started_at) values(${attemptId}::uuid,${candidate.id}::uuid,${attemptNo},'prepared',${clientRequestId}::uuid,${leaseToken}::uuid,${candidate.requestedModel},${startedAt})`.execute(
+                        await sql`insert into meal.ai_operation_attempts(id,operation_id,attempt_no,state,client_request_id,lease_token,requested_model,estimated_cost,started_at) values(${attemptId}::uuid,${candidate.id}::uuid,${attemptNo},'prepared',${clientRequestId}::uuid,${leaseToken}::uuid,${candidate.requestedModel},${heldCost},${startedAt})`.execute(
                             tx,
                         );
                     }
@@ -227,6 +261,7 @@ export class AiOperationProcessor {
                         clientRequestId: stableClientRequestId,
                         leaseToken,
                         startedAt,
+                        localFailureCode,
                     });
                 }
                 return claimed;
@@ -274,22 +309,32 @@ export class AiOperationProcessor {
             .setIsolationLevel('serializable')
             .execute(async (tx) => {
                 if (!(await this.fenced(tx, job))) return;
-                await sql`update meal.ai_operation_attempts set state='unknown',error_category=${category},error_code=${category},submitted_at=coalesce(submitted_at,now()),finished_at=now() where id=${job.attemptId}::uuid and state in ('prepared','submitted','polling')`.execute(
+                await sql`update meal.ai_operation_attempts set state='unknown',error_category='provider_outcome_unknown',error_code=${category},submitted_at=coalesce(submitted_at,now()),finished_at=now() where id=${job.attemptId}::uuid and state in ('prepared','submitted','polling')`.execute(
                     tx,
                 );
-                await sql`update meal.ai_operations set lifecycle_state='unknown',result_snapshot=jsonb_set(coalesce(result_snapshot,'{}'::jsonb),'{failure}',to_jsonb(${category}::text),true),failure_category=${category},failure_retryable=false,version=version+1 where id=${job.id}::uuid and lifecycle_state='running' and lease_token=${job.leaseToken}::uuid`.execute(
+                await sql`update meal.ai_operations set lifecycle_state='unknown',financial_state='reconciliation_hold',result_snapshot=jsonb_set(coalesce(result_snapshot,'{}'::jsonb),'{failure}',to_jsonb(${category}::text),true),failure_category=${category},failure_retryable=false,version=version+1 where id=${job.id}::uuid and lifecycle_state='running' and lease_token=${job.leaseToken}::uuid`.execute(
                     tx,
                 );
             });
     }
 
-    private async failed(job: Claimed, category: string, errorCode: string) {
+    private async failed(
+        job: Claimed,
+        category: string,
+        errorCode: string,
+        usage: { inputTokens: number; outputTokens: number; reasoningTokens: number } | null = null,
+    ) {
+        const actualCost = usage ? aiProviderCost(this.config.providerProfile, usage) : '0.00000000';
+        const attemptCategory = category === 'access_revoked' ? 'safety_rejected' : category;
         await this.db
             .transaction()
             .setIsolationLevel('serializable')
             .execute(async (tx) => {
                 if (!(await this.fenced(tx, job))) return;
-                await sql`update meal.ai_operation_attempts set state='failed',error_category=${category},error_code=${errorCode},submitted_at=coalesce(submitted_at,now()),finished_at=now() where id=${job.attemptId}::uuid and state in ('prepared','submitted','polling')`.execute(
+                await sql`update meal.ai_operation_attempts set state='failed',input_tokens=${usage?.inputTokens ?? null},output_tokens=${usage?.outputTokens ?? null},reasoning_tokens=${usage?.reasoningTokens ?? null},actual_cost=${actualCost},error_category=${attemptCategory},error_code=${errorCode},submitted_at=coalesce(submitted_at,now()),finished_at=now() where id=${job.attemptId}::uuid and state in ('prepared','submitted','polling')`.execute(
+                    tx,
+                );
+                await sql`update meal.ai_operations set provider_cost=${actualCost},token_usage=${usage ? JSON.stringify(usage) : null}::jsonb where id=${job.id}::uuid and lifecycle_state='running' and lease_token=${job.leaseToken}::uuid`.execute(
                     tx,
                 );
                 await this.release(tx, job, category);
@@ -297,6 +342,7 @@ export class AiOperationProcessor {
     }
 
     private async succeeded(job: Claimed, result: Extract<AiBackgroundResult, { state: 'succeeded' }>) {
+        const actualCost = aiProviderCost(this.config.providerProfile, result.usage);
         await this.db
             .transaction()
             .setIsolationLevel('serializable')
@@ -316,11 +362,11 @@ export class AiOperationProcessor {
                 await sql`update meal.ai_operation_attempts set state='submitted',provider_request_id=${result.providerRequestId},actual_model=${result.actualModel},service_tier=${result.serviceTier},submitted_at=coalesce(submitted_at,now()) where id=${job.attemptId}::uuid and state='prepared'`.execute(
                     tx,
                 );
-                await sql`update meal.ai_operation_attempts set state='succeeded',provider_request_id=${result.providerRequestId},actual_model=${result.actualModel},service_tier=${result.serviceTier},input_tokens=${result.usage.inputTokens},output_tokens=${result.usage.outputTokens},reasoning_tokens=${result.usage.reasoningTokens},finished_at=now(),latency_ms=least(3600000,greatest(0,(extract(epoch from now()-started_at)*1000)::integer)) where id=${job.attemptId}::uuid and state in ('submitted','polling')`.execute(
+                await sql`update meal.ai_operation_attempts set state='succeeded',provider_request_id=${result.providerRequestId},actual_model=${result.actualModel},service_tier=${result.serviceTier},input_tokens=${result.usage.inputTokens},output_tokens=${result.usage.outputTokens},reasoning_tokens=${result.usage.reasoningTokens},actual_cost=${actualCost},finished_at=now(),latency_ms=least(3600000,greatest(0,(extract(epoch from now()-started_at)*1000)::integer)) where id=${job.attemptId}::uuid and state in ('submitted','polling')`.execute(
                     tx,
                 );
                 const snapshot = { ...job.resultSnapshot, text: result.answer };
-                await sql`update meal.ai_operations set lifecycle_state='succeeded',result_snapshot=${JSON.stringify(snapshot)}::jsonb,provider_request_id=${result.providerRequestId},actual_model=${result.actualModel},service_tier=${result.serviceTier},token_usage=${JSON.stringify(result.usage)}::jsonb,finished_at=now(),version=version+1 where id=${job.id}::uuid and lifecycle_state='running' and lease_token=${job.leaseToken}::uuid`.execute(
+                await sql`update meal.ai_operations set lifecycle_state='succeeded',result_snapshot=${JSON.stringify(snapshot)}::jsonb,provider_request_id=${result.providerRequestId},actual_model=${result.actualModel},service_tier=${result.serviceTier},token_usage=${JSON.stringify(result.usage)}::jsonb,provider_cost=${actualCost},finished_at=now(),version=version+1 where id=${job.id}::uuid and lifecycle_state='running' and lease_token=${job.leaseToken}::uuid`.execute(
                     tx,
                 );
                 await sql`update meal.ai_intervals set status='completed',version=version+1 where id=${job.intervalId}::uuid`.execute(
@@ -333,7 +379,11 @@ export class AiOperationProcessor {
     }
 
     private async process(job: Claimed) {
-        if (!(await this.authorized(job))) return this.failed(job, 'access_revoked', 'access_revoked');
+        if (job.localFailureCode === 'provider_profile_mismatch_after_submit')
+            return this.unknown(job, job.localFailureCode);
+        if (job.localFailureCode) return this.failed(job, 'provider_error', job.localFailureCode);
+        if (!job.providerRequestId && !(await this.authorized(job)))
+            return this.failed(job, 'access_revoked', 'access_revoked');
         let result: AiBackgroundResult;
         try {
             result = job.providerRequestId
@@ -349,7 +399,7 @@ export class AiOperationProcessor {
             return this.unknown(job);
         }
         if (result.state === 'pending') return this.pending(job, result);
-        if (result.state === 'failed') return this.failed(job, 'provider_error', result.errorCode);
+        if (result.state === 'failed') return this.failed(job, 'provider_error', result.errorCode, result.usage);
         return this.succeeded(job, result);
     }
 

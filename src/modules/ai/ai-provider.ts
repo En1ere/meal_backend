@@ -98,7 +98,12 @@ export class AiProvider {
         @Inject(APP_CONFIG)
         private readonly config: Pick<
             AppConfig,
-            'AI_API_TOKEN' | 'AI_API_BASE_URL' | 'AI_MODEL' | 'AI_BACKGROUND_EXECUTION_ENABLED'
+            | 'AI_API_TOKEN'
+            | 'AI_API_BASE_URL'
+            | 'AI_MODEL'
+            | 'AI_PROVIDER_PROFILE_VERSION'
+            | 'AI_MONTHLY_BUDGET_USD'
+            | 'AI_BACKGROUND_EXECUTION_ENABLED'
         >,
     ) {}
     status() {
@@ -111,6 +116,8 @@ export class AiProvider {
             configured,
             kind: configured ? ('openai_compatible' as const) : ('disabled' as const),
             model: configured ? this.config.AI_MODEL! : null,
+            profileVersion: configured ? (this.config.AI_PROVIDER_PROFILE_VERSION ?? null) : null,
+            monthlyBudgetUsd: configured ? (this.config.AI_MONTHLY_BUDGET_USD ?? null) : null,
         };
     }
     legacyConfigured() {

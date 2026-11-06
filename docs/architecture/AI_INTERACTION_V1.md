@@ -147,7 +147,7 @@ Launch profile:
 
 ```json
 {
-    "version": "openai-responses-background-v1",
+    "version": "openai-gpt-6-luna-standard-2026-11-07",
     "provider": "openai",
     "transport": "responses",
     "model": "gpt-6-luna",
@@ -158,6 +158,10 @@ Launch profile:
 ```
 
 `gpt-6.1-sol` может быть отдельным disabled-by-default evaluation profile для тяжёлых задач. Переключение разрешается только после eval по одинаковым fixtures и acceptance criteria: correctness, safety, schema success, latency, input/output/reasoning tokens, provider cost и cost per successful task.
+
+Профиль фиксирует Standard pricing snapshot: Luna `$0.10` за 1M input tokens и `$0.50` за 1M output tokens. При текущих bounded token budgets консервативная верхняя оценка одной задачи классов 1–5 равна соответственно `$0.00155000`, `$0.00310000`, `$0.00570000`, `$0.00830000`, `$0.01140000`. Reasoning tokens входят в provider `output_tokens` и не прибавляются второй раз.
+
+Worker запускается только при явном положительном `AI_MONTHLY_BUDGET_USD`. Перед новым provider submit он под транзакционным advisory lock суммирует фактическую либо ещё удерживаемую оценочную стоимость UTC-месяца. Превышение лимита даёт `provider_budget_exhausted`, не вызывает provider и освобождает пользовательский резерв. Pending/unknown сохраняют консервативную оценку; terminal response заменяет её фактической стоимостью. Несовпадение model/profile также fail closed до внешнего вызова.
 
 На operation/attempt сохраняются provider profile version, requested/actual model, OpenAI request id, timestamps, HTTP/provider outcome, token usage, service tier и estimated/actual cost. Prompt/result в operational logs запрещены.
 
@@ -234,7 +238,7 @@ GET /api/v1/admin/ai/control-plane
 3. Additive async operations/readback and schema v37 durable queue while legacy routes remain. **Реализовано.**
 4. Frontend typed adapter, stable attempts, queued/running UI and bounded polling/SSE fallback. **Реализованы canonical initial/continuation mutations, owner-scoped readback, bounded polling и явные queued/running/unknown/terminal состояния. SSE остаётся необязательной будущей оптимизацией и не является условием корректности.**
 5. Read-only admin control plane. **Реализован агрегированный schema v2 без prompt/context/result и персональных данных.**
-6. Reconciliation worker, retention worker, provider telemetry and stop-loss. **Lease-expiry → unknown/reconciliation-hold и read-only lifecycle/financial telemetry реализованы; retention deletion, budget stop-loss и операторское reconcile-действие остаются fail-closed до утверждения policy/бюджета.**
+6. Reconciliation worker, retention worker, provider telemetry and stop-loss. **Lease-expiry → unknown/reconciliation-hold, provider cost evidence и fail-closed месячный stop-loss реализованы. Конкретная сумма остаётся обязательным внешним owner input; retention deletion и операторское reconcile-действие остаются fail-closed до утверждения policy.**
 7. Production provider success/eval evidence.
 8. Remove legacy routes only after client rollout, usage drain and explicit deprecation evidence.
 

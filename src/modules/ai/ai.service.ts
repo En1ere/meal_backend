@@ -1452,7 +1452,8 @@ export class AiService {
                               requested_model: this.provider.status().model,
                               task_policy_version: AI_TASK_RULE_VERSION,
                               context_manifest_version: AI_CONTEXT_POLICY_VERSION,
-                              provider_profile_version: 'openai-responses-background-v1',
+                              provider_profile_version:
+                                  this.provider.status().profileVersion ?? 'openai-responses-background-v1',
                               updated_at: now,
                               expires_at: operationExpiresAt,
                           }
@@ -1610,7 +1611,8 @@ export class AiService {
                               requested_model: this.provider.status().model,
                               task_policy_version: AI_TASK_RULE_VERSION,
                               context_manifest_version: AI_CONTEXT_POLICY_VERSION,
-                              provider_profile_version: 'openai-responses-background-v1',
+                              provider_profile_version:
+                                  this.provider.status().profileVersion ?? 'openai-responses-background-v1',
                               updated_at: startedAt,
                               expires_at: operationExpiresAt,
                           }

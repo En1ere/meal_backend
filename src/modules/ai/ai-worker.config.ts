@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
 import { z } from 'zod';
+import { aiMoneyUnits, aiProviderProfile } from '../../shared/config/ai-provider-profile.js';
 
 const schema = z.object({
     NODE_ENV: z.literal('production'),
@@ -8,6 +9,8 @@ const schema = z.object({
     AI_API_TOKEN_FILE: z.string(),
     AI_API_BASE_URL: z.url(),
     AI_MODEL: z.string().trim().min(1).max(128),
+    AI_PROVIDER_PROFILE_VERSION: z.string().trim().min(1).max(128),
+    AI_MONTHLY_BUDGET_USD: z.string().regex(/^\d{1,7}(?:\.\d{1,8})?$/),
     AI_WORKER_OWNER_ID: z.string().regex(/^[a-z][a-z0-9-]{2,63}$/),
     AI_WORKER_BATCH_SIZE: z.coerce.number().int().min(1).max(20).default(5),
     AI_WORKER_POLL_MS: z.coerce.number().int().min(250).max(60_000).default(2_000),
@@ -39,7 +42,11 @@ export function readAiWorkerConfig(env: NodeJS.ProcessEnv) {
         throw new Error('AI worker database must target meal_planner_postgres');
     if (provider.protocol !== 'https:' || provider.username || provider.password || provider.search || provider.hash)
         throw new Error('AI_API_BASE_URL must be a credential-free HTTPS URL');
+    const providerProfile = aiProviderProfile(value.AI_PROVIDER_PROFILE_VERSION);
+    if (providerProfile.model !== value.AI_MODEL) throw new Error('AI provider profile must match AI_MODEL');
+    const monthlyBudgetUnits = aiMoneyUnits(value.AI_MONTHLY_BUDGET_USD);
+    if (monthlyBudgetUnits <= 0n) throw new Error('AI_MONTHLY_BUDGET_USD must be greater than zero');
     if (value.AI_WORKER_LEASE_SECONDS * 1_000 < 2 * 30_000 + value.AI_WORKER_PROVIDER_POLL_MS)
         throw new Error('AI_WORKER_LEASE_SECONDS must cover provider timeouts and polling margin');
-    return { ...value, databaseUrl, apiToken };
+    return { ...value, databaseUrl, apiToken, providerProfile, monthlyBudgetUnits };
 }

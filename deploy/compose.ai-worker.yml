@@ -18,6 +18,8 @@ services:
             AI_API_TOKEN_FILE: /run/secrets/ai_api_token
             AI_API_BASE_URL: ${AI_API_BASE_URL:-https://api.openai.com/v1/}
             AI_MODEL: ${AI_MODEL:-gpt-6-luna}
+            AI_PROVIDER_PROFILE_VERSION: ${AI_PROVIDER_PROFILE_VERSION:-openai-gpt-6-luna-standard-2026-11-07}
+            AI_MONTHLY_BUDGET_USD: ${AI_MONTHLY_BUDGET_USD:-}
             AI_WORKER_OWNER_ID: ${AI_WORKER_OWNER_ID:-ai-worker-primary}
             AI_WORKER_BATCH_SIZE: ${AI_WORKER_BATCH_SIZE:-5}
             AI_WORKER_POLL_MS: ${AI_WORKER_POLL_MS:-2000}

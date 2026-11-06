@@ -8,6 +8,14 @@ export {
 export { AiReconciliationService } from './ai-reconciliation.service.js';
 export { readAiWorkerConfig, type AiWorkerConfig } from './ai-worker.config.js';
 export { AiOperationProcessor } from './ai-operation.processor.js';
+export {
+    AI_PROVIDER_PROFILES,
+    aiMoneyUnits,
+    aiProviderCost,
+    aiProviderProfile,
+    type AiProviderProfile,
+    type AiProviderProfileVersion,
+} from '../../shared/config/ai-provider-profile.js';
 export { AiService, monthlyQuotaWindow } from './ai.service.js';
 export {
     AI_CONTEXT_POLICY_VERSION,

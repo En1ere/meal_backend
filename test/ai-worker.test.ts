@@ -7,6 +7,7 @@ const compose = readFileSync('deploy/compose.ai-worker.yml', 'utf8');
 const productionCompose = readFileSync('deploy/compose.production.yml', 'utf8');
 const provision = readFileSync('deploy/provision-ai-worker-runtime.sh', 'utf8');
 const grants = readFileSync('database/application-grants.sql', 'utf8');
+const workerConfig = readFileSync('src/modules/ai/ai-worker.config.ts', 'utf8');
 
 void test('AI worker claims bounded queue work with serializable leases and fencing', () => {
     assert.match(processor, /setIsolationLevel\('serializable'\)/);
@@ -22,7 +23,7 @@ void test('AI worker rechecks access, tariff and sensitive consents before provi
     assert.match(processor, /aiTaskAvailable\(aiTask\(job\.taskType\), plan\)/);
     assert.match(processor, /kind='ai_data_access'/);
     assert.match(processor, /kind='special_category'/);
-    assert.match(processor, /if \(!\(await this\.authorized\(job\)\)\)/);
+    assert.match(processor, /!job\.providerRequestId && !\(await this\.authorized\(job\)\)/);
 });
 
 void test('AI worker renders continuation history and restores an included clarification on confirmed failure', () => {
@@ -41,9 +42,21 @@ void test('AI worker holds unknown outcomes and only releases confirmed failures
     assert.doesNotMatch(processor, /unknown[\s\S]{0,300}kind,'release'/);
 });
 
+void test('AI worker reserves a versioned provider estimate under a serialized monthly stop-loss', () => {
+    assert.match(processor, /pg_advisory_xact_lock\(187731,1\)/);
+    assert.match(processor, /heldUnits \+ aiMoneyUnits\(estimatedCost\) > this\.config\.monthlyBudgetUnits/);
+    assert.match(processor, /provider_budget_exhausted/);
+    assert.match(processor, /estimated_cost/);
+    assert.match(processor, /actual_cost=\$\{actualCost\}/);
+    assert.match(workerConfig, /AI_MONTHLY_BUDGET_USD/);
+    assert.match(workerConfig, /providerProfile\.model !== value\.AI_MODEL/);
+});
+
 void test('AI worker is an isolated egress container with file-mounted secrets and a least-privilege role', () => {
     assert.match(compose, /DATABASE_URL_FILE: \/run\/secrets\/ai_worker_database_url/);
     assert.match(compose, /AI_API_TOKEN_FILE: \/run\/secrets\/ai_api_token/);
+    assert.match(compose, /AI_MONTHLY_BUDGET_USD: \$\{AI_MONTHLY_BUDGET_USD:-\}/);
+    assert.match(workerConfig, /AI_MONTHLY_BUDGET_USD must be greater than zero/);
     assert.match(productionCompose, /AI_BACKGROUND_EXECUTION_ENABLED: \$\{AI_WORKER_ENABLED:-false\}/);
     assert.match(compose, /networks: \[meal-db, meal-egress\]/);
     assert.match(compose, /read_only: true/);

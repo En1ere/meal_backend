@@ -54,6 +54,8 @@ services:
             ADMIN_ALLOWED_IPS: ${ADMIN_ALLOWED_IPS:-}
             AI_API_BASE_URL: ${AI_API_BASE_URL:-https://api.openai.com/v1/}
             AI_MODEL: ${AI_MODEL:-gpt-6-luna}
+            AI_PROVIDER_PROFILE_VERSION: ${AI_PROVIDER_PROFILE_VERSION:-openai-gpt-6-luna-standard-2026-11-07}
+            AI_MONTHLY_BUDGET_USD: ${AI_MONTHLY_BUDGET_USD:-}
             AI_BACKGROUND_EXECUTION_ENABLED: ${AI_WORKER_ENABLED:-false}
             AI_RECONCILIATION_ENABLED: 'false'
             COOKING_LIFECYCLE_ENABLED: 'false'

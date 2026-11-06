@@ -53,9 +53,9 @@ grant select on meal.ai_operations,meal.ai_operation_attempts,meal.ai_tasks,meal
 grant insert on meal.ai_operation_attempts,meal.ai_ledger,meal.ai_messages to meal_ai_worker;
 grant update(lifecycle_state,financial_state,failure_category,failure_retryable,next_attempt_at,lease_owner,
  lease_token,lease_until,attempt_count,provider_client_request_id,provider_request_id,actual_model,token_usage,
- service_tier,result_snapshot,finished_at,updated_at,version) on meal.ai_operations to meal_ai_worker;
+ service_tier,result_snapshot,provider_cost,finished_at,updated_at,version) on meal.ai_operations to meal_ai_worker;
 grant update(state,provider_request_id,actual_model,service_tier,input_tokens,output_tokens,reasoning_tokens,
- error_category,error_code,submitted_at,finished_at,latency_ms) on meal.ai_operation_attempts to meal_ai_worker;
+ estimated_cost,actual_cost,error_category,error_code,submitted_at,finished_at,latency_ms) on meal.ai_operation_attempts to meal_ai_worker;
 grant update(balance_projection,reserved_projection,version) on meal.ai_buckets to meal_ai_worker;
 grant update(status,version) on meal.ai_intervals,meal.ai_tasks to meal_ai_worker;
 SQL
