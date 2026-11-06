@@ -83,6 +83,17 @@ docker exec --user postgres "$postgres_id" pg_restore --exit-on-error --single-t
     --username "${POSTGRES_USER:-meal_owner}" --no-owner --no-acl \
     --role "${POSTGRES_USER:-meal_owner}" --dbname meal_planner_postgres "$restore_path"
 
+expected_facts=$(compose --profile tools run --rm --no-deps --entrypoint node migrate \
+    --input-type=module --eval '
+      import fs from "node:fs";
+      const manifest = JSON.parse(fs.readFileSync("database/manifest.json", "utf8"));
+      if (!manifest.migrations?.every((migration,index) => migration.version === index + 1)) process.exit(65);
+      console.log([manifest.migrations.length,manifest.totalTables,manifest.foreignKeys,manifest.postgresMajor].join("/"));
+    ')
+printf '%s\n' "$expected_facts" | grep -Eq '^[0-9]+/[0-9]+/[0-9]+/[0-9]+$' || {
+    echo "Candidate database manifest is invalid" >&2; exit 65;
+}
+expected_migration_count=${expected_facts%%/*}
 compose --profile tools run --rm --no-deps --entrypoint cat migrate database/application-grants.sql \
     | compose exec -T postgres psql --username "${POSTGRES_USER:-meal_owner}" \
         --dbname meal_planner_postgres --no-password --set ON_ERROR_STOP=1
@@ -93,8 +104,13 @@ select
  (select count(*) from meal.schema_migrations),
  (select count(*) from information_schema.tables where table_schema='meal' and table_type='BASE TABLE'),
  (select count(*) from pg_constraint c join pg_namespace n on n.oid=c.connamespace where n.nspname='meal' and c.contype='f'),
- current_setting('server_version_num')::int/10000;")
-[ "$facts" = "34/227/519/18" ] || { echo "Restored database invariant mismatch" >&2; exit 65; }
+ current_setting('server_version_num')::int/10000,
+ not exists(
+   select 1 from generate_series(1,$expected_migration_count) expected(version)
+   left join meal.schema_migrations actual using(version)
+   where actual.version is null
+ );")
+[ "$facts" = "$expected_facts/t" ] || { echo "Restored database invariant mismatch" >&2; exit 65; }
 role_facts=$(compose exec -T postgres psql --username "${POSTGRES_USER:-meal_owner}" \
     --dbname meal_planner_postgres --no-password --tuples-only --no-align --field-separator / --command "
 select app.rolcanlogin,app.rolinherit,mail.rolcanlogin,mail.rolinherit,runtime.rolcanlogin,runtime.rolinherit,

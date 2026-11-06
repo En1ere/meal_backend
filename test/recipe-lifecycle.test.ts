@@ -1,13 +1,53 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { sanitizePublicReviewReason } from '../src/modules/recipe-lifecycle/recipe-lifecycle.service.js';
-import { workspaceRecipeSchema } from '../src/modules/recipe-workspace/recipe-workspace.contracts.js';
-import { contentResultSchema } from '../src/modules/admin-content/admin-content.contracts.js';
+import { projectRecipeLifecycle, sanitizePublicReviewReason } from '../src/modules/recipe-lifecycle/public.js';
+import { workspaceRecipeSchema } from '../src/modules/recipe-workspace/public.js';
+import { contentResultSchema } from '../src/modules/admin-content/public.js';
 
 void test('author review reason is bounded and strips control characters', () => {
     assert.equal(sanitizePublicReviewReason('  Исправьте\n\tописание\u0000 ', 'rejected'), 'Исправьте описание');
     assert.equal(sanitizePublicReviewReason(null, 'rejected'), 'Рецепт требует исправлений перед повторной отправкой.');
     assert.equal(sanitizePublicReviewReason('[internal] operational note', 'pending'), '[internal] operational note');
+});
+
+void test('lifecycle projection resolves review and publication axes without infrastructure', () => {
+    const publication = {
+        revisionId: '72000000-0000-4000-8000-000000000001',
+        publishedAt: '2026-10-28T00:00:00.000Z',
+    };
+    assert.deepEqual(
+        projectRecipeLifecycle({
+            currentRevisionId: '72000000-0000-4000-8000-000000000002',
+            fallbackStatus: 'draft',
+            review: {
+                revisionId: '72000000-0000-4000-8000-000000000002',
+                status: 'in_review',
+                publicReason: null,
+            },
+            publication,
+        }),
+        {
+            review: {
+                revisionId: '72000000-0000-4000-8000-000000000002',
+                status: 'pending',
+                publicReason: null,
+            },
+            publication,
+        },
+    );
+    assert.equal(
+        projectRecipeLifecycle({
+            currentRevisionId: '72000000-0000-4000-8000-000000000002',
+            fallbackStatus: 'hidden',
+            review: {
+                revisionId: '72000000-0000-4000-8000-000000000001',
+                status: 'published',
+                publicReason: null,
+            },
+            publication,
+        }).review.status,
+        'hidden',
+    );
 });
 
 void test('workspace recipe exposes only additive review and publication lifecycle fields', () => {

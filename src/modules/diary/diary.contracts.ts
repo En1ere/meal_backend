@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { inventoryUnitSchema, quantitySchema } from '../inventory/inventory.contracts.js';
-import { proAccessSchema } from '../pro-overview/pro-overview.contracts.js';
+import { inventoryUnitSchema, quantitySchema } from '../inventory/public.js';
+import { proAccessSchema } from '../pro-overview/public.js';
 
 export const diaryMealSchema = z.enum(['breakfast', 'snack', 'lunch', 'dinner', 'other']);
 export const diaryNutrientsSchema = z.strictObject({

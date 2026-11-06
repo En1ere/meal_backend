@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { registrationLegalEvidenceSchema } from '../legal-consents/legal-consent.contracts.js';
+import { registrationLegalEvidenceSchema } from '../legal-consents/public.js';
 
 export const emailSchema = z.string().trim().toLowerCase().email().max(254);
 export const passwordSchema = z

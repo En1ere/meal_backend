@@ -2,7 +2,7 @@ import { ConflictException, Injectable, NotFoundException, ServiceUnavailableExc
 import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
-import { AdminAccessService } from '../admin-auth/admin-access.service.js';
+import { AdminAccessService } from '../admin-auth/public.js';
 import type { Principal } from '../auth/auth.service.js';
 import {
     adminFreeAiGrantResultSchema,

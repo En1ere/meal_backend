@@ -4,12 +4,12 @@ import { sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import { RecipePolicyService } from '../recipe-policy/recipe-policy.service.js';
-import { EntitlementsService } from '../entitlements/entitlements.service.js';
-import { LegalConsentService } from '../legal-consents/legal-consent.service.js';
-import { recipeNutritionSchema } from '../recipes/recipes.contracts.js';
-import { RecipeLifecycleService } from '../recipe-lifecycle/recipe-lifecycle.service.js';
-import { ContentReleasesService } from '../content-releases/content-releases.service.js';
+import { RecipePolicyService } from '../recipe-policy/public.js';
+import { EntitlementsService } from '../entitlements/public.js';
+import { LegalConsentService } from '../legal-consents/public.js';
+import { recipeNutritionSchema } from '../recipes/public.js';
+import { RecipeLifecycleService } from '../recipe-lifecycle/public.js';
+import { ContentReleasesService } from '../content-releases/public.js';
 import { workspaceNutrition, workspaceIngredientSource, type WorkspaceComposition } from './recipe-workspace.domain.js';
 import {
     workspaceRecipeSchema,

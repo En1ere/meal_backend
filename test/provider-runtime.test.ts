@@ -12,7 +12,7 @@ import {
     secretReferenceSchema,
     type ProviderObservation,
     type ProviderTelemetry,
-} from '../src/modules/provider-runtime/provider-runtime.js';
+} from '../src/modules/provider-runtime/public.js';
 
 const reference = {
     backend: 'vault_candidate',

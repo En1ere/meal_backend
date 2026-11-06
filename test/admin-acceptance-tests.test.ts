@@ -1,15 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
-import {
-    acceptanceCatalog,
-    validateAcceptanceCatalog,
-} from '../src/modules/admin-acceptance-tests/admin-acceptance-tests.catalog.js';
+import { acceptanceCatalog, validateAcceptanceCatalog } from '../src/modules/admin-acceptance-tests/public.js';
 import {
     acceptanceResetSchema,
     acceptanceUpdateSchema,
     acceptanceWorkspaceSchema,
-} from '../src/modules/admin-acceptance-tests/admin-acceptance-tests.contracts.js';
+} from '../src/modules/admin-acceptance-tests/public.js';
 
 void test('acceptance catalog has stable unique identities and complete four-repository coverage', () => {
     assert.equal(acceptanceCatalog.cases.length, 83);

@@ -1,9 +1,11 @@
 import { writeFile } from 'node:fs/promises';
 import { Kysely, PostgresDialect } from 'kysely';
 import pg from 'pg';
-import { readMailWorkerConfig } from '../dist/src/modules/account-mail/mail-worker.config.js';
-import { SmtpAccountMailProvider } from '../dist/src/modules/account-mail/smtp-account-mail.js';
-import { AccountMailProcessor } from '../dist/src/modules/account-mail/account-mail.processor.js';
+import {
+    AccountMailProcessor,
+    readMailWorkerConfig,
+    SmtpAccountMailProvider,
+} from '../dist/src/modules/account-mail/public.js';
 import { databasePoolConfig } from '../dist/src/infrastructure/database/database.service.js';
 
 const config = readMailWorkerConfig(process.env);

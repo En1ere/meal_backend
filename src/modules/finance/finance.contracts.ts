@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { proAccessSchema } from '../pro-overview/pro-overview.contracts.js';
+import { proAccessSchema } from '../pro-overview/public.js';
 
 export const financeCategorySchema = z.enum([
     'groceries',

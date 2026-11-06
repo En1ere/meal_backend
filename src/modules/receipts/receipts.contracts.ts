@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { cookingQuantitySchema } from '../cooking/cooking.contracts.js';
-import { quantitySchema } from '../inventory/inventory.contracts.js';
+import { cookingQuantitySchema } from '../cooking/public.js';
+import { quantitySchema } from '../inventory/public.js';
 import { workflowScopeSchema as shoppingScopeSchema } from '../../shared/contracts/workflow-scope.js';
 export const receiptScopeQuerySchema = z.object({ scope: shoppingScopeSchema.default('private') }).strict();
 export const purchaseLineInputSchema = z

@@ -2,7 +2,7 @@ import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RouteConfig } from '@nestjs/platform-fastify';
 import type { FastifyRequest } from 'fastify';
-import { AdminSessionGuard } from '../admin-auth/admin-auth.http.js';
+import { AdminSessionGuard } from '../admin-auth/public.js';
 import type { Principal } from '../auth/auth.service.js';
 import { AdminObservabilityService } from './admin-observability.service.js';
 

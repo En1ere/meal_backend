@@ -1,7 +1,7 @@
 import { createDecipheriv, randomUUID } from 'node:crypto';
 import { sql, type Kysely } from 'kysely';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import type { WebPushDeliveryProvider } from '../delivery-infrastructure/delivery-provider.js';
+import type { WebPushDeliveryProvider } from '../delivery-infrastructure/public.js';
 type Config = { subscriptionKey: Buffer; WEB_PUSH_WORKER_BATCH_SIZE: number; WEB_PUSH_WORKER_LEASE_SECONDS: number };
 type Claimed = {
     id: string;

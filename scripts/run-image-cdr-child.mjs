@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import sharp from 'sharp';
-import { sanitizeImage } from '../dist/src/modules/media-processing/image-cdr.js';
+import { sanitizeImage } from '../dist/src/modules/media-processing/public.js';
 
 sharp.cache(false);
 sharp.concurrency(1);

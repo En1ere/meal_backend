@@ -3,7 +3,7 @@ import { ApiBody, ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { Principal } from '../auth/auth.service.js';
-import { AdminSessionGuard } from '../admin-auth/admin-auth.http.js';
+import { AdminSessionGuard } from '../admin-auth/public.js';
 import { webPushPolicyExecuteSchema, webPushPolicyInputSchema } from './admin-runtime-settings.contracts.js';
 import { AdminRuntimeSettingsService } from './admin-runtime-settings.service.js';
 type Request = FastifyRequest & { principal: Principal };

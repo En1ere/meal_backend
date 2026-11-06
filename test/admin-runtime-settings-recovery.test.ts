@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { runtimeSettingsTabSchema } from '../src/modules/admin-runtime-settings/admin-runtime-settings.contracts.js';
+import { runtimeSettingsTabSchema } from '../src/modules/admin-runtime-settings/public.js';
 
 void test('runtime settings exposes a separate recovery-key tab without secret material', async () => {
     assert.equal(runtimeSettingsTabSchema.safeParse('backup_recovery').success, true);

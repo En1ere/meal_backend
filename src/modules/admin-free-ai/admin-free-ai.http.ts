@@ -2,7 +2,7 @@ import { BadRequestException, Body, Controller, Get, HttpCode, Param, Post, Req,
 import { ApiBody, ApiCookieAuth, ApiParam, ApiTags } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { AdminSessionGuard } from '../admin-auth/admin-auth.http.js';
+import { AdminSessionGuard } from '../admin-auth/public.js';
 import type { Principal } from '../auth/auth.service.js';
 import { adminFreeAiGrantSchema } from './admin-free-ai.contracts.js';
 import { AdminFreeAiService } from './admin-free-ai.service.js';

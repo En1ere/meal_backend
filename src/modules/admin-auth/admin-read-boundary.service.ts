@@ -8,17 +8,15 @@ import type { Principal } from '../auth/auth.service.js';
 
 type Tx = Transaction<DatabaseSchema>;
 const requestIdSchema = z.string().uuid();
+type AdminReadAudit =
+    | Readonly<{ action: 'admin.observability.read'; targetType: 'observability' }>
+    | Readonly<{ action: 'admin.ai.read'; targetType: 'ai-control-plane' }>;
 
 @Injectable()
 export class AdminReadBoundary {
     constructor(private readonly database: DatabaseService) {}
 
-    run<T>(
-        actor: Principal,
-        requestId: string,
-        audit: Readonly<{ action: 'admin.observability.read'; targetType: 'observability' }>,
-        work: (tx: Tx) => Promise<T>,
-    ): Promise<T> {
+    run<T>(actor: Principal, requestId: string, audit: AdminReadAudit, work: (tx: Tx) => Promise<T>): Promise<T> {
         return this.database.transaction(async (tx) => {
             const allowed = await tx
                 .selectFrom('sessions')

@@ -3,8 +3,7 @@ import { sql } from 'kysely';
 import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import { WorkerRuntimeFactory } from '../../infrastructure/workers/worker-runtime.factory.js';
-import { AiService } from './ai.service.js';
-import type { WorkerCounters } from '../operational-runtime/worker-runtime.js';
+import type { WorkerCounters } from '../operational-runtime/public.js';
 
 const intervalMs = 60_000;
 const staleAfterMinutes = 15;
@@ -15,11 +14,8 @@ export class AiReconciliationService implements OnModuleInit, OnApplicationShutd
     private readonly logger = new Logger(AiReconciliationService.name);
     private timer?: ReturnType<typeof setInterval>;
     private running: Promise<void> | undefined;
-    private cursor: string | null = null;
-
     constructor(
         private readonly database: DatabaseService,
-        private readonly ai: AiService,
         private readonly workerRuntime: WorkerRuntimeFactory,
         @Inject(APP_CONFIG) private readonly config: AppConfig,
     ) {}
@@ -60,29 +56,36 @@ export class AiReconciliationService implements OnModuleInit, OnApplicationShutd
     private async tick(): Promise<WorkerCounters> {
         if (!this.database.db || !(await this.database.ready()))
             return { attempted: 0, succeeded: 0, deferred: 0, failed: 0 };
-        const operations = await sql<{
-            id: string;
-            userId: string;
-        }>`select o.id,c.user_id as "userId" from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id join meal.ai_tasks t on t.id=i.task_id join meal.ai_conversations c on c.id=t.conversation_id where o.status='processing' and o.started_at<=now()-${staleAfterMinutes}*interval '1 minute' and (${this.cursor}::uuid is null or o.id>${this.cursor}::uuid) order by o.id limit ${batchSize}`.execute(
-            this.database.db,
-        );
-        if (!operations.rows.length) {
-            this.cursor = null;
-            return { attempted: 0, succeeded: 0, deferred: 0, failed: 0 };
-        }
-        let succeeded = 0;
-        let failed = 0;
-        for (const operation of operations.rows) {
-            try {
-                await this.ai.reconcileInterrupted(operation.userId, operation.id);
-                succeeded += 1;
-            } catch {
-                failed += 1;
-                this.logger.warn('Stale AI operation deferred to a later pass');
-            } finally {
-                this.cursor = operation.id;
-            }
-        }
-        return { attempted: operations.rows.length, succeeded, deferred: 0, failed };
+        const operations = await sql<{ id: string }>`
+            with expired as (
+                select id
+                from meal.ai_operations
+                where lifecycle_state='running'
+                  and lease_until<=now()
+                  and started_at<=now()-${staleAfterMinutes}*interval '1 minute'
+                order by lease_until,id
+                limit ${batchSize}
+                for update skip locked
+            )
+            update meal.ai_operations o
+            set lifecycle_state='unknown',
+                financial_state='reconciliation_hold',
+                failure_category='process_interrupted',
+                failure_retryable=false,
+                result_snapshot=jsonb_set(coalesce(o.result_snapshot,'{}'::jsonb),'{failure}','"process_interrupted"'::jsonb,true),
+                updated_at=now(),
+                version=o.version+1
+            from expired
+            where o.id=expired.id
+            returning o.id
+        `.execute(this.database.db);
+        if (operations.rows.length)
+            this.logger.warn(`${operations.rows.length} expired AI operation lease(s) moved to reconciliation hold`);
+        return {
+            attempted: operations.rows.length,
+            succeeded: operations.rows.length,
+            deferred: 0,
+            failed: 0,
+        };
     }
 }

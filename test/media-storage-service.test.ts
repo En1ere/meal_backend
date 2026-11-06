@@ -16,15 +16,15 @@ import {
 } from 'kysely';
 import type { DatabaseService } from '../src/infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../src/infrastructure/database/schema.generated.js';
-import type {
+import {
     MediaObjectPutRequest,
     MediaObjectReadResult,
     MediaObjectStore,
     MediaObjectLocation,
-} from '../src/modules/media-storage/media-object-store.js';
-import { MediaObjectStoreError } from '../src/modules/media-storage/media-object-store.js';
-import { MediaStorageService } from '../src/modules/media-storage/media-storage.service.js';
-import { MediaStorageTokenSigner } from '../src/modules/media-storage/media-storage.token.js';
+    MediaObjectStoreError,
+    MediaStorageService,
+    MediaStorageTokenSigner,
+} from '../src/modules/media-storage/public.js';
 import { readConfig } from '../src/app/config.js';
 
 const assetId = '00000000-0000-4000-8000-000000000001';

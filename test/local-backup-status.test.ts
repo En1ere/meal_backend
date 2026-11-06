@@ -4,7 +4,7 @@ import {
     isSafeLocalBackupDirectory,
     localBackupStatusSchema,
     parseLocalBackupStatus,
-} from '../src/modules/admin-runtime-settings/local-backup-status.reader.js';
+} from '../src/modules/admin-runtime-settings/public.js';
 
 const observedAt = '2026-11-02T20:00:00.000Z';
 const status = {

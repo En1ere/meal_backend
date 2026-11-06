@@ -3,13 +3,13 @@ import { z } from 'zod';
 import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import { browserTelemetryInputSchema, type BrowserTelemetryInput } from './telemetry.contracts.js';
 import { TelemetryRepository, type SafeTelemetryRecord } from './telemetry.repository.js';
-import { providerObservationSchema, type ProviderObservation } from '../provider-runtime/provider-runtime.js';
+import { providerObservationSchema, type ProviderObservation } from '../provider-runtime/public.js';
 import {
     workerAlertSchema,
     workerRunObservationSchema,
     type WorkerAlert,
     type WorkerRunObservation,
-} from '../operational-runtime/worker-runtime.js';
+} from '../operational-runtime/public.js';
 
 export const operationalTelemetryCodeSchema = z.enum([
     'backend.http.unhandled',

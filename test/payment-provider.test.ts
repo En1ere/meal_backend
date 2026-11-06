@@ -9,7 +9,7 @@ import {
     validatePaymentSnapshot,
     verifiedPaymentEvent,
     type PaymentStartRequest,
-} from '../src/modules/payments/payment-provider.js';
+} from '../src/modules/payments/public.js';
 
 const orderId = 'c9cc69e6-430f-4ef8-b6fe-335647a248d0';
 const request = (overrides: Partial<PaymentStartRequest> = {}): PaymentStartRequest => ({

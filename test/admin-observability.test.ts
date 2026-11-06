@@ -4,29 +4,28 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { UnauthorizedException } from '@nestjs/common';
 import { createApp } from '../src/app/create-app.js';
 import { readConfig } from '../src/app/config.js';
-import { AdminAccessService } from '../src/modules/admin-auth/admin-access.service.js';
-import { AdminReadBoundary } from '../src/modules/admin-auth/admin-read-boundary.service.js';
+import { AdminAccessService, AdminReadBoundary } from '../src/modules/admin-auth/public.js';
 import {
     adminObservabilitySchema,
     hostCollectorSnapshotSchema,
     observabilityContainerServiceSchema,
     observabilityFilesystemScopeSchema,
-} from '../src/modules/admin-observability/admin-observability.contracts.js';
-import { AdminObservabilityService } from '../src/modules/admin-observability/admin-observability.service.js';
+} from '../src/modules/admin-observability/public.js';
+import { AdminObservabilityService } from '../src/modules/admin-observability/public.js';
 import {
     AdminObservabilityRepository,
     observabilityMetricAllowlist,
     type ObservabilityRepositorySnapshot,
-} from '../src/modules/admin-observability/admin-observability.repository.js';
+} from '../src/modules/admin-observability/public.js';
 import {
     HostSnapshotReader,
     isSafeSnapshotDirectory,
     parseHostSnapshot,
-} from '../src/modules/admin-observability/host-snapshot.reader.js';
+} from '../src/modules/admin-observability/public.js';
 import { AuthService, type Principal } from '../src/modules/auth/auth.service.js';
 import type { DatabaseService } from '../src/infrastructure/database/database.service.js';
-import { providerServiceSchema } from '../src/modules/provider-runtime/provider-runtime.js';
-import { workerTaskIdSchema } from '../src/modules/operational-runtime/worker-topology.js';
+import { providerServiceSchema } from '../src/modules/provider-runtime/public.js';
+import { workerTaskIdSchema } from '../src/modules/operational-runtime/public.js';
 
 const now = new Date('2026-10-29T10:00:00.000Z');
 const actor: Principal = {

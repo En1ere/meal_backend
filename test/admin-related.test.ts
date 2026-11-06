@@ -3,9 +3,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { randomUUID, createHash } from 'node:crypto';
 import { Kysely, DummyDriver, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler } from 'kysely';
-import { adminRelatedSources, relatedCollections } from '../src/modules/admin/admin-related.sources.js';
-import { adminRelatedSearchSchema, adminSearchSchema } from '../src/modules/admin/admin-read.contracts.js';
-import { cursorBinding, decodeAdminCursor } from '../src/modules/admin/admin-read.service.js';
+import {
+    adminRelatedSearchSchema,
+    adminRelatedSources,
+    adminSearchSchema,
+    cursorBinding,
+    decodeAdminCursor,
+    relatedCollections,
+} from '../src/modules/admin/public.js';
 import type { Principal } from '../src/modules/auth/auth.service.js';
 
 await test('curated related projections use real columns without secret or JSON payload fields', () => {

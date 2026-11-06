@@ -1,32 +1,70 @@
-import type { AiTaskType } from './ai.contracts.js';
+import type { AiContextSourceKind, AiTaskType } from './ai.contracts.js';
+import type { PlanCode } from '../entitlements/public.js';
 
-export const AI_TASK_RULE_VERSION = 'ai-task-policy-v2';
+export const AI_TASK_RULE_VERSION = 'ai-task-policy-v3';
 
 export const aiTasks = [
-    { code: 'culinary_question', label: 'Кулинарный вопрос', taskClass: 'standard', cost: 1 },
-    { code: 'substitution', label: 'Подбор замены', taskClass: 'standard', cost: 1 },
-    { code: 'storage_advice', label: 'Совет по хранению', taskClass: 'standard', cost: 1 },
-    { code: 'ingredient_extraction', label: 'Извлечение ингредиентов', taskClass: 'standard', cost: 1 },
-    { code: 'product_classification', label: 'Классификация продукта', taskClass: 'standard', cost: 1 },
-    { code: 'recipe_from_stock', label: 'Рецепт из запасов', taskClass: 'advanced', cost: 2 },
-    { code: 'nutrition_calculation', label: 'Расчёт КБЖУ', taskClass: 'advanced', cost: 2 },
-    { code: 'personal_recommendation', label: 'Персональная рекомендация', taskClass: 'advanced', cost: 2 },
-    { code: 'beverage_pairing', label: 'Подбор напитка', taskClass: 'advanced', cost: 2 },
-    { code: 'portion_cost_calculation', label: 'Порции и стоимость', taskClass: 'advanced', cost: 2 },
-    { code: 'recipe_adaptation', label: 'Адаптация рецепта', taskClass: 'advanced', cost: 2 },
-    { code: 'shopping_list_generation', label: 'Список покупок', taskClass: 'heavy', cost: 3 },
-    { code: 'registry_analysis', label: 'Анализ реестра', taskClass: 'heavy', cost: 3 },
-    { code: 'review_summary', label: 'Саммаризация отзывов', taskClass: 'heavy', cost: 3 },
-    { code: 'meal_plan_generation', label: 'План питания', taskClass: 'heavy', cost: 4 },
-    { code: 'seasonal_analysis', label: 'Анализ сезонности', taskClass: 'heavy', cost: 4 },
-    { code: 'event_menu', label: 'Меню для события', taskClass: 'heavy', cost: 4 },
-    { code: 'document_analysis', label: 'Анализ документа', taskClass: 'heavy', cost: 5 },
+    { code: 'culinary_question', label: 'Кулинарный вопрос', taskClass: 'standard', cost: 1, minimumPlan: 'free' },
+    { code: 'substitution', label: 'Подбор замены', taskClass: 'standard', cost: 1, minimumPlan: 'free' },
+    { code: 'storage_advice', label: 'Совет по хранению', taskClass: 'standard', cost: 1, minimumPlan: 'free' },
+    {
+        code: 'ingredient_extraction',
+        label: 'Извлечение ингредиентов',
+        taskClass: 'standard',
+        cost: 1,
+        minimumPlan: 'free',
+    },
+    {
+        code: 'product_classification',
+        label: 'Классификация продукта',
+        taskClass: 'standard',
+        cost: 1,
+        minimumPlan: 'free',
+    },
+    { code: 'recipe_from_stock', label: 'Рецепт из запасов', taskClass: 'advanced', cost: 2, minimumPlan: 'free' },
+    { code: 'nutrition_calculation', label: 'Расчёт КБЖУ', taskClass: 'advanced', cost: 2, minimumPlan: 'pro' },
+    {
+        code: 'personal_recommendation',
+        label: 'Персональная рекомендация',
+        taskClass: 'advanced',
+        cost: 2,
+        minimumPlan: 'free',
+    },
+    { code: 'beverage_pairing', label: 'Подбор напитка', taskClass: 'advanced', cost: 2, minimumPlan: 'free' },
+    {
+        code: 'portion_cost_calculation',
+        label: 'Порции и стоимость',
+        taskClass: 'advanced',
+        cost: 2,
+        minimumPlan: 'pro',
+    },
+    { code: 'recipe_adaptation', label: 'Адаптация рецепта', taskClass: 'advanced', cost: 2, minimumPlan: 'free' },
+    { code: 'shopping_list_generation', label: 'Список покупок', taskClass: 'heavy', cost: 3, minimumPlan: 'plus' },
+    { code: 'registry_analysis', label: 'Анализ реестра', taskClass: 'heavy', cost: 3, minimumPlan: 'free' },
+    { code: 'review_summary', label: 'Саммаризация отзывов', taskClass: 'heavy', cost: 3, minimumPlan: 'free' },
+    { code: 'meal_plan_generation', label: 'План питания', taskClass: 'heavy', cost: 4, minimumPlan: 'plus' },
+    { code: 'seasonal_analysis', label: 'Анализ сезонности', taskClass: 'heavy', cost: 4, minimumPlan: null },
+    { code: 'event_menu', label: 'Меню для события', taskClass: 'heavy', cost: 4, minimumPlan: 'plus' },
+    { code: 'document_analysis', label: 'Анализ документа', taskClass: 'heavy', cost: 5, minimumPlan: null },
 ] as const satisfies ReadonlyArray<{
     code: AiTaskType;
     label: string;
     taskClass: 'standard' | 'advanced' | 'heavy';
     cost: 1 | 2 | 3 | 4 | 5;
+    minimumPlan: PlanCode | null;
 }>;
+
+const planRank: Record<PlanCode, number> = { free: 0, plus: 1, pro: 2 };
+
+export type AiTaskDefinition = (typeof aiTasks)[number];
+
+export function aiTaskAvailable(task: AiTaskDefinition, plan: PlanCode) {
+    return task.minimumPlan !== null && planRank[plan] >= planRank[task.minimumPlan];
+}
+
+export function aiAvailableTasks(plan: PlanCode) {
+    return aiTasks.filter((task) => aiTaskAvailable(task, plan));
+}
 
 const tokenBudgets = {
     1: { maxInputTokens: 8_000, maxOutputTokens: 1_500 },
@@ -43,7 +81,7 @@ export function aiTokenBudget(cost: 1 | 2 | 3 | 4 | 5) {
 export type AiContextManifest = {
     personalDataUsed: boolean;
     sources: Array<{
-        kind: 'user_prompt' | 'personal_inventory';
+        kind: AiContextSourceKind;
         label: string;
         itemCount: number;
         truncated: boolean;

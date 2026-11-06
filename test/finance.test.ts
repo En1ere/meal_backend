@@ -5,7 +5,7 @@ import {
     financeExpenseCreateSchema,
     financeExpenseSchema,
     financeAnalyticsSchema,
-} from '../src/modules/finance/finance.contracts.js';
+} from '../src/modules/finance/public.js';
 
 const id = '10000000-0000-4000-8000-000000000001';
 

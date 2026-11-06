@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { mediaChecksumSchema, mediaPurposeSchema } from '../media-infrastructure/media-provider.js';
+import { mediaChecksumSchema, mediaPurposeSchema } from '../media-infrastructure/public.js';
 
 export const mediaIntakeKindSchema = z.enum(['inventory_scan', 'receipt_photo']);
 

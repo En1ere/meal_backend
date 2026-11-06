@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { exportManifestSchema, exportPreviewRequestSchema } from '../src/modules/exports/exports.contracts.js';
-import { exportDataThrough, isProExportDomain, proExportSections } from '../src/modules/exports/exports.policy.js';
+import {
+    exportDataThrough,
+    exportManifestSchema,
+    exportPreviewRequestSchema,
+    isProExportDomain,
+    proExportSections,
+} from '../src/modules/exports/public.js';
 
 const userId = '10000000-0000-4000-8000-000000000001';
 

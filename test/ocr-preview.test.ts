@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { scanPreviewSchema } from '../src/modules/inventory-ingest/ingest.contracts.js';
-import { OcrPreviewClientError, requestOcrPreview } from '../src/modules/inventory-ingest/ocr-preview.client.js';
+import { OcrPreviewClientError, requestOcrPreview, scanPreviewSchema } from '../src/modules/inventory-ingest/public.js';
 
 void test('OCR preview contract always requires manual review', () => {
     const value = {

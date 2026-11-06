@@ -3,14 +3,10 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { readConfig } from '../src/app/config.js';
-import { webPushDeliveryRequestSchema } from '../src/modules/delivery-infrastructure/delivery-provider.js';
-import {
-    webPushPolicyExecuteSchema,
-    webPushPolicyInputSchema,
-} from '../src/modules/admin-runtime-settings/admin-runtime-settings.contracts.js';
-import { webPushSubscribeSchema } from '../src/modules/notifications/notifications.contracts.js';
-import { nextQuietHoursEnd } from '../src/modules/web-push/web-push.processor.js';
-import { classifyWebPushFailure } from '../src/modules/delivery-infrastructure/web-push.provider.js';
+import { classifyWebPushFailure, webPushDeliveryRequestSchema } from '../src/modules/delivery-infrastructure/public.js';
+import { webPushPolicyExecuteSchema, webPushPolicyInputSchema } from '../src/modules/admin-runtime-settings/public.js';
+import { webPushSubscribeSchema } from '../src/modules/notifications/public.js';
+import { nextQuietHoursEnd } from '../src/modules/web-push/public.js';
 
 const publicKey = `B${'a'.repeat(86)}`;
 const privateKey = 'b'.repeat(43);
@@ -146,7 +142,7 @@ void test('migration and deployment keep durable jobs, append-only attempts and 
     assert.match(common, /WEB_PUSH_ENABLED:-false/);
     assert.match(common, /compose_web_push_overlay rm --stop --force push-worker/);
     assert.match(deploy, /provision-web-push-runtime\.sh/);
-    assert.match(deploy, /schema_version=34/);
+    assert.match(deploy, /schema_version=\$candidate_schema_version/);
     assert.match(stack, /remove_disabled_web_push_worker/);
     assert.match(verify, /Web Push worker must use only database and egress networks/);
     assert.match(provision, /docker exec -i --user postgres/);

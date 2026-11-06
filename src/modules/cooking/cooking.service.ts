@@ -12,12 +12,12 @@ import {
 } from './cooking.contracts.js';
 import { personalWorkflow, workflowReplay, type WorkflowTx } from '../../shared/workflow/workflow.store.js';
 import { consumedRemainder, progressAttempt } from './cooking.domain.js';
-import { decimal } from '../inventory/inventory.domain.js';
-import { RecipesService } from '../recipes/recipes.service.js';
+import { decimal } from '../inventory/public.js';
+import { RecipesService } from '../recipes/public.js';
 import { CookingLifecycleService } from './cooking-lifecycle.service.js';
-import { consumePreserveContainer } from '../preserves/preserves.store.js';
+import { consumePreserveContainer } from '../preserves/public.js';
 import type { cookingListQuerySchema, cookingReminderPreferencesChangeSchema } from './cooking.contracts.js';
-import { ContentReleasesService } from '../content-releases/content-releases.service.js';
+import { ContentReleasesService } from '../content-releases/public.js';
 import { CookingStatisticsPolicy, DEFAULT_COOKING_STATISTICS_RULE } from './cooking-statistics.policy.js';
 
 const iso = (v: unknown) => (v instanceof Date ? v.toISOString() : v);

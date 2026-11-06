@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { planCodeSchema } from '../entitlements/entitlements.contracts.js';
+import { planCodeSchema } from '../entitlements/public.js';
 
 export const billingPeriodSchema = z.enum(['month', 'year']);
 

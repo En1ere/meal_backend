@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import type { z } from 'zod';
 import type { WorkflowTx } from '../../shared/workflow/workflow.store.js';
-import { decimal, decimalText } from '../inventory/inventory.domain.js';
+import { decimal, decimalText } from '../inventory/public.js';
 import type { purchaseReviewSchema } from './receipts.contracts.js';
 type Review = z.infer<typeof purchaseReviewSchema>;
 export async function reviewPurchase(

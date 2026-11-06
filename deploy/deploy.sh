@@ -27,6 +27,17 @@ if [ "$component" = backend ]; then
     candidate_backend_version=$(image_package_version "$candidate_image")
     require_semver previous-backend-version "$previous_backend_version"
     require_semver candidate-backend-version "$candidate_backend_version"
+    candidate_schema_version=$(docker run --rm --network none --entrypoint node "$candidate_image" \
+        --input-type=module --eval '
+          import fs from "node:fs";
+          const manifest = JSON.parse(fs.readFileSync("database/manifest.json", "utf8"));
+          const latest = manifest.migrations.at(-1)?.version;
+          if (!Number.isSafeInteger(latest) || !manifest.migrations.every((migration,index) => migration.version === index + 1)) process.exit(65);
+          console.log(latest);
+        ')
+    printf '%s\n' "$candidate_schema_version" | grep -Eq '^[1-9][0-9]*$' || {
+        echo "Candidate database manifest is invalid" >&2; exit 65;
+    }
     BACKEND_VERSION=$candidate_backend_version
     export BACKEND_VERSION
 fi
@@ -66,6 +77,7 @@ if [ "$component" = backend ]; then
     if media_processor_enabled; then backend_services="$backend_services media-processor"; fi
     if ocr_preview_enabled; then backend_services="$backend_services ocr-preview"; fi
     if web_push_enabled; then backend_services="$backend_services push-worker"; fi
+    if ai_worker_enabled; then backend_services="$backend_services ai-worker"; fi
     # shellcheck disable=SC2086
     compose pull $backend_services
 else
@@ -78,6 +90,7 @@ if [ "$component" = backend ]; then
     if media_processor_enabled; then backend_services="$backend_services media-processor"; fi
     if ocr_preview_enabled; then backend_services="$backend_services ocr-preview"; fi
     if web_push_enabled; then backend_services="$backend_services push-worker"; fi
+    if ai_worker_enabled; then backend_services="$backend_services ai-worker"; fi
     # shellcheck disable=SC2086
     compose stop $backend_services
     # The restore point must include every write accepted before maintenance begins.
@@ -100,6 +113,7 @@ SQL
             --dbname meal_planner_postgres --no-password --set ON_ERROR_STOP=1
     if media_processor_enabled; then MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/provision-media-processor-runtime.sh"; fi
     if web_push_enabled; then MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/provision-web-push-runtime.sh"; fi
+    if ai_worker_enabled; then MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/provision-ai-worker-runtime.sh"; fi
     remove_disabled_web_push_worker
     MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/proxy-smoke.sh" >"$state_dir/proxy-smoke.txt"
 fi
@@ -118,7 +132,7 @@ if ! MEAL_LOCK_HELD=1 sh "$SCRIPT_DIR/verify.sh" --component "$component"; then
         [ "$(stat -c %u "${BACKEND_ROLLBACK_EVIDENCE_FILE:-/nonexistent}" 2>/dev/null || echo invalid)" != 0 ] ||
         ! grep -Fqx "previous_image=$previous_image" "$BACKEND_ROLLBACK_EVIDENCE_FILE" ||
         ! grep -Fqx "candidate_image=$candidate_image" "$BACKEND_ROLLBACK_EVIDENCE_FILE" ||
-        ! grep -Fqx 'schema_version=34' "$BACKEND_ROLLBACK_EVIDENCE_FILE";
+        ! grep -Fqx "schema_version=$candidate_schema_version" "$BACKEND_ROLLBACK_EVIDENCE_FILE";
     }; then
         echo "Backend verification failed after migration; fail-closed until compatibility evidence authorizes application rollback" >&2
         exit 1

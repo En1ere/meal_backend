@@ -26,17 +26,24 @@ export const aiTokenBudgetSchema = z.strictObject({
     maxInputTokens: z.number().int().positive(),
     maxOutputTokens: z.number().int().positive(),
 });
+export const aiContextSourceKindSchema = z.enum([
+    'user_prompt',
+    'personal_inventory',
+    'preferences',
+    'nutrition_profile',
+]);
 export const aiContextManifestSchema = z.strictObject({
     personalDataUsed: z.boolean(),
     sources: z.array(
         z.strictObject({
-            kind: z.enum(['user_prompt', 'personal_inventory']),
+            kind: aiContextSourceKindSchema,
             label: z.string().min(1),
             itemCount: z.number().int().nonnegative(),
             truncated: z.boolean(),
         }),
     ),
 });
+export type AiContextSourceKind = z.infer<typeof aiContextSourceKindSchema>;
 export const aiOrchestrationSchema = z.strictObject({
     ruleVersion: z.string().min(1),
     taskClass: aiTaskClassSchema,
@@ -151,6 +158,47 @@ export const aiRunRequestSchema = z.strictObject({
     familyReserveAccepted: z.boolean(),
 });
 export const aiRunSchema = z.strictObject({ item: aiHistoryItemSchema });
+export const aiOperationStateSchema = z.enum([
+    'accepted',
+    'queued',
+    'running',
+    'succeeded',
+    'failed',
+    'cancelled',
+    'unknown',
+]);
+export const aiOperationFinancialStateSchema = z.enum([
+    'none',
+    'reserved',
+    'captured',
+    'released',
+    'reconciliation_hold',
+]);
+export const aiOperationSchema = z.strictObject({
+    item: z.strictObject({
+        id: z.uuid(),
+        taskId: z.uuid(),
+        conversationId: z.uuid(),
+        taskType: aiTaskTypeSchema,
+        taskPolicyVersion: z.string().min(1),
+        contextManifestVersion: z.string().min(1),
+        state: aiOperationStateSchema,
+        financialState: aiOperationFinancialStateSchema,
+        failure: z
+            .strictObject({
+                category: z.enum(['provider_error', 'provider_outcome_unknown', 'process_interrupted']),
+                retryable: z.boolean(),
+                userMessage: z.string().min(1).max(500),
+            })
+            .nullable(),
+        result: z.string().nullable(),
+        createdAt: z.iso.datetime(),
+        updatedAt: z.iso.datetime(),
+        expiresAt: z.iso.datetime(),
+        version: z.number().int().positive(),
+        readUrl: z.string().regex(/^\/api\/v1\/ai\/operations\/[0-9a-f-]+$/u),
+    }),
+});
 export const aiMessageSchema = z.strictObject({
     id: z.uuid(),
     role: z.enum(['user', 'assistant']),

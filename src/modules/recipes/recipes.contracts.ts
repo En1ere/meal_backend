@@ -1,8 +1,5 @@
 import { z } from 'zod';
-import {
-    recipeAllergenIngredientSchema,
-    recipeAllergenSchema,
-} from '../allergen-intelligence/allergen-intelligence.contracts.js';
+import { recipeAllergenIngredientSchema, recipeAllergenSchema } from '../allergen-intelligence/public.js';
 import { recipeSummarySchema } from '../../shared/contracts/recipe-public.js';
 export {
     recipeAvailabilitySummarySchema,

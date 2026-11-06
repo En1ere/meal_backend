@@ -15,9 +15,9 @@ import {
     type RecipesQuery,
 } from './recipes.contracts.js';
 import { recipeAvailability, publicRecipeImage, type RecipeStock } from './recipes.domain.js';
-import { EntitlementsService } from '../entitlements/entitlements.service.js';
-import { RecommendationsService } from '../recommendations/recommendations.service.js';
-import { AllergenIntelligenceService } from '../allergen-intelligence/allergen-intelligence.service.js';
+import { EntitlementsService } from '../entitlements/public.js';
+import { RecommendationsService } from '../recommendations/public.js';
+import { AllergenIntelligenceService } from '../allergen-intelligence/public.js';
 type Tx = Transaction<DatabaseSchema>;
 const published = sql`with published as (select distinct on(r.id) r.id,r.author_id,r.base_recipe_id,rr.id as revision_id,rr.title,rr.portions,rr.method,rr.description,rr.category,rr.image_url,rr.tags,rr.nutrition_snapshot,rr.timing,p.published_at from meal.recipes r join meal.recipe_revisions rr on rr.recipe_id=r.id join meal.recipe_publications p on p.revision_id=rr.id where p.unpublished_at is null and p.published_at<=now() and r.archived_at is null and r.status not in ('hidden','unpublished','deleted','archived') order by r.id,p.published_at desc,p.id desc)`;
 const summarySql = sql`p.id,p.revision_id as "revisionId",p.title,p.description,p.category,p.image_url as "imageUrl",p.tags,p.portions as "baseServings",p.published_at as "publishedAt",p.timing,(select u.login from meal.users u where u.id=p.author_id and u.status='active' and u.archived_at is null and u.email_verified_at is not null) as "authorLogin",(select avg(r.value)::float8 from meal.recipe_ratings r where r.recipe_id=p.id) as rating,(select count(*)::integer from meal.recipe_ratings r where r.recipe_id=p.id) as "ratingCount"`;

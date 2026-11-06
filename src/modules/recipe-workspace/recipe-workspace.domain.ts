@@ -1,4 +1,4 @@
-import { recipeNutritionSchema } from '../recipes/recipes.contracts.js';
+import { recipeNutritionSchema } from '../recipes/public.js';
 import type { WorkspaceDocument } from './recipe-workspace.contracts.js';
 import { workspaceNutritionSchema } from './recipe-workspace.contracts.js';
 const scale = 100000000n;

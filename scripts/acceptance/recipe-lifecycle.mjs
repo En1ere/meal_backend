@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { ConflictException } from '@nestjs/common';
 import { sql } from 'kysely';
-import { RecipeLifecycleService } from '../../dist/src/modules/recipe-lifecycle/recipe-lifecycle.service.js';
-import { ContentReleasesService } from '../../dist/src/modules/content-releases/content-releases.service.js';
-import { AdminRollbackRegistry } from '../../dist/src/modules/admin-review/admin-rollback.registry.js';
+import { RecipeLifecycleService } from '../../dist/src/modules/recipe-lifecycle/public.js';
+import { ContentReleasesService } from '../../dist/src/modules/content-releases/public.js';
+import { AdminRollbackRegistry } from '../../dist/src/modules/admin-review/public.js';
 
 const conflict = (error) => error instanceof ConflictException || error?.status === 409;
 

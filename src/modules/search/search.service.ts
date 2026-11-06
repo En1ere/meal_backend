@@ -3,7 +3,7 @@ import { sql, type Kysely } from 'kysely';
 import { z } from 'zod';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import { publicRecipeImage } from '../recipes/recipes.domain.js';
+import { publicRecipeImage } from '../recipes/public.js';
 import {
     brandSearchItemSchema,
     productSearchItemSchema,

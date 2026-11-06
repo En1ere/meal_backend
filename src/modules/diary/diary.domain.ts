@@ -1,5 +1,5 @@
 import type { DiaryComponent, DiaryEntry } from './diary.contracts.js';
-import { decimal, decimalText } from '../inventory/inventory.domain.js';
+import { decimal, decimalText } from '../inventory/public.js';
 
 export type PortionState = 'pending' | 'confirmed' | 'auto_confirmed' | 'refused' | 'cancelled';
 export type PortionDecision = 'confirmed' | 'refused' | 'cancelled';

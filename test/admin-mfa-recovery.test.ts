@@ -12,11 +12,7 @@ import {
     type Transaction,
 } from 'kysely';
 import type { DatabaseSchema } from '../src/infrastructure/database/schema.generated.js';
-import {
-    AdminMfaRecoveryError,
-    parseAdminMfaRecoveryArgs,
-    recoverAdminMfa,
-} from '../src/modules/admin-auth/admin-mfa-recovery.js';
+import { AdminMfaRecoveryError, parseAdminMfaRecoveryArgs, recoverAdminMfa } from '../src/modules/admin-auth/public.js';
 
 await test('admin MFA recovery arguments are dry-run by default and execute is explicitly double-gated', () => {
     assert.deepEqual(

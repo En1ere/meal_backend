@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { HttpException } from '@nestjs/common';
-import { decimal, decimalText, requireVersion, transition } from '../src/modules/inventory/inventory.domain.js';
+import { decimal, decimalText, requireVersion, transition } from '../src/modules/inventory/public.js';
 import {
     inventoryBatchSchema,
     inventoryCreateSchema,
     inventoryImportSchema,
     type InventoryBatch,
-} from '../src/modules/inventory/inventory.contracts.js';
+} from '../src/modules/inventory/public.js';
 const id = '10000000-0000-4000-8000-000000000001';
 const batch: InventoryBatch = {
     id,

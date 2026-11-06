@@ -3,12 +3,12 @@ import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
-import { decimal, decimalText } from '../inventory/inventory.domain.js';
-import { scaleRecipeQuantity } from '../recipes/recipes.domain.js';
+import { decimal, decimalText } from '../inventory/public.js';
+import { scaleRecipeQuantity } from '../recipes/public.js';
 import { scopedWorkflow, workflowReplay, type WorkflowTx } from '../../shared/workflow/workflow.store.js';
-import { EntitlementsService } from '../entitlements/entitlements.service.js';
-import { DiaryService } from '../diary/diary.service.js';
-import { recipeNutritionSchema } from '../recipes/recipes.contracts.js';
+import { EntitlementsService } from '../entitlements/public.js';
+import { DiaryService } from '../diary/public.js';
+import { recipeNutritionSchema } from '../recipes/public.js';
 import {
     planSchema,
     type planChangeCommitSchema,

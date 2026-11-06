@@ -1,5 +1,5 @@
 import { HttpException } from '@nestjs/common';
-import type { MediaPurpose } from '../media-infrastructure/media-provider.js';
+import type { MediaPurpose } from '../media-infrastructure/public.js';
 
 export type MediaPurposePolicy = Readonly<{
     purpose: MediaPurpose;

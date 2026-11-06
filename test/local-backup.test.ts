@@ -59,13 +59,16 @@ void test('backup unit exposes only the recovery key and fixed writable paths', 
     assert.match(unit, /TimeoutStartSec=2h/);
 });
 
-void test('restore drill is exact, isolated, disposable and checks schema 34 invariants', async () => {
+void test('restore drill is exact, isolated, disposable and checks manifest-bound schema invariants', async () => {
     const drill = await text('deploy/local-backup-restore-drill.sh');
     assert.match(drill, /--snapshot must be an exact restic snapshot ID/);
     assert.match(drill, /--network none/);
     assert.match(drill, /--tmpfs \/var\/lib\/postgresql/);
     assert.match(drill, /pg_restore --exit-on-error --single-transaction --no-owner --no-acl/);
-    assert.match(drill, /34\/227\/519\/18/);
+    assert.match(drill, /migration-manifest\.json/);
+    assert.match(drill, /\.migrations\|length/);
+    assert.match(drill, /generate_series\(1,\$expected_migration_count\)/);
+    assert.match(drill, /\[ "\$facts" = "\$expected_facts\/t" \]/);
     assert.match(drill, /elapsed.*14400/s);
     assert.match(drill, /source_unchanged=true/);
     assert.match(drill, /docker rm -f/);

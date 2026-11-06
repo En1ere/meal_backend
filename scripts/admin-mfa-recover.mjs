@@ -10,7 +10,7 @@ try {
         import('../dist/src/app/config.js'),
         import('../dist/src/app/app.module.js'),
         import('../dist/src/infrastructure/database/database.service.js'),
-        import('../dist/src/modules/admin-auth/admin-mfa-recovery.js'),
+        import('../dist/src/modules/admin-auth/public.js'),
     ]);
     RecoveryError = recovery.AdminMfaRecoveryError;
     const input = recovery.parseAdminMfaRecoveryArgs(process.argv.slice(2), process.env.ADMIN_RECOVERY_ENABLED);

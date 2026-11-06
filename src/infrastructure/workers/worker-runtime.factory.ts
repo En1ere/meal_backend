@@ -7,9 +7,9 @@ import {
     PostgresWorkerLeaseProvider,
     SanitizedJsonWorkerRuntimeSink,
     type WorkerCounters,
-} from '../../modules/operational-runtime/worker-runtime.js';
-import type { WorkerTaskId } from '../../modules/operational-runtime/worker-topology.js';
-import { AdminWorkerRuntimeSink, FanoutWorkerRuntimeSink } from '../../modules/telemetry/runtime-telemetry.js';
+    type WorkerTaskId,
+} from '../../modules/operational-runtime/public.js';
+import { AdminWorkerRuntimeSink, FanoutWorkerRuntimeSink } from '../../modules/telemetry/public.js';
 
 @Injectable()
 export class WorkerRuntimeFactory {

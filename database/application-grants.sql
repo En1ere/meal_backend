@@ -1,4 +1,4 @@
--- Apply separately after reviewed restore + migrations 1-33. No owner/superuser privileges.
+-- Apply separately after every migration listed in database/manifest.json. No owner/superuser privileges.
 BEGIN ISOLATION LEVEL SERIALIZABLE;
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='30s';
@@ -150,11 +150,16 @@ GRANT UPDATE(status,version) ON meal.stock_reservations TO meal_app;
 GRANT SELECT(id,user_id,family_id,quota_period_id,kind,granted,balance_projection,reserved_projection,expires_at,created_at,version)
  ON meal.ai_buckets TO meal_app;
 GRANT SELECT ON meal.ai_rule_versions,meal.ai_conversations,meal.ai_tasks,meal.ai_intervals,meal.ai_messages,meal.ai_operations TO meal_app;
-GRANT INSERT ON meal.ai_conversations,meal.ai_tasks,meal.ai_intervals,meal.ai_messages,meal.ai_operations,meal.ai_ledger TO meal_app;
+GRANT INSERT ON meal.ai_conversations,meal.ai_tasks,meal.ai_intervals,meal.ai_messages,meal.ai_ledger TO meal_app;
+GRANT INSERT(id,status,result_snapshot,started_at,finished_at,provider_cost,idempotency_key,interval_id,message_id,
+ user_id,task_id,contract_version,command_kind,request_hash,lifecycle_state,financial_state,queued_at,next_attempt_at,
+ requested_model,task_policy_version,context_manifest_version,provider_profile_version,updated_at,expires_at)
+ ON meal.ai_operations TO meal_app;
 GRANT UPDATE(title,archived_at,version) ON meal.ai_conversations TO meal_app;
 GRANT UPDATE(status,accepted_at,version) ON meal.ai_tasks TO meal_app;
 GRANT UPDATE(clarifications_used,status,version) ON meal.ai_intervals TO meal_app;
-GRANT UPDATE(status,result_snapshot,started_at,finished_at,provider_cost,version) ON meal.ai_operations TO meal_app;
+GRANT UPDATE(status,result_snapshot,started_at,finished_at,provider_cost,lifecycle_state,financial_state,
+ failure_category,failure_retryable,updated_at,version) ON meal.ai_operations TO meal_app;
 GRANT UPDATE(granted,balance_projection,reserved_projection,version) ON meal.ai_buckets TO meal_app;
 GRANT SELECT,INSERT ON meal.ai_transfers,meal.ai_reserve_consents TO meal_app;
 GRANT UPDATE(status,accepted_at,version) ON meal.ai_transfers TO meal_app;

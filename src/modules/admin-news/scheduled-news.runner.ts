@@ -2,8 +2,8 @@ import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
-import { EntitlementsService } from '../entitlements/entitlements.service.js';
-import { LegalConsentService } from '../legal-consents/legal-consent.service.js';
+import { EntitlementsService } from '../entitlements/public.js';
+import { LegalConsentService } from '../legal-consents/public.js';
 import { newsContentSchema } from './admin-news.contracts.js';
 import { deliverNewsInApp, resolveNewsAudience } from './news-delivery.js';
 

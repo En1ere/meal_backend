@@ -5,8 +5,7 @@ import { test } from 'node:test';
 import { GetObjectCommand, HeadBucketCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { readConfig } from '../src/app/config.js';
-import { MediaObjectStoreError } from '../src/modules/media-storage/media-object-store.js';
-import { S3MediaObjectStore, type MediaS3Client } from '../src/modules/media-storage/s3-media-object-store.js';
+import { MediaObjectStoreError, S3MediaObjectStore, type MediaS3Client } from '../src/modules/media-storage/public.js';
 
 type Command = Parameters<MediaS3Client['send']>[0];
 type SendOptions = Parameters<MediaS3Client['send']>[1];

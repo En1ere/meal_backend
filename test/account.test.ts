@@ -4,16 +4,17 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { generateSecret, generateSync } from 'otplib';
 import { createApp } from '../src/app/create-app.js';
 import { readConfig } from '../src/app/config.js';
-import { accountInputs, passwordSchema } from '../src/modules/account/account.contracts.js';
-import { encryptSecret, hashPassword, verifyPassword } from '../src/modules/auth/crypto.js';
-import { consumeFactor, type Factor } from '../src/modules/auth/factor.js';
-import type { AccountTx } from '../src/modules/account/account-state.js';
 import {
+    accountInputs,
     accountMailMessageSchema,
     DisabledAccountMailOutbox,
+    passwordSchema,
     resolveAccountMailRuntime,
     type AccountMailOutbox,
-} from '../src/modules/account/account-mail.outbox.js';
+    type AccountTx,
+} from '../src/modules/account/public.js';
+import { encryptSecret, hashPassword, verifyPassword } from '../src/modules/auth/crypto.js';
+import { consumeFactor, type Factor } from '../src/modules/auth/factor.js';
 
 await test('new credentials require Unicode upper/lower/digit/symbol; fixture login remains compatible', async () => {
     for (const password of ['1', 'abcdefghijkl', 'Abcdefghijkl', 'Abcdefghijk1', 'ABCDEFGHIJ1!', 'abcdefghijkl1!'])
@@ -179,7 +180,7 @@ await test('production mailbox and email lifecycle fail closed; all new mutation
 });
 
 await test('password reset rate limit and token preflight run before password hashing', async () => {
-    const { AccountService } = await import('../src/modules/account/account.service.js');
+    const { AccountService } = await import('../src/modules/account/public.js');
     const { BadRequestException, HttpException } = await import('@nestjs/common');
     const events: string[] = [];
     const database = {

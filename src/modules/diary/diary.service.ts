@@ -3,9 +3,9 @@ import { HttpException, Injectable, ServiceUnavailableException } from '@nestjs/
 import { sql, type Transaction } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import { decimal, decimalText } from '../inventory/inventory.domain.js';
-import { ProAccessService } from '../pro-overview/pro-access.service.js';
-import { LegalConsentService } from '../legal-consents/legal-consent.service.js';
+import { decimal, decimalText } from '../inventory/public.js';
+import { ProAccessService } from '../pro-overview/public.js';
+import { LegalConsentService } from '../legal-consents/public.js';
 import {
     diaryComponentSchema,
     diaryDaySchema,

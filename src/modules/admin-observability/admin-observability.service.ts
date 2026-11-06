@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { AdminReadBoundary } from '../admin-auth/admin-read-boundary.service.js';
+import { AdminReadBoundary } from '../admin-auth/public.js';
 import type { Principal } from '../auth/auth.service.js';
-import { workerRunObservationSchema } from '../operational-runtime/worker-runtime.js';
-import { workerTaskIdSchema, workerTopology } from '../operational-runtime/worker-topology.js';
-import { providerObservationSchema, providerServiceSchema } from '../provider-runtime/provider-runtime.js';
+import { workerRunObservationSchema, workerTaskIdSchema, workerTopology } from '../operational-runtime/public.js';
+import { providerObservationSchema, providerServiceSchema } from '../provider-runtime/public.js';
 import { adminObservabilitySchema, type AdminObservability } from './admin-observability.contracts.js';
 import {
     AdminObservabilityRepository,

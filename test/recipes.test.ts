@@ -12,15 +12,17 @@ import {
     type CompiledQuery,
     type QueryResult,
 } from 'kysely';
-import { recipeAvailability, scaleRecipeQuantity, publicRecipeImage } from '../src/modules/recipes/recipes.domain.js';
 import {
+    RecipesService,
+    publicRecipeImage,
+    recipeAvailability,
     recipeDetailSchema,
     recipePersonalSchema,
     recipesQuerySchema,
     recipePersonalQuerySchema,
+    scaleRecipeQuantity,
     type RecipeIngredient,
-} from '../src/modules/recipes/recipes.contracts.js';
-import { RecipesService } from '../src/modules/recipes/recipes.service.js';
+} from '../src/modules/recipes/public.js';
 import type { DatabaseSchema } from '../src/infrastructure/database/schema.generated.js';
 import type { DatabaseService } from '../src/infrastructure/database/database.service.js';
 import { createApp } from '../src/app/create-app.js';

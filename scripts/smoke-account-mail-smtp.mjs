@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import { randomUUID } from 'node:crypto';
-import { renderAccountMail } from '../dist/src/modules/account-mail/smtp-account-mail.js';
+import { renderAccountMail } from '../dist/src/modules/account-mail/public.js';
 
 const host = process.env.SMTP_SINK_HOST ?? '127.0.0.1';
 const port = Number(process.env.SMTP_SINK_PORT ?? '1025');

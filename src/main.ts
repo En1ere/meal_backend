@@ -1,6 +1,6 @@
 import { createApp } from './app/create-app.js';
 import { readConfig } from './app/config.js';
-import { TelemetryService } from './modules/telemetry/telemetry.service.js';
+import { TelemetryService } from './modules/telemetry/public.js';
 
 let app: Awaited<ReturnType<typeof createApp>> | undefined;
 try {

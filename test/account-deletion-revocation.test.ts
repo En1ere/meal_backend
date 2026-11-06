@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { adminDeletionDecisionSchema } from '../src/modules/account-lifecycle/account-lifecycle.contracts.js';
+import { adminDeletionDecisionSchema } from '../src/modules/account-lifecycle/public.js';
 
 const source = readFileSync(
     new URL('../../src/modules/account-lifecycle/account-lifecycle.service.ts', import.meta.url),

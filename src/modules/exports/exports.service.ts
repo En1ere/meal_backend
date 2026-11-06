@@ -11,8 +11,8 @@ import { sql, type Kysely, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import { CriticalReauthService } from '../account-lifecycle/critical-reauth.service.js';
-import { ProAccessService } from '../pro-overview/pro-access.service.js';
+import { CriticalReauthService } from '../account-lifecycle/public.js';
+import { ProAccessService } from '../pro-overview/public.js';
 import {
     exportJobSchema,
     exportListSchema,

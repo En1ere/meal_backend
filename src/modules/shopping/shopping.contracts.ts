@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { cookingQuantitySchema } from '../cooking/cooking.contracts.js';
+import { cookingQuantitySchema } from '../cooking/public.js';
 import { workflowScopeSchema } from '../../shared/contracts/workflow-scope.js';
 export const shoppingScopeSchema = workflowScopeSchema;
 export const shoppingScopeQuerySchema = z.object({ scope: shoppingScopeSchema.default('private') }).strict();

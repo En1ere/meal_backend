@@ -7,24 +7,25 @@ import {
     familyInvitationCreateSchema,
     familyInvitationDecisionSchema,
     familyLeaveSchema,
-} from '../src/modules/family/family.contracts.js';
-import { entitlementCapabilities } from '../src/modules/entitlements/entitlements.service.js';
-import { selectFamilySuccessor } from '../src/modules/family/family.service.js';
+} from '../src/modules/family/public.js';
+import { entitlementCapabilities } from '../src/modules/entitlements/public.js';
+import { selectFamilySuccessor } from '../src/modules/family/public.js';
 import {
     planMutationSchema,
     planQuerySchema,
     portionAssignSchema,
     portionDecisionSchema,
     planAutomationPreviewSchema,
-} from '../src/modules/meal-plan/meal-plan.contracts.js';
-import { planRange, weeklyDates } from '../src/modules/meal-plan/meal-plan.domain.js';
-import { familyNoteCreateSchema, familyNoteToggleSchema } from '../src/modules/family-notes/family-notes.contracts.js';
+    planRange,
+    weeklyDates,
+} from '../src/modules/meal-plan/public.js';
+import { familyNoteCreateSchema, familyNoteToggleSchema } from '../src/modules/family-notes/public.js';
 import {
     chatDraftCommandSchema,
     chatMessageCreateSchema,
     chatMessageUpdateSchema,
     chatReactionCommandSchema,
-} from '../src/modules/family-chat/family-chat.contracts.js';
+} from '../src/modules/family-chat/public.js';
 
 await test('Plus and Pro capabilities preserve the agreed tariff boundary', () => {
     assert.deepEqual(entitlementCapabilities('free'), {

@@ -2,8 +2,7 @@ import { BadRequestException, HttpException, Injectable, ServiceUnavailableExcep
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
-import { recipeSummarySchema } from '../recipes/recipes.contracts.js';
-import { publicRecipeImage } from '../recipes/recipes.domain.js';
+import { publicRecipeImage, recipeSummarySchema } from '../recipes/public.js';
 import {
     communityCommentsQuerySchema,
     communityCommentsSchema,

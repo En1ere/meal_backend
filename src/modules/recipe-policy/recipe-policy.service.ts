@@ -10,15 +10,10 @@ import { sql, type Transaction } from 'kysely';
 import type { z } from 'zod';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import { AdminAccessService } from '../admin-auth/admin-access.service.js';
+import { AdminAccessService } from '../admin-auth/public.js';
 import type { Principal } from '../auth/auth.service.js';
-import {
-    recipePolicySchema,
-    recipeAllowance,
-    type RecipeAction,
-    type RecipePolicy,
-    type recipePolicyChangeSchema,
-} from './recipe-policy.contracts.js';
+import { recipePolicySchema, type RecipePolicy, type recipePolicyChangeSchema } from './recipe-policy.contracts.js';
+import { recipeAllowance, type RecipeAction } from './recipe-policy.domain.js';
 type Tx = Transaction<DatabaseSchema>;
 const policyId = '71000000-0000-4000-8000-000000000001';
 @Injectable()

@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import type { z } from 'zod';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import { scopedWorkflow, workflowReplay, type WorkflowTx } from '../../shared/workflow/workflow.store.js';
-import { EntitlementsService } from '../entitlements/entitlements.service.js';
+import { EntitlementsService } from '../entitlements/public.js';
 import {
     purchaseDetailSchema,
     type purchaseResolveSchema,

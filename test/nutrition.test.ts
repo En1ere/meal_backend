@@ -4,8 +4,9 @@ import {
     nutritionProfileUpdateSchema,
     nutritionTargetCreateSchema,
     nutritionTargetSchema,
-} from '../src/modules/nutrition/nutrition.contracts.js';
-import { projectNutritionAnalytics, projectNutritionTarget } from '../src/modules/nutrition/nutrition.service.js';
+    projectNutritionAnalytics,
+    projectNutritionTarget,
+} from '../src/modules/nutrition/public.js';
 
 const id = '10000000-0000-4000-8000-000000000001';
 const access = { mode: 'active' as const, reason: null, source: 'personal' as const, periodEndsAt: null };

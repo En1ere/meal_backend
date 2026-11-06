@@ -30,7 +30,7 @@ if (!mode) {
     try {
         const { runOperationalWorker } = await import('./operational-worker-runtime.mjs');
         if (mode === 'news') {
-            const { ScheduledNewsRunner } = await import('../dist/src/modules/admin-news/scheduled-news.runner.js');
+            const { ScheduledNewsRunner } = await import('../dist/src/modules/admin-news/public.js');
             await runOperationalWorker(
                 app,
                 'scheduled-news',
@@ -43,8 +43,7 @@ if (!mode) {
                 }),
             );
         } else if (mode === 'sanctions') {
-            const { AdminGovernanceService } =
-                await import('../dist/src/modules/admin-governance/admin-governance.service.js');
+            const { AdminGovernanceService } = await import('../dist/src/modules/admin-governance/public.js');
             await runOperationalWorker(
                 app,
                 'scheduled-sanctions',
@@ -57,7 +56,7 @@ if (!mode) {
                 }),
             );
         } else if (mode === 'diary-portions') {
-            const { DiaryService } = await import('../dist/src/modules/diary/diary.service.js');
+            const { DiaryService } = await import('../dist/src/modules/diary/public.js');
             await runOperationalWorker(
                 app,
                 'diary-portions',
@@ -70,8 +69,7 @@ if (!mode) {
                 }),
             );
         } else {
-            const { OperationalMaintenanceService } =
-                await import('../dist/src/modules/admin-operations/operational-maintenance.service.js');
+            const { OperationalMaintenanceService } = await import('../dist/src/modules/admin-operations/public.js');
             const maintenance = app.get(OperationalMaintenanceService);
             if (mode === 'incidents') {
                 await runOperationalWorker(

@@ -8,7 +8,7 @@ if (!process.argv.includes('--apply')) {
     const { NestFactory } = await import('@nestjs/core');
     const { readConfig } = await import('../dist/src/app/config.js');
     const { AppModule } = await import('../dist/src/app/app.module.js');
-    const { ExportsService } = await import('../dist/src/modules/exports/exports.service.js');
+    const { ExportsService } = await import('../dist/src/modules/exports/public.js');
     const app = await NestFactory.createApplicationContext(AppModule.configure(readConfig(process.env)), {
         logger: false,
     });

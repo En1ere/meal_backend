@@ -11,12 +11,9 @@ import {
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { map, type Observable } from 'rxjs';
 import { ZodError } from 'zod';
-import {
-    AdminLockedException,
-    AdminConfirmationRequiredException,
-} from '../../modules/admin-auth/admin-access.service.js';
-import { TelemetryService } from '../../modules/telemetry/telemetry.service.js';
-import { LegalConsentRequiredException } from '../../modules/legal-consents/legal-consent.service.js';
+import { AdminLockedException, AdminConfirmationRequiredException } from '../../modules/admin-auth/public.js';
+import { TelemetryService } from '../../modules/telemetry/public.js';
+import { LegalConsentRequiredException } from '../../modules/legal-consents/public.js';
 
 @Injectable()
 export class ResponseInterceptor implements NestInterceptor<unknown, unknown> {

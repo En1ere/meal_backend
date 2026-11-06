@@ -3,14 +3,15 @@ import { randomBytes } from 'node:crypto';
 import { test } from 'node:test';
 import { readConfig } from '../src/app/config.js';
 import { createApp } from '../src/app/create-app.js';
-import { browserTelemetryInputSchema } from '../src/modules/telemetry/telemetry.contracts.js';
 import {
+    browserTelemetryInputSchema,
+    operationalTelemetryCodeSchema,
     type SafeErrorRecord,
     type SafeMetricRecord,
     type SafeTelemetryRecord,
     TelemetryRepository,
-} from '../src/modules/telemetry/telemetry.repository.js';
-import { operationalTelemetryCodeSchema, TelemetryService } from '../src/modules/telemetry/telemetry.service.js';
+    TelemetryService,
+} from '../src/modules/telemetry/public.js';
 
 class CapturingRepository {
     readonly records: SafeTelemetryRecord[] = [];

@@ -50,6 +50,7 @@ case "$component" in
         if media_processor_enabled; then wait_healthy media-processor; fi
         if ocr_preview_enabled; then wait_healthy ocr-preview; fi
         if web_push_enabled; then wait_healthy push-worker; fi
+        if ai_worker_enabled; then wait_healthy ai-worker; fi
         if media_infra_enabled; then wait_healthy seaweedfs; fi
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready ;;
@@ -61,6 +62,7 @@ case "$component" in
         if media_processor_enabled; then wait_healthy media-processor; fi
         if ocr_preview_enabled; then wait_healthy ocr-preview; fi
         if web_push_enabled; then wait_healthy push-worker; fi
+        if ai_worker_enabled; then wait_healthy ai-worker; fi
         if media_infra_enabled; then wait_healthy seaweedfs; fi
         wait_http backend-live http://127.0.0.1:3001/health/live
         wait_http backend-ready http://127.0.0.1:3001/health/ready
@@ -85,6 +87,7 @@ if [ "$component" = backend ] || [ "$component" = all ]; then
     if media_processor_enabled; then application_services="$application_services media-processor"; fi
     if ocr_preview_enabled; then application_services="$application_services ocr-preview"; fi
     if web_push_enabled; then application_services="$application_services push-worker"; fi
+    if ai_worker_enabled; then application_services="$application_services ai-worker"; fi
     for application_service in $application_services; do
         application_id=$(compose ps -q "$application_service")
         [ -z "$application_id" ] && continue

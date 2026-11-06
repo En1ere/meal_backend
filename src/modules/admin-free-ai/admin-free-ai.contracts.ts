@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { aiBucketSchema } from '../ai/ai.contracts.js';
+import { aiBucketSchema } from '../ai/public.js';
 
 export const adminFreeAiViewSchema = z.strictObject({
     user: z.strictObject({

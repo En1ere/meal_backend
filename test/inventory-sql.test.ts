@@ -11,7 +11,7 @@ import {
     type CompiledQuery,
     type QueryResult,
 } from 'kysely';
-import { InventoryService, inventoryQuerySchema } from '../src/modules/inventory/inventory.service.js';
+import { InventoryService, inventoryQuerySchema } from '../src/modules/inventory/public.js';
 import type { DatabaseService } from '../src/infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../src/infrastructure/database/schema.generated.js';
 const user = '10000000-0000-4000-8000-000000000001';

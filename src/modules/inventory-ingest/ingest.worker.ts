@@ -2,7 +2,7 @@ import { parentPort, workerData } from 'node:worker_threads';
 import { access } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { createWorker } from 'tesseract.js';
-import { sanitizeImage } from '../media-processing/image-cdr.js';
+import { sanitizeImage } from '../media-processing/public.js';
 import { parseTable } from './table-parser.js';
 import type { IngestLimits } from './ingest.contracts.js';
 

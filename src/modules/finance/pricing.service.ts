@@ -3,7 +3,7 @@ import { HttpException, Injectable, ServiceUnavailableException } from '@nestjs/
 import { sql, type Transaction } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import { ProAccessService } from '../pro-overview/pro-access.service.js';
+import { ProAccessService } from '../pro-overview/public.js';
 import {
     financeCostEstimateSchema,
     financePriceCatalogSchema,

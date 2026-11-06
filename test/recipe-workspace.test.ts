@@ -1,4 +1,4 @@
-import { workspaceNutrition } from '../src/modules/recipe-workspace/recipe-workspace.domain.js';
+import { workspaceNutrition } from '../src/modules/recipe-workspace/public.js';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHash } from 'node:crypto';
@@ -14,17 +14,17 @@ import {
 } from 'kysely';
 import type { DatabaseSchema } from '../src/infrastructure/database/schema.generated.js';
 import type { DatabaseService } from '../src/infrastructure/database/database.service.js';
-import type { RecipePolicyService } from '../src/modules/recipe-policy/recipe-policy.service.js';
-import type { EntitlementsService } from '../src/modules/entitlements/entitlements.service.js';
-import { RecipeWorkspaceService } from '../src/modules/recipe-workspace/recipe-workspace.service.js';
-import { RecipeLifecycleService } from '../src/modules/recipe-lifecycle/recipe-lifecycle.service.js';
+import type { RecipePolicyService } from '../src/modules/recipe-policy/public.js';
+import type { EntitlementsService } from '../src/modules/entitlements/public.js';
+import { RecipeWorkspaceService } from '../src/modules/recipe-workspace/public.js';
+import { RecipeLifecycleService } from '../src/modules/recipe-lifecycle/public.js';
 import {
     workspaceDocumentSchema,
     workspaceRatingSchema,
     workspaceSaveSchema,
     assertSubmittable,
     workspaceReportSchema,
-} from '../src/modules/recipe-workspace/recipe-workspace.contracts.js';
+} from '../src/modules/recipe-workspace/public.js';
 const user = '10000000-0000-4000-8000-000000000001',
     id = '70000000-0000-4000-8000-000000000001',
     revision = '71000000-0000-4000-8000-000000000001',

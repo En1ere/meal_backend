@@ -8,10 +8,9 @@ if (!process.argv.includes('--apply')) {
     const { NestFactory } = await import('@nestjs/core');
     const { readConfig } = await import('../dist/src/app/config.js');
     const { AppModule } = await import('../dist/src/app/app.module.js');
-    const { AccountLifecycleService } =
-        await import('../dist/src/modules/account-lifecycle/account-lifecycle.service.js');
+    const { AccountLifecycleService } = await import('../dist/src/modules/account-lifecycle/public.js');
     const { planWorkerInvocation, WORKER_TOPOLOGY_VERSION } =
-        await import('../dist/src/modules/operational-runtime/worker-topology.js');
+        await import('../dist/src/modules/operational-runtime/public.js');
     const config = readConfig(process.env);
     const ticket = process.argv.find((value) => value.startsWith('--approval-ticket='))?.split('=')[1];
     const policyVersion = Number(

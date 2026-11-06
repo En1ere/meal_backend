@@ -1,6 +1,6 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { z } from 'zod';
-import { mediaChecksumSchema, mediaObjectKeySchema } from '../media-infrastructure/media-provider.js';
+import { mediaChecksumSchema, mediaObjectKeySchema } from '../media-infrastructure/public.js';
 
 export const OCR_PROVIDER = Symbol('OCR_PROVIDER');
 

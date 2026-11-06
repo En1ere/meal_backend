@@ -12,7 +12,7 @@ import { sql, type Transaction } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
 import type { Principal } from '../auth/auth.service.js';
-import { EntitlementsService } from '../entitlements/entitlements.service.js';
+import { EntitlementsService } from '../entitlements/public.js';
 import {
     familyContextSchema,
     familyCreateSchema,

@@ -52,7 +52,7 @@ Use the complete 64-character snapshot ID from the root-only service output/stat
   --change-ticket OPS-BACKUP-001
 ```
 
-The drill restores to a fixed root-only temporary directory and starts the pinned PostgreSQL 18 image with `--network none`, no host port and tmpfs data. It verifies artifact hashes, restores in one transaction with `--no-owner --no-acl`, and requires schema `34`, 227 base tables and 519 foreign keys. A serializable read smoke and exact media checksum coverage must pass. The source database and provider tree are never mounted writable. The disposable container and exact restore directory are removed by a bounded trap; only the safe status/evidence remains. A measured duration above four hours fails the drill.
+The drill restores to a fixed root-only temporary directory and starts the manifest-pinned PostgreSQL image with `--network none`, no host port and tmpfs data. It verifies artifact hashes, restores in one transaction with `--no-owner --no-acl`, and requires the exact migration/table/foreign-key/PostgreSQL-major facts stored in the backed-up `migration-manifest.json` (currently `34/227/519/18`). A serializable read smoke and exact media checksum coverage must pass. The source database and provider tree are never mounted writable. The disposable container and exact restore directory are removed by a bounded trap; only the safe status/evidence remains. A measured duration above four hours fails the drill.
 
 ## Status and admin
 

@@ -2,27 +2,14 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { randomUUID } from 'node:crypto';
 import { sql, type Transaction } from 'kysely';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
+import {
+    projectRecipeLifecycle,
+    sanitizePublicReviewReason,
+    type RecipeLifecycleProjection,
+    type RecipeReviewStatus,
+} from './recipe-lifecycle.domain.js';
 
 type Tx = Transaction<DatabaseSchema>;
-type ReviewStatus = 'draft' | 'pending' | 'rejected' | 'published' | 'hidden' | 'unpublished';
-
-export type RecipeLifecycleProjection = {
-    review: { revisionId: string; status: ReviewStatus; publicReason: string | null };
-    publication: { revisionId: string; publishedAt: string } | null;
-};
-
-export function sanitizePublicReviewReason(value: string | null | undefined, status: ReviewStatus): string | null {
-    const normalized = value
-        ?.replace(/[\u0000-\u001f\u007f]+/gu, ' ')
-        .replace(/\s+/gu, ' ')
-        .trim()
-        .slice(0, 500);
-    if (normalized) return normalized;
-    if (status === 'rejected') return 'Рецепт требует исправлений перед повторной отправкой.';
-    if (status === 'hidden') return 'Рецепт скрыт из публичного доступа после проверки.';
-    if (status === 'unpublished') return 'Публикация рецепта снята после проверки.';
-    return null;
-}
 
 @Injectable()
 export class RecipeLifecycleService {
@@ -54,31 +41,14 @@ export class RecipeLifecycleService {
                 tx,
             )
         ).rows[0];
-        const effective =
-            fallbackStatus === 'hidden'
-                ? 'hidden'
-                : ['hidden', 'unpublished'].includes(review?.status ?? '')
-                  ? review?.status
-                  : review?.status === 'published'
-                    ? 'published'
-                    : ['queued', 'pending', 'in_review', 'approved'].includes(review?.status ?? '')
-                      ? 'pending'
-                      : review?.status === 'rejected'
-                        ? 'rejected'
-                        : fallbackStatus === 'published'
-                          ? 'published'
-                          : 'draft';
-        const status = effective as ReviewStatus;
-        return {
-            review: {
-                revisionId: review?.revisionId ?? currentRevisionId,
-                status,
-                publicReason: sanitizePublicReviewReason(review?.publicReason, status),
-            },
+        return projectRecipeLifecycle({
+            currentRevisionId,
+            fallbackStatus,
+            review,
             publication: publication
                 ? { revisionId: publication.revisionId, publishedAt: publication.publishedAt.toISOString() }
                 : null,
-        };
+        });
     }
 
     async markReview(
@@ -86,7 +56,7 @@ export class RecipeLifecycleService {
         input: {
             caseId: string;
             revisionId: string;
-            status: Exclude<ReviewStatus, 'draft' | 'published'>;
+            status: Exclude<RecipeReviewStatus, 'draft' | 'published'>;
             publicReason?: string | null;
         },
     ) {

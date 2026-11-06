@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { aiBalanceSchema } from '../ai/ai.contracts.js';
+import { aiBalanceSchema } from '../ai/public.js';
 
 export const proMissingFieldSchema = z.enum([
     'nutrition_profile',

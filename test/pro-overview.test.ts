@@ -13,8 +13,8 @@ import {
 } from 'kysely';
 import type { DatabaseService } from '../src/infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../src/infrastructure/database/schema.generated.js';
-import type { ProOverview } from '../src/modules/pro-overview/pro-overview.contracts.js';
-import { ProOverviewService, projectProOverview } from '../src/modules/pro-overview/pro-overview.service.js';
+import type { ProOverview } from '../src/modules/pro-overview/public.js';
+import { ProOverviewService, projectProOverview } from '../src/modules/pro-overview/public.js';
 
 const userId = '10000000-0000-4000-8000-000000000001';
 const ai: ProOverview['ai'] = {

@@ -4,7 +4,7 @@ import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { UserSessionGuard } from '../auth/auth.http.js';
 import type { Principal } from '../auth/auth.service.js';
-import { requireVersion } from '../inventory/inventory.domain.js';
+import { requireVersion } from '../inventory/public.js';
 import {
     financeBudgetCreateSchema,
     financeBudgetUpdateSchema,

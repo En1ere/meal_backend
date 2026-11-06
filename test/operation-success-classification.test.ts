@@ -6,6 +6,7 @@ type Operation = { operationId?: string; tags?: string[] };
 type OpenApi = { paths: Record<string, Record<string, Operation>> };
 
 const explicitLiveSuccess = new Set([
+    'AdminAiController_read',
     'AccountController_register',
     'AccountController_registerV2',
     'AccountController_verify',
@@ -104,6 +105,7 @@ const explicitLiveSuccess = new Set([
     'AiController_requestTransfer',
     'AiController_decideTransfer',
     'AiController_task',
+    'AiController_operation',
     'AiAppealsController_list',
     'AiAppealsController_create',
     'AiAppealsController_detail',
@@ -373,6 +375,8 @@ const providerFailClosed = new Map([
 
 const externalSuccessRequired = new Map([
     ['AiController_preview', 'AI provider'],
+    ['AiController_enqueue', 'AI provider worker background execution'],
+    ['AiController_enqueueContinuation', 'AI provider worker background continuation execution'],
     ['AiController_run', 'AI provider reserve/finalize/refund'],
     ['AiController_continueTask', 'AI provider reserve/finalize/refund'],
 ]);
@@ -385,7 +389,7 @@ void test('every OpenAPI operation has an honest success/effect acceptance class
         .flatMap((pathItem) => Object.values(pathItem))
         .filter((operation): operation is Operation & { operationId: string } => Boolean(operation?.operationId));
     const ids = new Set(operations.map((operation) => operation.operationId));
-    assert.equal(ids.size, 363);
+    assert.equal(ids.size, 367);
     assert.equal(operations.length, ids.size, 'operationId values must remain unique');
 
     for (const id of explicitLiveSuccess) assert.ok(ids.has(id), `${id}: explicit live-success operation is absent`);
@@ -408,9 +412,9 @@ void test('every OpenAPI operation has an honest success/effect acceptance class
             .map((tag) => [tag, pending.filter((operation) => (operation.tags?.[0] ?? 'untagged') === tag).length]),
     );
 
-    assert.equal(explicitLiveSuccess.size, 349);
+    assert.equal(explicitLiveSuccess.size, 351);
     assert.equal(providerFailClosed.size, 11);
-    assert.equal(externalSuccessRequired.size, 3);
+    assert.equal(externalSuccessRequired.size, 5);
     assert.equal(pending.length, 0);
     assert.deepEqual(pendingByTag, {});
 });

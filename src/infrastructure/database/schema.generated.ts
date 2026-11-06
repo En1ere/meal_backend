@@ -1,4 +1,4 @@
-// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029/030/031/032/033/034 overlays.
+// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029/030/031/032/033/034/037 overlays.
 import type { ColumnType, Generated } from 'kysely';
 type Timestamp = ColumnType<Date, Date | string, Date | string>;
 type Int64 = ColumnType<string, string | number | bigint, string | number | bigint>;
@@ -6,6 +6,30 @@ type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string
 type OptionalInsert<T> =
     T extends ColumnType<infer S, infer I, infer U> ? ColumnType<S, I | undefined, U> : Generated<T>;
 export interface DatabaseSchema {
+    ai_operation_attempts: {
+        id: string;
+        operation_id: string;
+        attempt_no: number;
+        state: 'prepared' | 'submitted' | 'polling' | 'succeeded' | 'failed' | 'unknown' | 'reconciled';
+        client_request_id: string;
+        lease_token: string;
+        provider_request_id: string | null;
+        requested_model: string;
+        actual_model: string | null;
+        service_tier: string | null;
+        input_tokens: number | null;
+        output_tokens: number | null;
+        reasoning_tokens: number | null;
+        estimated_cost: string | null;
+        actual_cost: string | null;
+        error_category: string | null;
+        error_code: string | null;
+        started_at: Timestamp;
+        submitted_at: Timestamp | null;
+        finished_at: Timestamp | null;
+        latency_ms: number | null;
+        created_at: OptionalInsert<Timestamp>;
+    };
     web_push_policies: {
         id: OptionalInsert<number>;
         quiet_start: OptionalInsert<string>;
@@ -1907,6 +1931,34 @@ export interface DatabaseSchema {
         version: OptionalInsert<Int64>;
     };
     ai_operations: {
+        user_id: OptionalInsert<string>;
+        task_id: OptionalInsert<string>;
+        contract_version: OptionalInsert<number>;
+        command_kind: OptionalInsert<'initial' | 'continuation'>;
+        request_hash: OptionalInsert<string>;
+        lifecycle_state: OptionalInsert<
+            'accepted' | 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'unknown'
+        >;
+        financial_state: OptionalInsert<'none' | 'reserved' | 'captured' | 'released' | 'reconciliation_hold'>;
+        failure_category: OptionalInsert<string | null>;
+        failure_retryable: OptionalInsert<boolean | null>;
+        queued_at: OptionalInsert<Timestamp>;
+        next_attempt_at: OptionalInsert<Timestamp>;
+        lease_owner: OptionalInsert<string | null>;
+        lease_token: OptionalInsert<string | null>;
+        lease_until: OptionalInsert<Timestamp | null>;
+        attempt_count: OptionalInsert<number>;
+        provider_client_request_id: OptionalInsert<string | null>;
+        provider_request_id: OptionalInsert<string | null>;
+        requested_model: OptionalInsert<string | null>;
+        actual_model: OptionalInsert<string | null>;
+        token_usage: OptionalInsert<JsonValue | null>;
+        service_tier: OptionalInsert<string | null>;
+        task_policy_version: OptionalInsert<string>;
+        context_manifest_version: OptionalInsert<string>;
+        provider_profile_version: OptionalInsert<string>;
+        updated_at: OptionalInsert<Timestamp>;
+        expires_at: OptionalInsert<Timestamp>;
         id: string;
         status: string;
         result_snapshot: JsonValue | null;

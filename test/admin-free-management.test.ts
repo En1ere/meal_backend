@@ -1,20 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { adminFreeAiGrantSchema, adminFreeAiViewSchema } from '../src/modules/admin-free-ai/admin-free-ai.contracts.js';
+import { adminFreeAiGrantSchema, adminFreeAiViewSchema } from '../src/modules/admin-free-ai/public.js';
 import {
+    defaultAdminNotificationSettings,
     notificationCenterSchema,
     notificationQuietNow,
     validNotificationTimeZone,
-} from '../src/modules/admin-notifications/notification-center.contracts.js';
-import { defaultAdminNotificationSettings } from '../src/modules/admin-notifications/notification-center.service.js';
-import { operationAvailability } from '../src/modules/admin-operations/operations.service.js';
-import {
-    compareContentCards,
-    notDuplicateDecisionApplies,
-} from '../src/modules/admin-content/admin-content.service.js';
-import { governanceCommandSchema } from '../src/modules/admin-governance/admin-governance.contracts.js';
-import { supportManageSchema } from '../src/modules/admin-support/admin-support.contracts.js';
+} from '../src/modules/admin-notifications/public.js';
+import { operationAvailability } from '../src/modules/admin-operations/public.js';
+import { compareContentCards, notDuplicateDecisionApplies } from '../src/modules/admin-content/public.js';
+import { governanceCommandSchema } from '../src/modules/admin-governance/public.js';
+import { supportManageSchema } from '../src/modules/admin-support/public.js';
 
 await test('Free AI grant contract requires bounded quota, audit reason and explicit confirmation', () => {
     const base = {

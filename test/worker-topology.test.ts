@@ -7,7 +7,7 @@ import {
     workerTaskIdSchema,
     workerTopology,
     workerTopologySchema,
-} from '../src/modules/operational-runtime/worker-topology.js';
+} from '../src/modules/operational-runtime/public.js';
 
 const request = {
     topologyVersion: WORKER_TOPOLOGY_VERSION,

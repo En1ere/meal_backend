@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { sql, type Transaction } from 'kysely';
 import type { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import { LegalConsentService } from '../legal-consents/legal-consent.service.js';
+import { LegalConsentService } from '../legal-consents/public.js';
 import {
     achievementPayloadSchema,
     authorAchievementsSchema,

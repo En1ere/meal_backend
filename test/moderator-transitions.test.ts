@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { moderatorActionsForStatus } from '../src/modules/moderator/moderator.service.js';
+import { moderatorActionsForStatus } from '../src/modules/moderator/public.js';
 
 void test('moderator decisions expose only state-compatible actions', () => {
     assert.deepEqual(moderatorActionsForStatus('queued'), ['approve', 'reject']);

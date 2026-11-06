@@ -50,6 +50,7 @@ export function readWorkerApplicationConfig(env: NodeJS.ProcessEnv): AppConfig {
         REGISTRATION_DISPOSABLE_EMAIL_CHECK: true,
         REGISTRATION_CAPTCHA_MODE: 'disabled',
         REGISTRATION_DENY_RISK_SCORE: 0.9,
+        AI_BACKGROUND_EXECUTION_ENABLED: false,
         AI_RECONCILIATION_ENABLED: false,
         TRUSTED_PROXY_CIDRS: [],
     };

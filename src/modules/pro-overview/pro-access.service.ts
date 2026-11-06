@@ -2,7 +2,7 @@ import { HttpException, Injectable, ServiceUnavailableException } from '@nestjs/
 import { sql, type Kysely, type Transaction } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import { EntitlementsService } from '../entitlements/entitlements.service.js';
+import { EntitlementsService } from '../entitlements/public.js';
 import { proAccessSchema, type ProAccess } from './pro-overview.contracts.js';
 
 type Executor = Kysely<DatabaseSchema> | Transaction<DatabaseSchema>;

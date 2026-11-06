@@ -3,8 +3,8 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import type { Transporter } from 'nodemailer';
 import { readConfig } from '../src/app/config.js';
-import type { MailWorkerConfig } from '../src/modules/account-mail/mail-worker.config.js';
-import { renderAccountMail, SmtpAccountMailProvider } from '../src/modules/account-mail/smtp-account-mail.js';
+import { renderAccountMail, SmtpAccountMailProvider } from '../src/modules/account-mail/public.js';
+import type { MailWorkerConfig } from '../src/modules/account-mail/public.js';
 
 const text = (path: string) => readFile(path, 'utf8');
 const config = {

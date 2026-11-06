@@ -1,11 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { adminSearchSchema, adminSectionSchema } from '../src/modules/admin/admin-read.contracts.js';
-import { cursorBinding, decodeAdminCursor, projectAdminRecord } from '../src/modules/admin/admin-read.service.js';
+import {
+    adminSearchSchema,
+    adminSectionSchema,
+    adminSources,
+    cursorBinding,
+    decodeAdminCursor,
+    projectAdminRecord,
+} from '../src/modules/admin/public.js';
 import type { Principal } from '../src/modules/auth/auth.service.js';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { adminSources } from '../src/modules/admin/admin-read.sources.js';
 
 const actor: Principal = {
     id: '00000000-0000-4000-8000-000000000001',

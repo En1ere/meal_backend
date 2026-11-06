@@ -4,27 +4,23 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ConflictException, ServiceUnavailableException } from '@nestjs/common';
 import {
-    PaymentApplicationService,
-    type CheckoutCommand,
-    type PaymentRepository,
-    type ReconciliationCommand,
-    type ReservedRefund,
-} from '../src/modules/payments/payment-application.js';
-import {
     DisabledPaymentProvider,
-    type PaymentProvider,
-    type PaymentSnapshot,
-    type PaymentWebhookRequest,
-    type VerifiedPaymentEvent,
-} from '../src/modules/payments/payment-provider.js';
-import {
     DisabledRefundProvider,
     MockRefundProvider,
+    PaymentApplicationService,
+    type CheckoutCommand,
+    type PaymentProvider,
+    type PaymentRepository,
+    type PaymentSnapshot,
+    type PaymentWebhookRequest,
     type ProviderOutcome,
+    type ReconciliationCommand,
     type RefundProvider,
     type RefundRequest,
     type RefundTransition,
-} from '../src/modules/payments/refunds.js';
+    type ReservedRefund,
+    type VerifiedPaymentEvent,
+} from '../src/modules/payments/public.js';
 
 const orderId = 'c9cc69e6-430f-4ef8-b6fe-335647a248d0';
 const payerId = 'e395ec19-501c-4c9c-a856-d63c7da36cd3';

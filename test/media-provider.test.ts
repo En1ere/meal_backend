@@ -14,7 +14,7 @@ import {
     validateUploadTarget,
     type MalwareScanRequest,
     type UploadReservationRequest,
-} from '../src/modules/media-infrastructure/media-provider.js';
+} from '../src/modules/media-infrastructure/public.js';
 
 const assetId = 'c9cc69e6-430f-4ef8-b6fe-335647a248d0';
 const objectKey = `private/${assetId}/source`;

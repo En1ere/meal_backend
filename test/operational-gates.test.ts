@@ -15,7 +15,7 @@ import {
     workerLeaseRequestSchema,
     workerLeaseSeconds,
     workerRunObservationSchema,
-} from '../src/modules/operational-runtime/worker-runtime.js';
+} from '../src/modules/operational-runtime/public.js';
 import {
     BACKUP_RECOVERY_CONTRACT_VERSION,
     DisabledBackupProvider,
@@ -23,14 +23,14 @@ import {
     recoverySetSchema,
     restoreDrillEvidenceSchema,
     restoreDrillPlanSchema,
-} from '../src/modules/operational-runtime/backup-recovery.js';
+} from '../src/modules/operational-runtime/public.js';
 import {
     PRODUCTION_ACCEPTANCE_VERSION,
     productionAcceptanceEvidenceSchema,
     productionAcceptanceManifest,
     productionAcceptanceReadiness,
     productionAcceptanceTargetSchema,
-} from '../src/modules/operational-runtime/production-acceptance.js';
+} from '../src/modules/operational-runtime/public.js';
 
 const now = '2026-10-09T10:00:00.000Z';
 const successRun = {
@@ -256,8 +256,8 @@ void test('prepared worker lease migration is manifest-bound and grants no delet
             sha256: createHash('sha256').update(migration).digest('hex'),
         },
     );
-    assert.equal(manifest.totalTables, 227);
-    assert.equal(manifest.foreignKeys, 519);
+    assert.equal(manifest.totalTables, 228);
+    assert.equal(manifest.foreignKeys, 522);
     assert.match(grants, /GRANT SELECT,INSERT ON meal\.worker_leases TO meal_app/);
     assert.doesNotMatch(grants, /GRANT DELETE ON meal\.worker_leases/);
 });

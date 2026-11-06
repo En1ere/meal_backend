@@ -9,9 +9,9 @@ import { createHash, randomUUID } from 'node:crypto';
 import { sql, type Kysely, type Transaction } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import { AdminAccessService } from '../admin-auth/admin-access.service.js';
+import { AdminAccessService } from '../admin-auth/public.js';
 import type { Principal } from '../auth/auth.service.js';
-import { PaymentApplicationService } from '../payments/payment-application.js';
+import { PaymentApplicationService } from '../payments/public.js';
 import { billingCommandSchema, billingResultSchema, billingViewSchema } from './admin-billing.contracts.js';
 
 type Db = Kysely<DatabaseSchema> | Transaction<DatabaseSchema>;

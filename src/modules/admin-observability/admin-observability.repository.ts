@@ -2,9 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { sql, type Transaction } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import { workerRunObservationSchema } from '../operational-runtime/worker-runtime.js';
-import { workerTaskIdSchema } from '../operational-runtime/worker-topology.js';
-import { providerObservationSchema, providerServiceSchema } from '../provider-runtime/provider-runtime.js';
+import { workerRunObservationSchema, workerTaskIdSchema } from '../operational-runtime/public.js';
+import { providerObservationSchema, providerServiceSchema } from '../provider-runtime/public.js';
 
 type Tx = Transaction<DatabaseSchema>;
 type MetricAggregate = { event_name: string; value: string; observed_at: Date };

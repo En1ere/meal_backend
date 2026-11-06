@@ -1,7 +1,6 @@
 import { z } from 'zod';
-import { workerRunObservationSchema } from '../operational-runtime/worker-runtime.js';
-import { workerTaskIdSchema } from '../operational-runtime/worker-topology.js';
-import { providerObservationSchema, providerServiceSchema } from '../provider-runtime/provider-runtime.js';
+import { workerRunObservationSchema, workerTaskIdSchema } from '../operational-runtime/public.js';
+import { providerObservationSchema, providerServiceSchema } from '../provider-runtime/public.js';
 
 const boundedCount = z.number().int().min(0).max(1_000_000_000);
 const boundedBytes = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);

@@ -5,6 +5,8 @@ import { NestFactory } from '@nestjs/core';
 import { readConfig } from '../src/app/config.js';
 import { WorkerModule } from '../src/app/worker.module.js';
 import { WorkerRuntimeFactory } from '../src/infrastructure/workers/worker-runtime.factory.js';
+import { DiaryService } from '../src/modules/diary/public.js';
+import { LegalConsentService } from '../src/modules/legal-consents/public.js';
 import {
     readWorkerSchedulerConfig,
     WorkerScheduler,
@@ -13,7 +15,8 @@ import {
     type WorkerSchedulerConfig,
     type WorkerSchedulerExecutor,
     type WorkerSchedulerState,
-} from '../src/modules/operational-runtime/worker-scheduler.js';
+} from '../src/modules/operational-runtime/public.js';
+import { ProAccessService } from '../src/modules/pro-overview/public.js';
 
 const baseEnv = {
     WORKER_OWNER_ID: 'worker-test',
@@ -73,6 +76,13 @@ void test('minimal worker module resolves without HTTP authentication or provide
         { logger: false },
     );
     assert.ok(context.get(WorkerRuntimeFactory));
+    const workerAccess = context.get(ProAccessService);
+    const workerDiary = context.get<{
+        access: ProAccessService;
+        legalConsents: LegalConsentService;
+    }>(DiaryService);
+    assert.equal(workerDiary.access, workerAccess);
+    assert.equal(workerDiary.legalConsents, context.get(LegalConsentService));
     await context.close();
 });
 

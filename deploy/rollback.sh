@@ -40,6 +40,7 @@ if [ "$component" = backend ]; then
     if media_processor_enabled; then backend_services="$backend_services media-processor"; fi
     if ocr_preview_enabled; then backend_services="$backend_services ocr-preview"; fi
     if web_push_enabled; then backend_services="$backend_services push-worker"; fi
+    if ai_worker_enabled; then backend_services="$backend_services ai-worker"; fi
     # shellcheck disable=SC2086
     compose pull $backend_services
     BACKEND_VERSION=$(image_package_version "$image")

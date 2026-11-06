@@ -9,7 +9,7 @@ import {
     legalReleaseEvidenceSchema,
     legalReleaseReadiness,
     legalRequirementMatrixSchema,
-} from '../src/modules/legal-runtime/legal-release.js';
+} from '../src/modules/legal-runtime/public.js';
 
 const now = '2026-10-09T12:00:00.000Z';
 const release = { root: '0.0.151', back: '0.0.77', front: '0.0.69', admin: '0.0.74', openapi: '0.0.58' };

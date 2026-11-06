@@ -4,7 +4,7 @@ import {
     addMoscowMonths,
     combinedProEndsAt,
     quoteSubscriptionChange,
-} from '../src/modules/subscription-settings/subscription-lifecycle.policy.js';
+} from '../src/modules/subscription-settings/public.js';
 
 void test('subscription dates keep Moscow wall time and clamp short months', () => {
     assert.equal(addMoscowMonths(new Date('2026-01-31T18:30:00.000Z'), 1).toISOString(), '2026-02-28T18:30:00.000Z');

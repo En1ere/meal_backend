@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import sharp from 'sharp';
-import { imageCdrPolicy, sanitizeImage } from '../src/modules/media-processing/image-cdr.js';
+import { imageCdrPolicy, sanitizeImage } from '../src/modules/media-processing/public.js';
 
 void test('CDR accepts only bounded JPEG/PNG/WebP and emits canonical metadata-free images', async () => {
     for (const mime of imageCdrPolicy.acceptedMimeTypes) {

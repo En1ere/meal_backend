@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { supportMessageSchema, supportTicketSchema } from '../support/support.contracts.js';
+import { supportMessageSchema, supportTicketSchema } from '../support/public.js';
 
 export const aiRestrictionSchema = z.strictObject({
     id: z.uuid(),

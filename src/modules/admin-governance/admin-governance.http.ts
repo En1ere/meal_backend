@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBody, ApiCookieAuth, ApiParam, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
-import { AdminSessionGuard } from '../admin-auth/admin-auth.http.js';
+import { AdminSessionGuard } from '../admin-auth/public.js';
 import { governanceCommandSchema } from './admin-governance.contracts.js';
 import { AdminGovernanceService } from './admin-governance.service.js';
 import type { FastifyRequest } from 'fastify';

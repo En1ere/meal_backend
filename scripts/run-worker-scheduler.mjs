@@ -6,8 +6,8 @@ import {
     readWorkerSchedulerConfig,
     schedulerExecutionSchema,
     WorkerScheduler,
-} from '../dist/src/modules/operational-runtime/worker-scheduler.js';
-import { workerRunObservationSchema } from '../dist/src/modules/operational-runtime/worker-runtime.js';
+    workerRunObservationSchema,
+} from '../dist/src/modules/operational-runtime/public.js';
 
 const config = readWorkerSchedulerConfig(process.env);
 let active = null;

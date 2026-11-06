@@ -3,6 +3,7 @@ import { Kysely, PostgresDialect, sql, type Transaction } from 'kysely';
 import pg from 'pg';
 import { APP_CONFIG, type AppConfig } from '../../app/config.js';
 import type { DatabaseSchema } from './schema.generated.js';
+import { DATABASE_SCHEMA_CONTRACT } from './schema-manifest.js';
 
 export function databasePoolConfig(connectionString: string) {
     const url = new URL(connectionString);
@@ -53,7 +54,9 @@ export class DatabaseService implements OnApplicationShutdown {
                 select current_database() as database,
                   not (rolsuper or rolbypassrls or rolcreatedb or rolcreaterole or rolinherit or rolreplication)
                     as role_safe,
-                  exists(select 1 from meal.schema_migrations where version=32) as migrated
+                  (select coalesce(array_agg(version order by version),array[]::integer[])
+                            = ${DATABASE_SCHEMA_CONTRACT.versions}::integer[]
+                   from meal.schema_migrations) as migrated
                 from pg_roles where rolname = current_user
             `.execute(this.db);
             return (

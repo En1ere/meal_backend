@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { sql, type Transaction } from 'kysely';
 import type { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import type { EntitlementsService } from '../../modules/entitlements/entitlements.service.js';
+import type { EntitlementsService } from '../../modules/entitlements/public.js';
 
 export type WorkflowScope = 'private' | 'family';
 export type WorkflowTx = Transaction<DatabaseSchema>;

@@ -5,24 +5,20 @@ import { readFileSync } from 'node:fs';
 import { createApp } from '../src/app/create-app.js';
 import { readConfig } from '../src/app/config.js';
 import {
+    DatabaseLegalDocumentProvider,
+    LegalConsentRequiredException,
+    LegalConsentService,
+    consentEvidenceEnables,
+    demonstrationDocument,
+    demonstrationManifest,
     immutableLegalDocumentRefSchema,
     publicLegalManifestSchema,
     registrationLegalEvidenceSchema,
-} from '../src/modules/legal-consents/legal-consent.contracts.js';
-import {
-    DatabaseLegalDocumentProvider,
-    demonstrationDocument,
-    demonstrationManifest,
-} from '../src/modules/legal-consents/legal-document.provider.js';
+    type LegalDocumentProvider,
+} from '../src/modules/legal-consents/public.js';
 import type { DatabaseService } from '../src/infrastructure/database/database.service.js';
-import type { LegalDocumentProvider } from '../src/modules/legal-consents/legal-document.provider.js';
-import { marketingDeliveryAllowed } from '../src/modules/admin-news/news-delivery.js';
-import { allergenPreferencesChanged } from '../src/modules/personalization/personalization.service.js';
-import {
-    consentEvidenceEnables,
-    LegalConsentService,
-    LegalConsentRequiredException,
-} from '../src/modules/legal-consents/legal-consent.service.js';
+import { marketingDeliveryAllowed } from '../src/modules/admin-news/public.js';
+import { allergenPreferencesChanged } from '../src/modules/personalization/public.js';
 
 const productionDemonstrationConfig = () =>
     readConfig({

@@ -4,7 +4,7 @@ import {
     RECOMMENDATION_SCORING_POLICY,
     scoreRecipe,
     type RecipeCandidate,
-} from '../src/modules/recommendations/recommendations.domain.js';
+} from '../src/modules/recommendations/public.js';
 
 const candidate: RecipeCandidate = {
     id: 'recipe-1',

@@ -94,7 +94,7 @@ docker compose run --rm backend npm run db:plan
 
 Before enabling traffic, verify all of the following:
 
-1. migration manifest is exactly v33 / 223 tables / 513 foreign keys / PostgreSQL 18;
+1. migration manifest matches the current `database/manifest.json` exactly (currently v37 / 228 tables / 522 foreign keys / PostgreSQL 18);
 2. provider images are immutable-digest pinned and S3 port is not published on the host;
 3. quarantine credentials cannot read/write the ready bucket except through the backend/scanner roles defined by the later checkpoint;
 4. both buckets exist, public ACL/policy is absent, versioning/retention choice is recorded, and disk-pressure alerting is active;
@@ -105,7 +105,7 @@ Before enabling traffic, verify all of the following:
 
 ## Gate for checkpoint 6B
 
-Before `MEDIA_STORAGE_ENABLED=true`, schema v33 and least-privilege roles must be applied, the dedicated processor identity/buckets must pass exact permissions, and the processor must pass JPEG/PNG/WebP worst-case memory, timeout, kill, restart, stale-lease, ambiguous PUT/commit and no-growth drills on the 1.9 GiB VPS. Public/downloadable readiness remains blocked until a real malware scanner or an explicitly approved non-public policy exists. OCR is a separate checkpoint and always produces `requiresReview=true`.
+Before `MEDIA_STORAGE_ENABLED=true`, the complete schema from the current manifest (currently v37) and least-privilege roles must be applied, the dedicated processor identity/buckets must pass exact permissions, and the processor must pass JPEG/PNG/WebP worst-case memory, timeout, kill, restart, stale-lease, ambiguous PUT/commit and no-growth drills on the 1.9 GiB VPS. Public/downloadable readiness remains blocked until a real malware scanner or an explicitly approved non-public policy exists. OCR is a separate checkpoint and always produces `requiresReview=true`.
 
 ### VPS capacity/isolation evidence — 2026-11-02
 

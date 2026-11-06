@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { recipeRecommendationSchema } from '../recommendations/recommendations.contracts.js';
+import { recipeRecommendationSchema } from '../recommendations/public.js';
 
 export const onboardingFlowSchema = z.enum(['quick', 'detailed', 'demo']);
 export const onboardingStatusSchema = z.enum(['not_started', 'in_progress', 'completed', 'skipped']);

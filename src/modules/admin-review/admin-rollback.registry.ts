@@ -3,7 +3,7 @@ import { sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
 import type { Principal } from '../auth/auth.service.js';
-import { ContentReleasesService } from '../content-releases/content-releases.service.js';
+import { ContentReleasesService } from '../content-releases/public.js';
 
 type Tx = Transaction<DatabaseSchema>;
 type Db = Tx | import('kysely').Kysely<DatabaseSchema>;

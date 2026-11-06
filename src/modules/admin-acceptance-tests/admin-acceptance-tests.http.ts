@@ -3,7 +3,7 @@ import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs
 import { RouteConfig } from '@nestjs/platform-fastify';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { AdminSessionGuard } from '../admin-auth/admin-auth.http.js';
+import { AdminSessionGuard } from '../admin-auth/public.js';
 import type { Principal } from '../auth/auth.service.js';
 import {
     acceptanceCaseIdSchema,

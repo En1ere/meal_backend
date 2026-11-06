@@ -13,13 +13,13 @@ import {
 } from 'kysely';
 import type { DatabaseSchema } from '../src/infrastructure/database/schema.generated.js';
 import type { DatabaseService } from '../src/infrastructure/database/database.service.js';
-import type { AdminAccessService } from '../src/modules/admin-auth/admin-access.service.js';
-import { RecipePolicyService } from '../src/modules/recipe-policy/recipe-policy.service.js';
+import type { AdminAccessService } from '../src/modules/admin-auth/public.js';
 import {
     defaultRecipePolicy,
     recipeAllowance,
     recipePolicyChangeSchema,
-} from '../src/modules/recipe-policy/recipe-policy.contracts.js';
+    RecipePolicyService,
+} from '../src/modules/recipe-policy/public.js';
 
 void test('recipe quotas use rolling action-specific windows and validate settings', () => {
     assert.deepEqual(recipeAllowance(defaultRecipePolicy, 'submission'), { limit: 10, windowSeconds: 86400 });

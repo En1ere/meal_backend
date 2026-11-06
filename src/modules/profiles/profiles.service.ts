@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import { ownProfileSchema, publicProfileSchema, publicProjection, updateOwnProfileSchema } from './profiles.schemas.js';
-import { LegalConsentService } from '../legal-consents/legal-consent.service.js';
+import { LegalConsentService } from '../legal-consents/public.js';
 
 @Injectable()
 export class ProfilesService {

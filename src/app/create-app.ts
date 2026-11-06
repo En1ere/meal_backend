@@ -11,7 +11,7 @@ import { AppModule } from './app.module.js';
 import type { AppConfig } from './config.js';
 import { ApiExceptionFilter, ResponseInterceptor } from '../shared/http/response.js';
 import { documentResponses } from '../shared/http/openapi-responses.js';
-import { TelemetryService } from '../modules/telemetry/telemetry.service.js';
+import { TelemetryService } from '../modules/telemetry/public.js';
 
 export async function createApp(config: AppConfig) {
     const adapter = new FastifyAdapter({
@@ -79,9 +79,9 @@ export function openApiDocument(app: NestFastifyApplication) {
             new DocumentBuilder()
                 .setTitle('Meal Planner API')
                 .setDescription(
-                    'Backend-owned auth/account/privacy/legal-consent/export/profile/admin/inventory/products/recipes/preserves/shopping/receipts/meal-plan/support/AI and simulated paid Plus/Pro lifecycle including promotion, renewal, downgrade and family combination; private diary, finance, nutrition analytics, Pro export and fail-closed target-bound image intake and Web Push contracts; database schema v34; storage/CDR activation, malware scanning, publication and approved legal evidence pending',
+                    'Backend-owned auth/account/privacy/legal-consent/export/profile/admin/inventory/products/recipes/preserves/shopping/receipts/meal-plan/support/AI and simulated paid Plus/Pro lifecycle including promotion, renewal, downgrade and family combination; private diary, finance, nutrition analytics, Pro export and fail-closed target-bound image intake and Web Push contracts; database schema v37; storage/CDR activation, malware scanning, publication and approved legal evidence pending',
                 )
-                .setVersion('0.0.65')
+                .setVersion('0.0.70')
                 .addCookieAuth('meal_user', { type: 'apiKey' }, 'meal_user')
                 .addCookieAuth('meal_staff', { type: 'apiKey' }, 'meal_staff')
                 .addCookieAuth('meal_admin', { type: 'apiKey' }, 'meal_admin')

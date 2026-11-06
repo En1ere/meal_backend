@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { publicProfileSchema, publicProjection } from '../src/modules/profiles/profiles.schemas.js';
+import { publicProfileSchema, publicProjection } from '../src/modules/profiles/public.js';
 import { createApp } from '../src/app/create-app.js';
 import { readConfig } from '../src/app/config.js';
 

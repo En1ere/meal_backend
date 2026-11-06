@@ -1,9 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import {
-    operationalExternalBlockers,
-    operationalReadiness,
-} from '../src/modules/operational-runtime/operational-readiness.js';
+import { operationalExternalBlockers, operationalReadiness } from '../src/modules/operational-runtime/public.js';
 
 const manifest = {
     database: 'meal_planner_postgres',

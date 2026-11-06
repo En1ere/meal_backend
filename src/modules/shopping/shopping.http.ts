@@ -116,4 +116,4 @@ export class ShoppingController {
     }
 }
 import { shoppingListQuerySchema, shoppingCommandSchema, shoppingReorderSchema } from './shopping.contracts.js';
-import { purchaseReviewSchema, purchaseCommitSchema } from '../receipts/receipts.contracts.js';
+import { purchaseReviewSchema, purchaseCommitSchema } from '../receipts/public.js';

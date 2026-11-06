@@ -4,7 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { readWorkerApplicationConfig } from '../dist/src/app/worker-config.js';
 import { WorkerModule } from '../dist/src/app/worker.module.js';
 import { WorkerRuntimeFactory } from '../dist/src/infrastructure/workers/worker-runtime.factory.js';
-import { scheduledTaskIdSchema } from '../dist/src/modules/operational-runtime/worker-scheduler.js';
+import { scheduledTaskIdSchema } from '../dist/src/modules/operational-runtime/public.js';
 
 const parsed = scheduledTaskIdSchema.safeParse(process.argv[2]);
 if (!parsed.success || process.argv.length !== 3) {
@@ -28,7 +28,7 @@ if (!parsed.success || process.argv.length !== 3) {
         const task = parsed.data;
         let execution;
         if (task === 'scheduled-news') {
-            const { ScheduledNewsRunner } = await import('../dist/src/modules/admin-news/scheduled-news.runner.js');
+            const { ScheduledNewsRunner } = await import('../dist/src/modules/admin-news/public.js');
             execution = await runtime.oneShot(
                 task,
                 () => app.get(ScheduledNewsRunner).runDue(25),
@@ -40,8 +40,7 @@ if (!parsed.success || process.argv.length !== 3) {
                 }),
             );
         } else if (task === 'scheduled-sanctions') {
-            const { AdminGovernanceService } =
-                await import('../dist/src/modules/admin-governance/admin-governance.service.js');
+            const { AdminGovernanceService } = await import('../dist/src/modules/admin-governance/public.js');
             execution = await runtime.oneShot(
                 task,
                 () => app.get(AdminGovernanceService).activateScheduledSanctionEffects(50),
@@ -53,23 +52,21 @@ if (!parsed.success || process.argv.length !== 3) {
                 }),
             );
         } else if (task === 'diary-portions') {
-            const { DiaryService } = await import('../dist/src/modules/diary/diary.service.js');
+            const { DiaryService } = await import('../dist/src/modules/diary/public.js');
             execution = await runtime.oneShot(
                 task,
                 () => app.get(DiaryService).runDue(100),
                 (result) => ({ attempted: result.recipients, succeeded: result.recipients, deferred: 0, failed: 0 }),
             );
         } else if (task === 'incident-ignore-expiry') {
-            const { OperationalMaintenanceService } =
-                await import('../dist/src/modules/admin-operations/operational-maintenance.service.js');
+            const { OperationalMaintenanceService } = await import('../dist/src/modules/admin-operations/public.js');
             execution = await runtime.oneShot(
                 task,
                 () => app.get(OperationalMaintenanceService).restoreExpiredIncidentIgnores(250),
                 (result) => ({ attempted: result.inspected, succeeded: result.restored, deferred: 0, failed: 0 }),
             );
         } else {
-            const { CookingLifecycleService } =
-                await import('../dist/src/modules/cooking/cooking-lifecycle.service.js');
+            const { CookingLifecycleService } = await import('../dist/src/modules/cooking/public.js');
             execution = await runtime.embedded(
                 task,
                 () => app.get(CookingLifecycleService).runScheduledBatch(),

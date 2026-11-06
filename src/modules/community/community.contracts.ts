@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { recipeSummarySchema } from '../recipes/recipes.contracts.js';
+import { recipeSummarySchema } from '../recipes/public.js';
 
 export const communitySortSchema = z.enum(['newest', 'oldest']);
 export const communityQuerySchema = z.strictObject({

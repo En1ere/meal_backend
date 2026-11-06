@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { sql, type Kysely, type Transaction } from 'kysely';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import { EntitlementsService } from '../entitlements/entitlements.service.js';
-import { LegalConsentService } from '../legal-consents/legal-consent.service.js';
+import { EntitlementsService } from '../entitlements/public.js';
+import { LegalConsentService } from '../legal-consents/public.js';
 import type { NewsContent } from './admin-news.contracts.js';
 
 export type NewsDb = Kysely<DatabaseSchema> | Transaction<DatabaseSchema>;

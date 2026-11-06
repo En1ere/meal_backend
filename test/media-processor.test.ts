@@ -5,10 +5,9 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { test } from 'node:test';
-import { encryptMediaStream, encryptedMediaHeaderBytes } from '../src/modules/media-storage/media-encryption.js';
-import { readMediaProcessorConfig } from '../src/modules/media-processing/media-processor.config.js';
-import { MediaProcessor } from '../src/modules/media-processing/media-processor.js';
-import type { ImageCdrJob } from '../src/modules/media-processing/media-processor.repository.js';
+import { encryptMediaStream, encryptedMediaHeaderBytes } from '../src/modules/media-storage/public.js';
+import { MediaProcessor, readMediaProcessorConfig } from '../src/modules/media-processing/public.js';
+import type { ImageCdrJob } from '../src/modules/media-processing/public.js';
 
 void test('media processor is disabled by default and rejects unsafe runtime configuration', () => {
     const disabled = readMediaProcessorConfig({ NODE_ENV: 'production' });

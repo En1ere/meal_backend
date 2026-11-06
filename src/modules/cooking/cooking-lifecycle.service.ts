@@ -19,7 +19,7 @@ import {
     cookingReminderSchema,
     type cookingReminderPreferencesChangeSchema,
 } from './cooking.contracts.js';
-import type { WorkerCounters } from '../operational-runtime/worker-runtime.js';
+import type { WorkerCounters } from '../operational-runtime/public.js';
 
 const validZone = (zone: string | null | undefined): zone is string => {
     if (!zone || /^[+-]/.test(zone)) return false;

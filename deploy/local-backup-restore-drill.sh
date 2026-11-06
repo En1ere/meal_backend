@@ -84,7 +84,14 @@ restic restore "$snapshot" --target "$target" >/dev/null
 stage="$target/var/lib/meal-planner/local-backup-staging/current"
 dump="$stage/postgres.dump"
 require_file "$dump"
+require_file "$stage/migration-manifest.json"
 (cd "$stage" && sha256sum -c ARTIFACTS.sha256 >/dev/null)
+expected_facts=$(jq -r '[(.migrations|length),.totalTables,.foreignKeys,.postgresMajor]|join("/")' \
+    "$stage/migration-manifest.json")
+printf '%s\n' "$expected_facts" | grep -Eq '^[0-9]+/[0-9]+/[0-9]+/[0-9]+$' || {
+    echo 'Backup database manifest is invalid' >&2; exit 65;
+}
+expected_migration_count=${expected_facts%%/*}
 
 docker run -d --name "$container" --network none --tmpfs /var/lib/postgresql:rw,nosuid,nodev,noexec,size=2g \
     -e POSTGRES_DB=meal_planner_postgres -e POSTGRES_USER=meal_owner -e POSTGRES_HOST_AUTH_METHOD=trust "$POSTGRES_IMAGE" >/dev/null
@@ -97,8 +104,8 @@ done
 docker cp "$dump" "$container:/tmp/meal-local-restore.dump"
 docker exec --user root "$container" chown postgres:postgres /tmp/meal-local-restore.dump
 docker exec --user postgres "$container" pg_restore --exit-on-error --single-transaction --no-owner --no-acl -U meal_owner -d meal_planner_postgres /tmp/meal-local-restore.dump
-facts=$(docker exec "$container" psql -U meal_owner -d meal_planner_postgres --tuples-only --no-align --field-separator / --command "select (select max(version) from meal.schema_migrations),(select count(*) from information_schema.tables where table_schema='meal' and table_type='BASE TABLE'),(select count(*) from pg_constraint c join pg_namespace n on n.oid=c.connamespace where n.nspname='meal' and c.contype='f'),current_setting('server_version_num')::int/10000")
-[ "$facts" = 34/227/519/18 ] || { echo 'Restored database invariant mismatch' >&2; exit 65; }
+facts=$(docker exec "$container" psql -U meal_owner -d meal_planner_postgres --tuples-only --no-align --field-separator / --command "select (select count(*) from meal.schema_migrations),(select count(*) from information_schema.tables where table_schema='meal' and table_type='BASE TABLE'),(select count(*) from pg_constraint c join pg_namespace n on n.oid=c.connamespace where n.nspname='meal' and c.contype='f'),current_setting('server_version_num')::int/10000,not exists(select 1 from generate_series(1,$expected_migration_count) expected(version) left join meal.schema_migrations actual using(version) where actual.version is null)")
+[ "$facts" = "$expected_facts/t" ] || { echo 'Restored database invariant mismatch' >&2; exit 65; }
 docker exec "$container" psql -U meal_owner -d meal_planner_postgres -v ON_ERROR_STOP=1 --command 'begin isolation level serializable; select count(*) from meal.users; rollback' >/dev/null
 
 media_root="$target${MEDIA_STORAGE_HOST_ROOT}"

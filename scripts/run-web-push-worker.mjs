@@ -2,9 +2,8 @@ import { writeFile } from 'node:fs/promises';
 import { Kysely, PostgresDialect } from 'kysely';
 import pg from 'pg';
 import { databasePoolConfig } from '../dist/src/infrastructure/database/database.service.js';
-import { readWebPushWorkerConfig } from '../dist/src/modules/web-push/web-push-worker.config.js';
-import { VapidWebPushProvider } from '../dist/src/modules/delivery-infrastructure/web-push.provider.js';
-import { WebPushProcessor } from '../dist/src/modules/web-push/web-push.processor.js';
+import { readWebPushWorkerConfig, WebPushProcessor } from '../dist/src/modules/web-push/public.js';
+import { VapidWebPushProvider } from '../dist/src/modules/delivery-infrastructure/public.js';
 const config = readWebPushWorkerConfig(process.env);
 const pool = new pg.Pool({
     ...databasePoolConfig(config.databaseUrl),

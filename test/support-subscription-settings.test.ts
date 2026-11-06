@@ -14,12 +14,12 @@ import {
 import type { DatabaseService } from '../src/infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../src/infrastructure/database/schema.generated.js';
 import type { Principal } from '../src/modules/auth/auth.service.js';
-import { AdminGovernanceService } from '../src/modules/admin-governance/admin-governance.service.js';
-import { canApplyPreviewedRollbackItem } from '../src/modules/admin-review/admin-review.service.js';
-import { ContentReleasesService } from '../src/modules/content-releases/content-releases.service.js';
-import { ExportsService } from '../src/modules/exports/exports.service.js';
-import { SubscriptionSettingsService } from '../src/modules/subscription-settings/subscription-settings.service.js';
-import { SupportService } from '../src/modules/support/support.service.js';
+import { AdminGovernanceService } from '../src/modules/admin-governance/public.js';
+import { canApplyPreviewedRollbackItem } from '../src/modules/admin-review/public.js';
+import { ContentReleasesService } from '../src/modules/content-releases/public.js';
+import { ExportsService } from '../src/modules/exports/public.js';
+import { SubscriptionSettingsService } from '../src/modules/subscription-settings/public.js';
+import { SupportService } from '../src/modules/support/public.js';
 
 const userId = '10000000-0000-4000-8000-000000000001';
 

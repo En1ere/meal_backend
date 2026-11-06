@@ -2,11 +2,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
-import {
-    decryptMediaStream,
-    encryptMediaStream,
-    encryptedMediaHeaderBytes,
-} from '../media-storage/media-encryption.js';
+import { decryptMediaStream, encryptMediaStream, encryptedMediaHeaderBytes } from '../media-storage/public.js';
 import { imageCdrPolicy } from './image-cdr.js';
 import { ImageCdrChildError, runImageCdrChild, type ImageCdrChildResult } from './image-cdr-runner.js';
 import type { MediaProcessorConfig } from './media-processor.config.js';

@@ -12,8 +12,8 @@ import { sql, type Transaction } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
 import type { Principal } from '../auth/auth.service.js';
-import { ContentReleasesService } from '../content-releases/content-releases.service.js';
-import { RecipeLifecycleService, sanitizePublicReviewReason } from '../recipe-lifecycle/recipe-lifecycle.service.js';
+import { ContentReleasesService } from '../content-releases/public.js';
+import { RecipeLifecycleService, sanitizePublicReviewReason } from '../recipe-lifecycle/public.js';
 import {
     moderatorClaimSchema,
     moderatorDecisionSchema,

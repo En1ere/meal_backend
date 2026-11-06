@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { quantitySchema } from '../inventory/inventory.contracts.js';
-import { proAccessSchema } from '../pro-overview/pro-overview.contracts.js';
-import { diaryCompletenessSchema, diaryNutrientsSchema } from '../diary/diary.contracts.js';
+import { quantitySchema } from '../inventory/public.js';
+import { proAccessSchema } from '../pro-overview/public.js';
+import { diaryCompletenessSchema, diaryNutrientsSchema } from '../diary/public.js';
 
 export const nutritionGoalSchema = z.enum(['maintain', 'lose_weight', 'gain_weight', 'custom']);
 export const nutritionTargetValuesSchema = diaryNutrientsSchema;

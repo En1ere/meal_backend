@@ -5,11 +5,15 @@ import { Readable } from 'node:stream';
 import { test } from 'node:test';
 import { HttpException, ServiceUnavailableException } from '@nestjs/common';
 import { readConfig } from '../src/app/config.js';
-import { decryptMediaStream, encryptMediaStream } from '../src/modules/media-storage/media-encryption.js';
-import { detectMediaMime, MediaMimeVerifier } from '../src/modules/media-storage/media-mime.js';
-import { DisabledMediaObjectStore } from '../src/modules/media-storage/media-object-store.js';
-import { mediaPurposePolicy } from '../src/modules/media-storage/media-storage.policy.js';
-import { MediaStorageTokenSigner } from '../src/modules/media-storage/media-storage.token.js';
+import {
+    decryptMediaStream,
+    detectMediaMime,
+    DisabledMediaObjectStore,
+    encryptMediaStream,
+    MediaMimeVerifier,
+    mediaPurposePolicy,
+    MediaStorageTokenSigner,
+} from '../src/modules/media-storage/public.js';
 
 const bytes = async (stream: Readable): Promise<Buffer> => {
     const chunks: Uint8Array[] = [];
@@ -200,7 +204,7 @@ void test('schema v32 and application grants preserve quarantine lifecycle and l
     assert.doesNotMatch(migration, /OLD\.state = 'uploading' AND NEW\.state[^\n]*'reserved'/);
     assert.match(migration, /r\.state IN \('quarantined','deleted'\)/);
     assert.match(migration, /a\.status = r\.state/);
-    assert.match(grants, /migrations 1-33/);
+    assert.match(grants, /every migration listed in database\/manifest\.json/);
     assert.match(grants, /GRANT UPDATE\(state,completed_at,failure_code,updated_at,version\)/);
     assert.doesNotMatch(grants, /GRANT DELETE ON meal\.media_/);
 });
@@ -223,7 +227,7 @@ void test('schema v33 binds image reservations to exact domain targets and durab
     assert.match(migration, /CREATE TABLE meal\.media_variant_evidence/);
     assert.match(migration, /CREATE TABLE meal\.recognition_review_snapshots/);
     assert.match(migration, /CREATE TABLE meal\.media_reconciliation_attempts/);
-    assert.match(grants, /migrations 1-33/);
+    assert.match(grants, /every migration listed in database\/manifest\.json/);
     assert.match(grants, /GRANT INSERT\(id,intake_id,asset_id,slot,position\) ON meal\.media_intake_sources/);
     assert.match(grants, /GRANT INSERT\(id,position,slot,asset_id,diary_entry_id,support_message_id,avatar_user_id\)/);
     assert.doesNotMatch(grants, /GRANT DELETE ON meal\.media_/);

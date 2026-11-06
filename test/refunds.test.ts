@@ -5,7 +5,7 @@ import {
     MockRefundProvider,
     RefundError,
     type RefundRequest,
-} from '../src/modules/payments/refunds.js';
+} from '../src/modules/payments/public.js';
 
 const target = { kind: 'subscription_period', id: 'period-1' } as const;
 function request(overrides: Partial<RefundRequest> = {}): RefundRequest {

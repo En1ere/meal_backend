@@ -4,7 +4,7 @@ import {
     preserveQrIssueSchema,
     preserveQrPayloadSchema,
     preserveQrResultSchema,
-} from '../src/modules/preserves/preserves.contracts.js';
+} from '../src/modules/preserves/public.js';
 
 const id = '10000000-0000-4000-8000-000000000005';
 

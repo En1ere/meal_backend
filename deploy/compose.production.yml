@@ -52,6 +52,9 @@ services:
             LOG_LEVEL: ${BACKEND_LOG_LEVEL:-info}
             TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:?trusted host proxy CIDR is required}
             ADMIN_ALLOWED_IPS: ${ADMIN_ALLOWED_IPS:-}
+            AI_API_BASE_URL: ${AI_API_BASE_URL:-https://api.openai.com/v1/}
+            AI_MODEL: ${AI_MODEL:-gpt-6-luna}
+            AI_BACKGROUND_EXECUTION_ENABLED: ${AI_WORKER_ENABLED:-false}
             AI_RECONCILIATION_ENABLED: 'false'
             COOKING_LIFECYCLE_ENABLED: 'false'
         secrets: [backend_database_url, backend_security_key, backend_mfa_encryption_key]

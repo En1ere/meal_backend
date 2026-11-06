@@ -204,7 +204,8 @@ void test('component deployment isolates UI rollout from database migration', as
     assert.match(deploy, /media-processor/);
     assert.match(deploy, /ocr_preview_enabled/);
     assert.match(deploy, /ocr-preview/);
-    assert.match(deploy, /schema_version=34/);
+    assert.match(deploy, /schema_version=\$candidate_schema_version/);
+    assert.match(deploy, /manifest\.migrations\.at\(-1\)\?\.version/);
     assert.ok(
         deploy.indexOf('compose stop backend worker') < deploy.indexOf('sh "$SCRIPT_DIR/backup.sh"'),
         'backend writers must stop before the final pre-migration backup',
@@ -261,7 +262,12 @@ void test('component deployment isolates UI rollout from database migration', as
     const proxySmoke = await text('deploy/proxy-smoke.sh');
     assert.match(proxySmoke, /X-Forwarded-For/);
     assert.match(proxySmoke, /Runtime proxy source verified by admin guard/);
-    assert.match(bootstrap, /34\/227\/519\/18/);
+    assert.match(
+        bootstrap,
+        /manifest\.migrations\.length,manifest\.totalTables,manifest\.foreignKeys,manifest\.postgresMajor/,
+    );
+    assert.match(bootstrap, /generate_series\(1,\$expected_migration_count\)/);
+    assert.match(bootstrap, /\[ "\$facts" = "\$expected_facts\/t" \]/);
     assert.match(bootstrap, /meal_runtime/);
     assert.doesNotMatch(bootstrap, /grant meal_mail_worker to meal_runtime/);
     assert.match(bootstrap, /chown postgres:postgres "\$restore_path"/);

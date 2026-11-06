@@ -1,7 +1,7 @@
 import { HttpException } from '@nestjs/common';
 import type { z } from 'zod';
 import type { cookingProgressSchema, CookingAttempt } from './cooking.contracts.js';
-import { decimal, decimalText } from '../inventory/inventory.domain.js';
+import { decimal, decimalText } from '../inventory/public.js';
 export function cookingReminderSchedule(startedAt: string, timezone?: string) {
     const start = Date.parse(startedAt);
     if (!Number.isFinite(start)) throw new Error('Invalid cooking start');

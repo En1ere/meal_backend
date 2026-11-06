@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { isAbsolute, join, resolve } from 'node:path';
 import { Worker } from 'node:worker_threads';
-import { scanPreviewSchema } from '../dist/src/modules/inventory-ingest/ingest.contracts.js';
+import { scanPreviewSchema } from '../dist/src/modules/inventory-ingest/public.js';
 
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const maximumBytes = 10 * 1024 * 1024;

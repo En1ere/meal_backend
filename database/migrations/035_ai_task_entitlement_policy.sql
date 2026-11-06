@@ -1,0 +1,66 @@
+-- Versioned task entitlement policy. Historical rule rows remain immutable.
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '30s';
+
+INSERT INTO meal.ai_rule_versions(id,kind,version,config,effective_at)
+VALUES(
+  '00000000-0000-4000-8000-00000000a135'::uuid,
+  'cost',
+  3,
+  '{
+    "taskRuleVersion":"ai-task-policy-v3",
+    "agreementVersion":"ai-usage-v1",
+    "previewTtlSeconds":600,
+    "intervalSeconds":600,
+    "target":{"provider":"openai","model":"gpt-6-luna","transport":"responses","reasoningEffort":"low"},
+    "tokenBudgets":{
+      "1":{"maxInputTokens":8000,"maxOutputTokens":1500},
+      "2":{"maxInputTokens":16000,"maxOutputTokens":3000},
+      "3":{"maxInputTokens":32000,"maxOutputTokens":5000},
+      "4":{"maxInputTokens":48000,"maxOutputTokens":7000},
+      "5":{"maxInputTokens":64000,"maxOutputTokens":10000}
+    },
+    "costs":{
+      "culinary_question":1,
+      "substitution":1,
+      "storage_advice":1,
+      "ingredient_extraction":1,
+      "product_classification":1,
+      "recipe_from_stock":2,
+      "nutrition_calculation":2,
+      "personal_recommendation":2,
+      "beverage_pairing":2,
+      "portion_cost_calculation":2,
+      "recipe_adaptation":2,
+      "shopping_list_generation":3,
+      "registry_analysis":3,
+      "review_summary":3,
+      "meal_plan_generation":4,
+      "seasonal_analysis":4,
+      "event_menu":4,
+      "document_analysis":5
+    },
+    "minimumPlans":{
+      "culinary_question":"free",
+      "substitution":"free",
+      "storage_advice":"free",
+      "ingredient_extraction":"free",
+      "product_classification":"free",
+      "recipe_from_stock":"free",
+      "nutrition_calculation":"pro",
+      "personal_recommendation":"free",
+      "beverage_pairing":"free",
+      "portion_cost_calculation":"pro",
+      "recipe_adaptation":"free",
+      "shopping_list_generation":"plus",
+      "registry_analysis":"free",
+      "review_summary":"free",
+      "meal_plan_generation":"plus",
+      "seasonal_analysis":null,
+      "event_menu":"plus",
+      "document_analysis":null
+    },
+    "compensation":{"providerFailure":"release_reserved_actions","internalRetryCost":0}
+  }'::jsonb,
+  '2026-11-06T00:00:00Z'::timestamptz
+);

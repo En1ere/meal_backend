@@ -1,7 +1,7 @@
 // Read-only release planning command. It never creates an application context, opens a database or starts a browser.
 import fs from 'node:fs';
 const manifest = JSON.parse(fs.readFileSync(new URL('../database/manifest.json', import.meta.url), 'utf8'));
-const { operationalReadiness } = await import('../dist/src/modules/operational-runtime/operational-readiness.js');
+const { operationalReadiness } = await import('../dist/src/modules/operational-runtime/public.js');
 console.log(
     JSON.stringify(
         operationalReadiness({

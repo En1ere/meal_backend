@@ -2,8 +2,8 @@ import { HttpException, Injectable, ServiceUnavailableException } from '@nestjs/
 import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
-import { RecommendationsService } from '../recommendations/recommendations.service.js';
-import { LegalConsentService } from '../legal-consents/legal-consent.service.js';
+import { RecommendationsService } from '../recommendations/public.js';
+import { LegalConsentService } from '../legal-consents/public.js';
 import {
     homeSchema,
     onboardingSchema,

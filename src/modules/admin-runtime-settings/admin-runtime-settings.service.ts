@@ -5,7 +5,7 @@ import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
 import type { Principal } from '../auth/auth.service.js';
-import { AdminAccessService } from '../admin-auth/admin-access.service.js';
+import { AdminAccessService } from '../admin-auth/public.js';
 import {
     runtimeSettingsTabSchema,
     webPushPolicyExecuteSchema,
@@ -313,15 +313,17 @@ export class AdminRuntimeSettingsService {
                 tab: 'integrations',
                 key: 'ai-provider',
                 label: 'AI provider',
-                value: this.config.AI_API_TOKEN ? 'configured' : 'missing',
-                status: this.config.AI_API_TOKEN ? 'partial' : 'blocked',
-                source: 'vps_secret',
-                readiness: this.config.AI_API_TOKEN ? 'external_dependency' : 'owner_input',
+                value: this.config.AI_BACKGROUND_EXECUTION_ENABLED ? 'worker enabled' : 'disabled',
+                status: this.config.AI_BACKGROUND_EXECUTION_ENABLED ? 'partial' : 'blocked',
+                source: 'environment',
+                readiness: this.config.AI_BACKGROUND_EXECUTION_ENABLED ? 'external_dependency' : 'owner_input',
                 sensitive: true,
-                affectedServices: ['backend'],
+                affectedServices: ['backend', 'ai-worker'],
+                instruction:
+                    'Секрет провайдера доступен только изолированному ai-worker и не передаётся backend/admin API. Проверяйте наличие файла /etc/meal-planner/secrets/ai-api-token через SSH на VPS.',
                 secret: {
-                    configured: !!this.config.AI_API_TOKEN,
-                    fingerprint: fingerprint(this.config.AI_API_TOKEN),
+                    configured: this.config.AI_BACKGROUND_EXECUTION_ENABLED,
+                    fingerprint: null,
                     rotatedAt: null,
                 },
             }),

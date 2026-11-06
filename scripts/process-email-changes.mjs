@@ -8,7 +8,7 @@ if (!process.argv.includes('--apply')) {
     const { NestFactory } = await import('@nestjs/core');
     const { readConfig } = await import('../dist/src/app/config.js');
     const { AppModule } = await import('../dist/src/app/app.module.js');
-    const { AccountService } = await import('../dist/src/modules/account/account.service.js');
+    const { AccountService } = await import('../dist/src/modules/account/public.js');
     const config = readConfig(process.env);
     if (!config.DATABASE_URL) throw Error('Explicit DATABASE_URL required');
     const app = await NestFactory.createApplicationContext(AppModule.configure(config), { logger: false });

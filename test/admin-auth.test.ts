@@ -6,7 +6,7 @@ import { createApp } from '../src/app/create-app.js';
 import { readConfig } from '../src/app/config.js';
 import { AuthService, type Principal } from '../src/modules/auth/auth.service.js';
 import { DatabaseService } from '../src/infrastructure/database/database.service.js';
-import { AdminAccessService } from '../src/modules/admin-auth/admin-access.service.js';
+import { AdminAccessService } from '../src/modules/admin-auth/public.js';
 
 await test('admin origin is exact, HTTPS in production and disabled when unconfigured in production', async () => {
     const base = {

@@ -3,7 +3,7 @@ import { ApiBody, ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { UserSessionGuard } from '../auth/auth.http.js';
-import { AdminSessionGuard } from '../admin-auth/admin-auth.http.js';
+import { AdminSessionGuard } from '../admin-auth/public.js';
 import type { Principal } from '../auth/auth.service.js';
 import { recipePolicyChangeSchema } from './recipe-policy.contracts.js';
 import { RecipePolicyService } from './recipe-policy.service.js';

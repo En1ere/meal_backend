@@ -25,7 +25,7 @@ import {
 } from './preserves.contracts.js';
 import { preserveTotal, preserveRemainder, preserveImage } from './preserves.domain.js';
 import { consumePreserveContainer } from './preserves.store.js';
-import { EntitlementsService } from '../entitlements/entitlements.service.js';
+import { EntitlementsService } from '../entitlements/public.js';
 
 const projection = sql`p.id,p.batch_id as "batchId",p.version::integer,b.name,p.type,p.created_on::text as "createdOn",b.expiry_on::text as "expiryOn",p.shelf_life_days as "shelfLifeDays",b.location_id as "locationId",u.code as unit,p.volume_per_unit::text as "volumePerUnit",p.notes,coalesce(p.tags,'[]'::jsonb) as tags,coalesce(p.ingredients_snapshot,'[]'::jsonb) as ingredients,b.metadata->>'imageUrl' as "imageUrl",b.quantity::text,p.created_at as "createdAt",b.archived_at as "archivedAt",p.recipe_revision_id as "recipeRevisionId",rr.recipe_id as "recipeId",rr.title as "recipeTitle",coalesce((select jsonb_agg(jsonb_build_object('id',c.id,'label',c.label,'initialQuantity',c.initial_quantity::text,'remainingQuantity',c.remaining_quantity::text,'openedAt',to_char(c.opened_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),'depletedAt',to_char(c.depleted_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),'version',c.version) order by c.created_at,c.id) from meal.preserve_containers c where c.preserve_id=p.id),'[]'::jsonb) as containers`;
 const joins = sql`from meal.preserve_details p join meal.inventory_batches b on b.id=p.batch_id left join meal.units u on u.id=b.unit_id left join meal.recipe_revisions rr on rr.id=p.recipe_revision_id`;

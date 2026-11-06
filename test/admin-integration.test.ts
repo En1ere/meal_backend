@@ -5,21 +5,21 @@ import { UnauthorizedException } from '@nestjs/common';
 import { createApp } from '../src/app/create-app.js';
 import { readConfig } from '../src/app/config.js';
 import { AuthService, type Principal } from '../src/modules/auth/auth.service.js';
-import { AdminReadService } from '../src/modules/admin/admin-read.service.js';
-import { AdminAccessService } from '../src/modules/admin-auth/admin-access.service.js';
+import { AdminAccessService } from '../src/modules/admin-auth/public.js';
 import {
+    AdminReadService,
+    adminRelatedSources,
     adminPageSchema,
     adminDetailSchema,
     adminSectionSchema,
     adminRelatedPageSchema,
-} from '../src/modules/admin/admin-read.contracts.js';
-import { adminRelatedSources } from '../src/modules/admin/admin-related.sources.js';
-import { AdminActionsService } from '../src/modules/admin-actions/admin-actions.service.js';
+} from '../src/modules/admin/public.js';
 import {
+    AdminActionsService,
     notificationSettingsSchema,
     supportCommandResultSchema,
     supportMessagesSchema,
-} from '../src/modules/admin-actions/admin-actions.contracts.js';
+} from '../src/modules/admin-actions/public.js';
 
 await test('all 17 administrative read routes validate envelopes and reject unauthorized/unsupported/input-injected access', async () => {
     const config = readConfig({

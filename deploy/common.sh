@@ -9,6 +9,7 @@ MEDIA_BACKEND_COMPOSE_FILE=${MEDIA_BACKEND_COMPOSE_FILE:-$DEPLOY_ROOT/compose.me
 MEDIA_PROCESSOR_COMPOSE_FILE=${MEDIA_PROCESSOR_COMPOSE_FILE:-$DEPLOY_ROOT/compose.media-processor.yml}
 OCR_PREVIEW_COMPOSE_FILE=${OCR_PREVIEW_COMPOSE_FILE:-$DEPLOY_ROOT/compose.ocr-preview.yml}
 WEB_PUSH_COMPOSE_FILE=${WEB_PUSH_COMPOSE_FILE:-$DEPLOY_ROOT/compose.web-push.yml}
+AI_WORKER_COMPOSE_FILE=${AI_WORKER_COMPOSE_FILE:-$DEPLOY_ROOT/compose.ai-worker.yml}
 DEPLOY_ENV_FILE=${DEPLOY_ENV_FILE:-/etc/meal-planner/deploy.env}
 DEPLOY_LOCK_FILE=${DEPLOY_LOCK_FILE:-/run/lock/meal-planner-deploy.lock}
 DEPLOY_LOCK_WAIT_SECONDS=${DEPLOY_LOCK_WAIT_SECONDS:-300}
@@ -108,6 +109,11 @@ compose() {
         compose_files="$compose_files -f $WEB_PUSH_COMPOSE_FILE"
         compose_profiles="$compose_profiles --profile web-push"
     fi
+    if ai_worker_enabled; then
+        require_file "$AI_WORKER_COMPOSE_FILE"
+        compose_files="$compose_files -f $AI_WORKER_COMPOSE_FILE"
+        compose_profiles="$compose_profiles --profile ai-worker"
+    fi
     # Deployment paths are fixed root-owned paths without whitespace.
     # shellcheck disable=SC2086
     docker compose $compose_files $compose_profiles "$@"
@@ -145,6 +151,7 @@ ocr_preview_enabled() {
 }
 
 web_push_enabled() { [ "${WEB_PUSH_ENABLED:-false}" = true ]; }
+ai_worker_enabled() { [ "${AI_WORKER_ENABLED:-false}" = true ]; }
 
 validate_media_flags() {
     case "${MEDIA_STORAGE_INFRA_ENABLED:-false}" in true|false) ;; *) echo "MEDIA_STORAGE_INFRA_ENABLED must be true or false" >&2; exit 64 ;; esac
@@ -152,6 +159,7 @@ validate_media_flags() {
     case "${MEDIA_PROCESSOR_ENABLED:-false}" in true|false) ;; *) echo "MEDIA_PROCESSOR_ENABLED must be true or false" >&2; exit 64 ;; esac
     case "${OCR_PREVIEW_ENABLED:-false}" in true|false) ;; *) echo "OCR_PREVIEW_ENABLED must be true or false" >&2; exit 64 ;; esac
     case "${WEB_PUSH_ENABLED:-false}" in true|false) ;; *) echo "WEB_PUSH_ENABLED must be true or false" >&2; exit 64 ;; esac
+    case "${AI_WORKER_ENABLED:-false}" in true|false) ;; *) echo "AI_WORKER_ENABLED must be true or false" >&2; exit 64 ;; esac
     if media_storage_enabled && ! media_infra_enabled; then
         echo "MEDIA_STORAGE_ENABLED requires MEDIA_STORAGE_INFRA_ENABLED=true" >&2
         exit 64

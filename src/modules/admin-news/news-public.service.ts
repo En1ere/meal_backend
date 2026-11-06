@@ -9,7 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import { z } from 'zod';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
-import { EntitlementsService } from '../entitlements/entitlements.service.js';
+import { EntitlementsService } from '../entitlements/public.js';
 import {
     newsContentSchema,
     newsReadResultSchema,

@@ -127,6 +127,16 @@ export class StaffSessionGuard implements CanActivate {
         return true;
     }
 }
+export const STAFF_SESSION_GUARD = Symbol('STAFF_SESSION_GUARD');
+
+@Injectable()
+export class StaffSessionRouteGuard implements CanActivate {
+    constructor(@Inject(STAFF_SESSION_GUARD) readonly staff: StaffSessionGuard) {}
+
+    canActivate(context: ExecutionContext) {
+        return this.staff.canActivate(context);
+    }
+}
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
@@ -209,7 +219,7 @@ export class StaffAuthController {
         return { user: result.session.principal, recoveryCodes: result.recoveryCodes };
     }
     @Get('me')
-    @UseGuards(StaffSessionGuard)
+    @UseGuards(StaffSessionRouteGuard)
     @ApiCookieAuth('meal_staff')
     me(@Req() request: AuthRequest) {
         return { user: request.principal };

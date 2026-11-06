@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { recipeNutritionSchema } from '../recipes/recipes.contracts.js';
+import { recipeNutritionSchema } from '../recipes/public.js';
 export const workspaceNutritionSchema = z.object({
     status: z.enum(['calculated', 'base-unadjusted', 'unavailable']),
     base: recipeNutritionSchema.nullable(),

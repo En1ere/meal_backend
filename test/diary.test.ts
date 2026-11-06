@@ -1,17 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-    diaryCreateSchema,
-    diaryMediaUploadSchema,
-    diaryPortionDecisionSchema,
-} from '../src/modules/diary/diary.contracts.js';
+import { diaryCreateSchema, diaryMediaUploadSchema, diaryPortionDecisionSchema } from '../src/modules/diary/public.js';
 import {
     aggregateNutrition,
     completeness,
     portionTransition,
     scaleNutrition,
     unknownNutrition,
-} from '../src/modules/diary/diary.domain.js';
+} from '../src/modules/diary/public.js';
 
 const id = '10000000-0000-4000-8000-000000000001';
 

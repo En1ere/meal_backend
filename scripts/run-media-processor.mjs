@@ -2,10 +2,12 @@ import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { Kysely, PostgresDialect } from 'kysely';
 import pg from 'pg';
-import { readMediaProcessorConfig } from '../dist/src/modules/media-processing/media-processor.config.js';
-import { MediaProcessorRepository } from '../dist/src/modules/media-processing/media-processor.repository.js';
-import { MediaProcessorStorage } from '../dist/src/modules/media-processing/media-processor.storage.js';
-import { MediaProcessor } from '../dist/src/modules/media-processing/media-processor.js';
+import {
+    MediaProcessor,
+    MediaProcessorRepository,
+    MediaProcessorStorage,
+    readMediaProcessorConfig,
+} from '../dist/src/modules/media-processing/public.js';
 import { databasePoolConfig } from '../dist/src/infrastructure/database/database.service.js';
 
 const config = readMediaProcessorConfig(process.env);

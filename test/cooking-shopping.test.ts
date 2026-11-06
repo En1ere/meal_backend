@@ -14,17 +14,18 @@ import {
 } from 'kysely';
 import type { DatabaseSchema } from '../src/infrastructure/database/schema.generated.js';
 import type { DatabaseService } from '../src/infrastructure/database/database.service.js';
-import { CookingService } from '../src/modules/cooking/cooking.service.js';
-import { CookingController } from '../src/modules/cooking/cooking.http.js';
 import {
-    CookingAttempt,
+    CookingController,
+    CookingService,
+    type CookingAttempt,
     cookingFinalizeSchema,
     cookingProgressSchema,
-} from '../src/modules/cooking/cooking.contracts.js';
-import { consumedRemainder, progressAttempt, cookingReminderSchedule } from '../src/modules/cooking/cooking.domain.js';
-import { ShoppingService } from '../src/modules/shopping/shopping.service.js';
-import { shoppingAddSchema } from '../src/modules/shopping/shopping.contracts.js';
-import type { RecipesService } from '../src/modules/recipes/recipes.service.js';
+    consumedRemainder,
+    progressAttempt,
+    cookingReminderSchedule,
+} from '../src/modules/cooking/public.js';
+import { ShoppingService, shoppingAddSchema } from '../src/modules/shopping/public.js';
+import type { RecipesService } from '../src/modules/recipes/public.js';
 
 const id = '10000000-0000-4000-8000-000000000001';
 const key = '20000000-0000-4000-8000-000000000001';

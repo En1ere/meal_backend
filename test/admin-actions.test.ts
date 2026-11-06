@@ -4,12 +4,13 @@ import { createHash, randomUUID } from 'node:crypto';
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import type { DatabaseService } from '../src/infrastructure/database/database.service.js';
 import type { Principal } from '../src/modules/auth/auth.service.js';
-import { AdminActionsService, supportTransition } from '../src/modules/admin-actions/admin-actions.service.js';
 import {
+    AdminActionsService,
     preferenceChangeSchema,
+    supportTransition,
     supportReplySchema,
     supportMessagesSearchSchema,
-} from '../src/modules/admin-actions/admin-actions.contracts.js';
+} from '../src/modules/admin-actions/public.js';
 
 const actor: Principal = {
     id: randomUUID(),

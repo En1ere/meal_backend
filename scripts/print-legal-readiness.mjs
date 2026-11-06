@@ -1,7 +1,7 @@
 // Offline release planning command: no application context, database, network, provider or browser.
 import { readFile, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { legalReleaseReadiness } from '../dist/src/modules/legal-runtime/legal-release.js';
+import { legalReleaseReadiness } from '../dist/src/modules/legal-runtime/public.js';
 
 const requiredEvidence = [
     'approved_requirement_matrix',

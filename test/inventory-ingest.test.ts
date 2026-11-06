@@ -6,10 +6,12 @@ import type { FastifyRequest } from 'fastify';
 import * as XLSX from 'xlsx';
 import { readConfig } from '../src/app/config.js';
 import type { DatabaseService } from '../src/infrastructure/database/database.service.js';
-import { ingestLimitsSchema } from '../src/modules/inventory-ingest/ingest.contracts.js';
-import { InventoryIngestService } from '../src/modules/inventory-ingest/ingest.service.js';
-import { parseTable } from '../src/modules/inventory-ingest/table-parser.js';
-import { checkZip } from '../src/modules/inventory-ingest/zip-safety.js';
+import {
+    checkZip,
+    ingestLimitsSchema,
+    InventoryIngestService,
+    parseTable,
+} from '../src/modules/inventory-ingest/public.js';
 
 const limits = ingestLimitsSchema.parse({});
 const productionConfig = () =>

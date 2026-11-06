@@ -4,6 +4,7 @@ import {
     ForbiddenException,
     Get,
     HttpCode,
+    Inject,
     Injectable,
     Param,
     Post,
@@ -16,7 +17,7 @@ import {
 import { ApiBody, ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { StaffSessionGuard } from '../auth/auth.http.js';
+import { STAFF_SESSION_GUARD, StaffSessionGuard } from '../auth/public.js';
 import type { Principal } from '../auth/auth.service.js';
 import {
     moderatorClaimSchema,
@@ -33,7 +34,7 @@ const schema = (value: z.ZodType) => z.toJSONSchema(value, { io: 'input', target
 
 @Injectable()
 export class ModeratorSessionGuard implements CanActivate {
-    constructor(private readonly staff: StaffSessionGuard) {}
+    constructor(@Inject(STAFF_SESSION_GUARD) readonly staff: StaffSessionGuard) {}
     async canActivate(context: ExecutionContext) {
         await this.staff.canActivate(context);
         const request = context.switchToHttp().getRequest<Request>();

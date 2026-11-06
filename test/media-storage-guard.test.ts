@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ServiceUnavailableException } from '@nestjs/common';
-import { MediaStorageCapacityGuard } from '../src/modules/media-storage/media-storage-guard.js';
+import { MediaStorageCapacityGuard } from '../src/modules/media-storage/public.js';
 
 void test('capacity guard allows a write only when both byte and ratio reserves remain', async () => {
     const guard = new MediaStorageCapacityGuard(

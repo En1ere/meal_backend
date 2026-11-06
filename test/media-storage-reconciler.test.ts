@@ -4,7 +4,7 @@ import {
     reconcileMediaUpload,
     type MediaDatabaseEvidence,
     type MediaReservationEvidence,
-} from '../src/modules/media-storage/media-storage-reconciler.js';
+} from '../src/modules/media-storage/public.js';
 
 const reservation: MediaReservationEvidence = {
     assetId: '00000000-0000-4000-8000-000000000111',

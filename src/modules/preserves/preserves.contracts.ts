@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { inventoryUnitSchema, quantitySchema } from '../inventory/inventory.contracts.js';
+import { inventoryUnitSchema, quantitySchema } from '../inventory/public.js';
 export const preserveTypeSchema = z.enum([
     'canned',
     'jam',

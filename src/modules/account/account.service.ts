@@ -28,7 +28,7 @@ import { consumeFactor, regenerateRecoveryCodes } from '../auth/factor.js';
 import { accountInputs } from './account.contracts.js';
 import { revokeAccountAccess, settleEmailChanges, hasDueEmailChange, type AccountTx } from './account-state.js';
 import { RegistrationRiskPolicy } from './registration-risk.policy.js';
-import { LegalConsentService } from '../legal-consents/legal-consent.service.js';
+import { LegalConsentService } from '../legal-consents/public.js';
 import {
     ACCOUNT_MAIL_OUTBOX,
     accountMailMessageSchema,

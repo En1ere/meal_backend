@@ -146,6 +146,10 @@ export const configSchema = z.object({
         .optional(),
     AI_API_TOKEN: z.string().min(1).optional(),
     AI_MODEL: z.string().min(1).max(200).optional(),
+    AI_BACKGROUND_EXECUTION_ENABLED: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
     AI_RECONCILIATION_ENABLED: z
         .enum(['true', 'false'])
         .default('false')
@@ -230,9 +234,13 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
         if (config.OCR_PREVIEW_URL !== 'http://ocr-preview:3100' || !config.OCR_PREVIEW_TOKEN)
             throw new Error('Production OCR requires the isolated internal preview service');
     }
-    const aiFields = [config.AI_API_BASE_URL, config.AI_API_TOKEN, config.AI_MODEL].filter(Boolean).length;
-    if (aiFields !== 0 && aiFields !== 3)
-        throw new Error('AI_API_BASE_URL, AI_API_TOKEN and AI_MODEL must be configured together');
+    const aiEndpointFields = [config.AI_API_BASE_URL, config.AI_MODEL].filter(Boolean).length;
+    if (aiEndpointFields !== 0 && aiEndpointFields !== 2)
+        throw new Error('AI_API_BASE_URL and AI_MODEL must be configured together');
+    if (config.AI_API_TOKEN && aiEndpointFields !== 2)
+        throw new Error('AI_API_TOKEN requires AI_API_BASE_URL and AI_MODEL');
+    if (config.AI_BACKGROUND_EXECUTION_ENABLED && aiEndpointFields !== 2)
+        throw new Error('AI background execution requires AI_API_BASE_URL and AI_MODEL');
     if (!config.ADMIN_FRONTEND_ORIGIN && config.NODE_ENV !== 'production')
         config.ADMIN_FRONTEND_ORIGIN = 'http://localhost:3002';
     if (config.ADMIN_FRONTEND_ORIGIN) {

@@ -1,7 +1,7 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { sql } from 'kysely';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
-import { AiService } from '../ai/ai.service.js';
+import { AiService } from '../ai/public.js';
 import { proOverviewSchema, type ProMissingField, type ProOverview } from './pro-overview.contracts.js';
 import { ProAccessService } from './pro-access.service.js';
 

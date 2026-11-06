@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { WorkerAlert, WorkerRunObservation, WorkerRuntimeSink } from '../operational-runtime/worker-runtime.js';
-import type { ProviderObservation, ProviderTelemetry } from '../provider-runtime/provider-runtime.js';
+import type { WorkerAlert, WorkerRunObservation, WorkerRuntimeSink } from '../operational-runtime/public.js';
+import type { ProviderObservation, ProviderTelemetry } from '../provider-runtime/public.js';
 import { TelemetryService } from './telemetry.service.js';
 
 @Injectable()

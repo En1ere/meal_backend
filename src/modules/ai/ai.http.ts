@@ -24,8 +24,8 @@ const body = (value: z.ZodType) => z.toJSONSchema(value, { io: 'input', target: 
 @Controller('ai')
 export class AiController {
     constructor(private readonly service: AiService) {}
-    @Get('capabilities') capabilities() {
-        return this.service.capabilities();
+    @Get('capabilities') capabilities(@Req() req: Request) {
+        return this.service.capabilities(req.principal.id);
     }
     @Get('balance') balance(@Req() req: Request) {
         return this.service.balance(req.principal.id);
@@ -66,6 +66,18 @@ export class AiController {
     ) {
         return this.service.conversation(req.principal.id, id);
     }
+    @Get('operations/:id') @ApiParam({ name: 'id', schema: { type: 'string', format: 'uuid' } }) operation(
+        @Req() req: Request,
+        @Param('id') id: string,
+    ) {
+        return this.service.operation(req.principal.id, id);
+    }
+    @Post('operations') @HttpCode(202) @ApiBody({ schema: body(aiRunRequestSchema) }) enqueue(
+        @Req() req: Request,
+        @Body() input: unknown,
+    ) {
+        return this.service.enqueue(req.principal.id, input);
+    }
     @Post('preview') @HttpCode(200) @ApiBody({ schema: body(aiPreviewRequestSchema) }) preview(
         @Req() req: Request,
         @Body() input: unknown,
@@ -84,6 +96,13 @@ export class AiController {
     @ApiBody({ schema: body(aiContinueRequestSchema) })
     continueTask(@Req() req: Request, @Param('id') id: string, @Body() input: unknown) {
         return this.service.continueTask(req.principal.id, id, input);
+    }
+    @Post('tasks/:id/operations')
+    @HttpCode(202)
+    @ApiParam({ name: 'id', schema: { type: 'string', format: 'uuid' } })
+    @ApiBody({ schema: body(aiContinueRequestSchema) })
+    enqueueContinuation(@Req() req: Request, @Param('id') id: string, @Body() input: unknown) {
+        return this.service.enqueueContinuation(req.principal.id, id, input);
     }
     @Post('package/purchase') @HttpCode(200) @ApiBody({ schema: body(aiPurchaseRequestSchema) }) purchase() {
         return this.service.purchase();

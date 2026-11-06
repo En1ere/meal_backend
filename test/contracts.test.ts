@@ -2,12 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { UnauthorizedException } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
-import { AdminAccessService } from '../src/modules/admin-auth/admin-access.service.js';
+import { AdminAccessService } from '../src/modules/admin-auth/public.js';
 import { AuthService } from '../src/modules/auth/auth.service.js';
 import { createApp, openApiDocument } from '../src/app/create-app.js';
 import { readConfig } from '../src/app/config.js';
 import {
     createdResponseOperationIds,
+    acceptedResponseOperationIds,
     envelope,
     responseDataSchemas,
     errorEnvelopeSchema,
@@ -44,9 +45,14 @@ await test('real HTTP success/errors conform to the schemas used in OpenAPI', as
             for (const method of ['get', 'post', 'put', 'patch'] as const) {
                 const operation = item[method];
                 if (!operation) continue;
-                const successStatus = createdResponseOperationIds.has(operation.operationId ?? '') ? '201' : '200';
+                const successStatus = createdResponseOperationIds.has(operation.operationId ?? '')
+                    ? '201'
+                    : acceptedResponseOperationIds.has(operation.operationId ?? '')
+                      ? '202'
+                      : '200';
                 assert.ok(operation.responses[successStatus], `${operation.operationId}: ${successStatus}`);
-                assert.equal(operation.responses[successStatus === '201' ? '200' : '201'], undefined);
+                for (const other of ['200', '201', '202'])
+                    if (other !== successStatus) assert.equal(operation.responses[other], undefined);
                 assert.ok(operation.responses['401']);
                 assert.ok(operation.responses['503']);
                 if (method !== 'get')

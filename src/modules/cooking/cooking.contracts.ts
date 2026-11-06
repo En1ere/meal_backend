@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { quantitySchema } from '../inventory/inventory.contracts.js';
+import { quantitySchema } from '../inventory/public.js';
 
 export const cookingQuantitySchema = z
     .string()

@@ -1,12 +1,18 @@
-import { ConflictException, HttpException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+    ConflictException,
+    ForbiddenException,
+    HttpException,
+    Injectable,
+    ServiceUnavailableException,
+} from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../../infrastructure/database/schema.generated.js';
-import { EntitlementsService } from '../entitlements/entitlements.service.js';
-import { AiProvider } from './ai-provider.js';
-import { LegalConsentService } from '../legal-consents/legal-consent.service.js';
+import { EntitlementsService } from '../entitlements/public.js';
+import { AiProvider, AiProviderError } from './ai-provider.js';
+import { LegalConsentService } from '../legal-consents/public.js';
 import {
     aiBalanceSchema,
     aiCapabilitiesSchema,
@@ -20,6 +26,7 @@ import {
     aiFamilySharingSchema,
     aiPreviewRequestSchema,
     aiPreviewSchema,
+    aiOperationSchema,
     aiRunRequestSchema,
     aiRunSchema,
     aiTransferDecisionSchema,
@@ -29,9 +36,24 @@ import {
 } from './ai.contracts.js';
 import { aiContinuationPolicy } from './ai.domain.js';
 import {
+    AI_CONTEXT_POLICY_VERSION,
+    aiContextSnapshotHash,
+    aiContextSourceCount,
+    aiContextSnapshotSchema,
+    aiNutritionContextSchema,
+    aiPreferencesContextSchema,
+    aiTaskContextPolicies,
+    aiTaskRequiresPersonalData,
+    parseAiContextSnapshot,
+    renderAiContext,
+    type AiContextSnapshot,
+} from './ai-context.js';
+import {
     AI_TASK_RULE_VERSION,
+    aiAvailableTasks,
     aiOrchestration,
     aiTask,
+    aiTaskAvailable,
     aiTasks,
     aiTokenBudget,
     type AiContextManifest,
@@ -47,13 +69,45 @@ type Snapshot = {
     charged?: boolean;
     continuation?: boolean;
 };
-const personalContextItemSchema = z.strictObject({
-    name: z.string(),
-    quantity: z.string().nullable(),
-    unit: z.string(),
-});
-const personalContextSchema = z.array(personalContextItemSchema).max(50);
 const aiCostSchema = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]);
+type LegacyReserveResult =
+    | { item: z.infer<typeof aiHistoryItemSchema> }
+    | {
+          operationId: string;
+          replayed: false;
+          prompt: string;
+          taskType: AiTaskType;
+          usePersonalData: boolean;
+          personalContext: AiContextSnapshot | null;
+          cost: z.infer<typeof aiCostSchema>;
+      };
+type CanonicalReserveResult = { operationId: string; replayed: boolean };
+type LegacyContinuationReserveResult =
+    | { replayed: true }
+    | {
+          replayed: false;
+          operationId: string;
+          taskType: AiTaskType;
+          usePersonalData: boolean;
+          personalContext: AiContextSnapshot | null;
+          cost: z.infer<typeof aiCostSchema>;
+      };
+const sourceLabels = {
+    user_prompt: 'Текст запроса',
+    personal_inventory: 'Личные запасы',
+    preferences: 'Предпочтения и ограничения',
+    nutrition_profile: 'Профиль и цели питания',
+} as const;
+
+const objectValue = (value: unknown): Record<string, unknown> =>
+    value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+const stringValues = (value: unknown) =>
+    Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+const decimalValue = (value: unknown): string | null => {
+    if (typeof value !== 'string' && typeof value !== 'number') return null;
+    const normalized = String(value);
+    return /^\d+(?:\.\d{1,8})?$/.test(normalized) ? normalized : null;
+};
 
 const MOSCOW_OFFSET = 3 * 60 * 60 * 1000;
 const localBoundary = (
@@ -312,29 +366,41 @@ export class AiService {
         }
     }
 
-    async capabilities() {
+    async capabilities(userId: string) {
         const provider = this.provider.status();
         let storageReady = false;
+        let availableTasks: ReadonlyArray<(typeof aiTasks)[number]> = [];
         if (this.database.db && (await this.database.ready())) {
             try {
-                const rule = await sql<{
-                    available: boolean;
-                }>`select exists(select 1 from meal.ai_rule_versions where kind='cost' and config->>'taskRuleVersion'=${AI_TASK_RULE_VERSION} and effective_at<=now()) as available`.execute(
-                    this.database.db,
-                );
+                const [rule, entitlement] = await Promise.all([
+                    sql<{
+                        available: boolean;
+                    }>`select exists(select 1 from meal.ai_rule_versions where kind='cost' and config->>'taskRuleVersion'=${AI_TASK_RULE_VERSION} and effective_at<=now()) and exists(select 1 from meal.ai_rule_versions where kind='context' and config->>'contextVersion'=${AI_CONTEXT_POLICY_VERSION} and effective_at<=now()) as available`.execute(
+                        this.database.db,
+                    ),
+                    this.entitlements.resolve(userId, this.database.db),
+                ]);
                 storageReady = rule.rows[0]?.available === true;
+                availableTasks = aiAvailableTasks(entitlement.plan);
             } catch {
                 storageReady = false;
+                availableTasks = [];
             }
         }
         return aiCapabilitiesSchema.parse({
             provider,
             executionAvailable: provider.configured && storageReady,
             purchaseMode: 'unavailable',
-            freeTaskTypes: aiTasks
+            freeTaskTypes: availableTasks
                 .filter((task) => legacyTaskTypes.has(task.code))
                 .map(({ code, label, cost }) => ({ code, label, cost })),
-            taskTypes: aiTasks.map((task) => ({ ...task, tokenBudget: aiTokenBudget(task.cost) })),
+            taskTypes: availableTasks.map(({ code, label, taskClass, cost }) => ({
+                code,
+                label,
+                taskClass,
+                cost,
+                tokenBudget: aiTokenBudget(cost),
+            })),
             orchestrationRuleVersion: AI_TASK_RULE_VERSION,
             disclaimer:
                 'AI может ошибаться. Проверяйте рецепты и советы. AI не заменяет врача или профессионального диетолога.',
@@ -357,6 +423,13 @@ export class AiService {
                 tx,
             );
         if (sanction.rows.length) throw new HttpException('Доступен только просмотр', 403);
+    }
+
+    private async taskEntitlement(tx: Tx, userId: string, taskType: AiTaskType) {
+        const entitlement = await this.entitlements.resolve(userId, tx);
+        if (!aiTaskAvailable(aiTask(taskType), entitlement.plan))
+            throw new ForbiddenException('AI-задача недоступна на текущем тарифе');
+        return entitlement;
     }
 
     private async buckets(executor: Tx | NonNullable<DatabaseService['db']>, userId: string, lock = false) {
@@ -866,6 +939,69 @@ export class AiService {
         });
     }
 
+    async operation(userId: string, rawOperationId: string) {
+        const operationId = z.uuid().parse(rawOperationId);
+        const db = await this.db();
+        const row = (
+            await sql<{
+                id: string;
+                taskId: string;
+                conversationId: string;
+                taskType: string;
+                lifecycleState: string;
+                financialState: string;
+                failureCategory: string | null;
+                failureRetryable: boolean | null;
+                result: unknown;
+                createdAt: Date;
+                updatedAt: Date;
+                expiresAt: Date;
+                version: number;
+            }>`select o.id,i.task_id as "taskId",t.conversation_id as "conversationId",t.preview->>'taskType' as "taskType",o.lifecycle_state as "lifecycleState",o.financial_state as "financialState",o.failure_category as "failureCategory",o.failure_retryable as "failureRetryable",o.result_snapshot result,o.created_at as "createdAt",o.updated_at as "updatedAt",o.expires_at as "expiresAt",o.version::integer version from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id join meal.ai_tasks t on t.id=i.task_id join meal.ai_conversations c on c.id=t.conversation_id where o.id=${operationId}::uuid and c.user_id=${userId}::uuid`.execute(
+                db,
+            )
+        ).rows[0];
+        if (!row || !taskTypes.has(row.taskType as AiTaskType)) throw new HttpException('AI-операция не найдена', 404);
+        const snapshot = (row.result ?? {}) as Snapshot;
+        const category =
+            row.failureCategory === 'provider_outcome_unknown'
+                ? 'provider_outcome_unknown'
+                : row.failureCategory === 'process_interrupted'
+                  ? 'process_interrupted'
+                  : row.failureCategory
+                    ? 'provider_error'
+                    : null;
+        const userMessage =
+            category === 'provider_outcome_unknown'
+                ? 'Результат запроса уточняется. Повторная отправка не требуется.'
+                : category === 'process_interrupted'
+                  ? 'Выполнение запроса прервалось. Результат уточняется, резерв пока сохранён.'
+                  : category
+                    ? 'AI-провайдер не завершил запрос. Зарезервированные действия освобождены.'
+                    : null;
+        return aiOperationSchema.parse({
+            item: {
+                id: row.id,
+                taskId: row.taskId,
+                conversationId: row.conversationId,
+                taskType: row.taskType,
+                taskPolicyVersion: AI_TASK_RULE_VERSION,
+                contextManifestVersion: AI_CONTEXT_POLICY_VERSION,
+                state: row.lifecycleState,
+                financialState: row.financialState,
+                failure: category
+                    ? { category, retryable: row.failureRetryable === true, userMessage: userMessage! }
+                    : null,
+                result: row.lifecycleState === 'succeeded' && typeof snapshot.text === 'string' ? snapshot.text : null,
+                createdAt: new Date(row.createdAt).toISOString(),
+                updatedAt: new Date(row.updatedAt).toISOString(),
+                expiresAt: new Date(row.expiresAt).toISOString(),
+                version: Number(row.version),
+                readUrl: `/api/v1/ai/operations/${row.id}`,
+            },
+        });
+    }
+
     private item(row: HistoryRow) {
         const snapshot = row.result as Snapshot | null;
         return aiHistoryItemSchema.parse({
@@ -884,6 +1020,8 @@ export class AiService {
     async preview(userId: string, raw: unknown) {
         if (!this.provider.status().configured) throw new ServiceUnavailableException('AI provider is not configured');
         const input = aiPreviewRequestSchema.parse(raw);
+        if (aiTaskRequiresPersonalData(input.taskType) && !input.usePersonalData)
+            throw new HttpException('Для этой AI-задачи требуется разрешённый персональный контекст', 422);
         if (input.usePersonalData)
             await this.legalConsents.assertFeatureAccess(userId, 'ai_data_access', 'ai.personal_data');
         const taskDefinition = aiTask(input.taskType);
@@ -891,7 +1029,7 @@ export class AiService {
         return this.database.transaction(async (tx) => {
             await this.writable(tx, userId);
             await this.ensureMonthlyAllowance(tx, userId);
-            const entitlement = await this.entitlements.resolve(userId, tx);
+            const entitlement = await this.taskEntitlement(tx, userId, input.taskType);
             const rule = (
                 await sql<{
                     id: string;
@@ -900,6 +1038,14 @@ export class AiService {
                 )
             ).rows[0];
             if (!rule) throw new ServiceUnavailableException('AI orchestration rule is not configured');
+            const contextRule = (
+                await sql<{
+                    available: boolean;
+                }>`select exists(select 1 from meal.ai_rule_versions where kind='context' and config->>'contextVersion'=${AI_CONTEXT_POLICY_VERSION} and effective_at<=now()) as available`.execute(
+                    tx,
+                )
+            ).rows[0];
+            if (!contextRule?.available) throw new ServiceUnavailableException('AI context policy is not configured');
             const scope = (
                 await sql<{
                     id: string;
@@ -926,23 +1072,29 @@ export class AiService {
             if (input.usePersonalData)
                 await this.legalConsents.assertFeatureAccess(userId, 'ai_data_access', 'ai.personal_data', tx);
             const personalContext = input.usePersonalData
-                ? await this.personalContext(userId, tx)
-                : { items: [], truncated: false };
+                ? await this.personalContext(userId, input.taskType, entitlement.plan, tx)
+                : null;
+            const policy = aiTaskContextPolicies[input.taskType];
+            const requiredSources = new Set<string>(policy.required);
+            const sourceKinds = [
+                'user_prompt' as const,
+                ...new Set([...policy.required, ...policy.optional].filter((kind) => kind !== 'user_prompt')),
+            ];
             const context: AiContextManifest = {
-                personalDataUsed: input.usePersonalData,
-                sources: [
-                    { kind: 'user_prompt', label: 'Текст запроса', itemCount: 1, truncated: false },
-                    ...(input.usePersonalData
-                        ? [
-                              {
-                                  kind: 'personal_inventory' as const,
-                                  label: 'Личные запасы',
-                                  itemCount: personalContext.items.length,
-                                  truncated: personalContext.truncated,
-                              },
-                          ]
-                        : []),
-                ],
+                personalDataUsed: personalContext !== null,
+                sources: sourceKinds.flatMap((kind) => {
+                    if (kind !== 'user_prompt' && !personalContext) return [];
+                    const itemCount = kind === 'user_prompt' ? 1 : aiContextSourceCount(personalContext!, kind);
+                    if (kind !== 'user_prompt' && itemCount === 0 && !requiredSources.has(kind)) return [];
+                    return [
+                        {
+                            kind,
+                            label: sourceLabels[kind],
+                            itemCount,
+                            truncated: kind === 'personal_inventory' && Boolean(personalContext?.inventoryTruncated),
+                        },
+                    ];
+                }),
             };
             const orchestration = aiOrchestration(
                 input.taskType,
@@ -972,7 +1124,8 @@ export class AiService {
                         taskType: input.taskType,
                         prompt: input.prompt,
                         usePersonalData: input.usePersonalData,
-                        personalContext: personalContext.items,
+                        personalContext,
+                        contextSnapshotHash: personalContext ? aiContextSnapshotHash(personalContext) : null,
                         sources,
                         orchestration,
                         expiresAt: expiresAt.toISOString(),
@@ -980,7 +1133,12 @@ export class AiService {
                     },
                     accepted_at: null,
                     accepted_cost: cost,
-                    agreement_snapshot: { version: 'ai-usage-v1', acceptedAt: now.toISOString() },
+                    agreement_snapshot: {
+                        version: 'ai-usage-v1',
+                        acceptedAt: now.toISOString(),
+                        contextVersion: personalContext?.version ?? null,
+                        contextSnapshotHash: personalContext ? aiContextSnapshotHash(personalContext) : null,
+                    },
                     conversation_id: conversationId,
                     rule_id: rule.id,
                 })
@@ -1002,7 +1160,7 @@ export class AiService {
     }
 
     async run(userId: string, raw: unknown) {
-        if (!this.provider.status().configured) throw new ServiceUnavailableException('AI provider is not configured');
+        if (!this.provider.legacyConfigured()) throw new ServiceUnavailableException('AI provider is not configured');
         const input = aiRunRequestSchema.parse(raw);
         const reserved = await this.reserve(userId, input.previewId, input.idempotencyKey, input.familyReserveAccepted);
         if ('item' in reserved) return aiRunSchema.parse(reserved);
@@ -1011,14 +1169,40 @@ export class AiService {
                 this.providerPrompt(reserved.taskType, reserved.prompt, reserved.personalContext),
                 aiTokenBudget(reserved.cost),
             );
-            return await this.finalize(userId, reserved.operationId, 'completed', answer);
-        } catch {
-            return await this.finalize(userId, reserved.operationId, 'refunded', null, true, 'provider_error');
+            return await this.finalize(userId, reserved.operationId, 'completed', answer, false);
+        } catch (error) {
+            if (error instanceof AiProviderError && error.disposition === 'release')
+                return await this.finalize(userId, reserved.operationId, 'refunded', null, false, 'provider_error');
+            return this.markUnknown(userId, reserved.operationId);
         }
     }
 
-    async continueTask(userId: string, rawTaskId: string, raw: unknown) {
+    async enqueue(userId: string, raw: unknown) {
         if (!this.provider.status().configured) throw new ServiceUnavailableException('AI provider is not configured');
+        const input = aiRunRequestSchema.parse(raw);
+        const requestHash = createHash('sha256')
+            .update(
+                JSON.stringify({
+                    contractVersion: 1,
+                    previewId: input.previewId,
+                    familyReserveAccepted: input.familyReserveAccepted,
+                    taskPolicyVersion: AI_TASK_RULE_VERSION,
+                    contextManifestVersion: AI_CONTEXT_POLICY_VERSION,
+                }),
+            )
+            .digest('hex');
+        const reserved = await this.reserve(
+            userId,
+            input.previewId,
+            input.idempotencyKey,
+            input.familyReserveAccepted,
+            { requestHash },
+        );
+        return this.operation(userId, reserved.operationId);
+    }
+
+    async continueTask(userId: string, rawTaskId: string, raw: unknown) {
+        if (!this.provider.legacyConfigured()) throw new ServiceUnavailableException('AI provider is not configured');
         const taskId = aiRunRequestSchema.shape.previewId.parse(rawTaskId);
         const input = aiContinueRequestSchema.parse(raw);
         const reserved = await this.reserveContinuation(
@@ -1035,36 +1219,108 @@ export class AiService {
                 this.providerConversationPrompt(reserved.taskType, messages, reserved.personalContext),
                 aiTokenBudget(reserved.cost),
             );
-            await this.finalize(userId, reserved.operationId, 'completed', answer);
-        } catch {
-            await this.finalize(userId, reserved.operationId, 'refunded', null, true, 'provider_error');
-            throw new ServiceUnavailableException('AI provider request failed; reserved actions were released');
+            await this.finalize(userId, reserved.operationId, 'completed', answer, false);
+        } catch (error) {
+            if (error instanceof AiProviderError && error.disposition === 'release') {
+                await this.finalize(userId, reserved.operationId, 'refunded', null, false, 'provider_error');
+                throw new ServiceUnavailableException('AI provider request failed; reserved actions were released');
+            }
+            await this.markUnknown(userId, reserved.operationId);
         }
         return this.conversation(userId, taskId);
     }
 
-    async reconcileInterrupted(userId: string, operationId: string) {
-        return this.finalize(userId, operationId, 'refunded', null, false, 'process_interrupted');
+    async enqueueContinuation(userId: string, rawTaskId: string, raw: unknown) {
+        if (!this.provider.status().configured) throw new ServiceUnavailableException('AI provider is not configured');
+        const taskId = aiRunRequestSchema.shape.previewId.parse(rawTaskId);
+        const input = aiContinueRequestSchema.parse(raw);
+        const requestHash = createHash('sha256')
+            .update(
+                JSON.stringify({
+                    contractVersion: 1,
+                    taskId,
+                    message: input.message,
+                    familyReserveAccepted: input.familyReserveAccepted,
+                    taskPolicyVersion: AI_TASK_RULE_VERSION,
+                    contextManifestVersion: AI_CONTEXT_POLICY_VERSION,
+                }),
+            )
+            .digest('hex');
+        const reserved = await this.reserveContinuation(
+            userId,
+            taskId,
+            input.message,
+            input.idempotencyKey,
+            input.familyReserveAccepted,
+            { requestHash },
+        );
+        return this.operation(userId, reserved.operationId);
     }
 
+    private async markUnknown(userId: string, operationId: string) {
+        return this.database.transaction(async (tx) => {
+            const row = (
+                await sql<FinalRow>`select o.status as "operationStatus",o.interval_id as "intervalId",i.task_id as id,t.conversation_id as "conversationId",c.title,t.preview->>'taskType' as "taskType",t.status,t.accepted_cost::integer cost,t.created_at as "createdAt",o.result_snapshot result,c.archived_at is not null archived,c.version::integer version from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id join meal.ai_tasks t on t.id=i.task_id join meal.ai_conversations c on c.id=t.conversation_id where o.id=${operationId}::uuid and c.user_id=${userId}::uuid for update of o`.execute(
+                    tx,
+                )
+            ).rows[0];
+            if (!row) throw new ConflictException('AI-операция недоступна');
+            if (row.operationStatus === 'processing') {
+                const snapshot = (row.result ?? {}) as Snapshot;
+                const result: Snapshot = {
+                    ...snapshot,
+                    failure: 'provider_outcome_unknown',
+                };
+                await sql`update meal.ai_operations set status='unknown',result_snapshot=${JSON.stringify(result)}::jsonb,version=version+1 where id=${operationId}::uuid and status='processing'`.execute(
+                    tx,
+                );
+                return aiRunSchema.parse({ item: this.item({ ...row, result }) });
+            }
+            return aiRunSchema.parse({ item: this.item(row) });
+        });
+    }
+
+    private reserveContinuation(
+        userId: string,
+        taskId: string,
+        message: string,
+        idempotencyKey: string,
+        familyReserveAccepted: boolean,
+        canonical: { requestHash: string },
+    ): Promise<CanonicalReserveResult>;
+    private reserveContinuation(
+        userId: string,
+        taskId: string,
+        message: string,
+        idempotencyKey: string,
+        familyReserveAccepted: boolean,
+    ): Promise<LegacyContinuationReserveResult>;
     private async reserveContinuation(
         userId: string,
         taskId: string,
         message: string,
         idempotencyKey: string,
         familyReserveAccepted: boolean,
-    ) {
+        canonical?: { requestHash: string },
+    ): Promise<CanonicalReserveResult | LegacyContinuationReserveResult> {
         return this.database.transaction(async (tx) => {
             await this.writable(tx, userId);
             const existing = (
                 await sql<{
+                    id: string;
                     status: string;
                     body: string;
-                }>`select o.status,m.body from meal.ai_operations o join meal.ai_messages m on m.id=o.message_id join meal.ai_intervals i on i.id=o.interval_id join meal.ai_tasks t on t.id=i.task_id join meal.ai_conversations c on c.id=t.conversation_id where t.id=${taskId}::uuid and c.user_id=${userId}::uuid and o.idempotency_key=${idempotencyKey} limit 1 for update of o`.execute(
+                    requestHash: string;
+                }>`select o.id,o.status,m.body,o.request_hash as "requestHash" from meal.ai_operations o join meal.ai_messages m on m.id=o.message_id join meal.ai_intervals i on i.id=o.interval_id join meal.ai_tasks t on t.id=i.task_id join meal.ai_conversations c on c.id=t.conversation_id where c.user_id=${userId}::uuid and o.idempotency_key=${idempotencyKey} and (${canonical ? sql`o.contract_version=1` : sql`t.id=${taskId}::uuid`}) limit 1 for update of o`.execute(
                     tx,
                 )
             ).rows[0];
             if (existing) {
+                if (canonical) {
+                    if (existing.requestHash !== canonical.requestHash)
+                        throw new ConflictException('Idempotency key already used for another AI command');
+                    return { operationId: existing.id, replayed: true as const };
+                }
                 if (existing.body !== message) throw new ConflictException('Idempotency key already used');
                 if (existing.status === 'processing') throw new ConflictException('AI-запрос ещё выполняется');
                 if (existing.status === 'refunded')
@@ -1086,6 +1342,7 @@ export class AiService {
             ).rows[0];
             if (!task || !taskTypes.has(task.taskType as AiTaskType))
                 throw new HttpException('AI-беседа не найдена', 404);
+            await this.taskEntitlement(tx, userId, task.taskType as AiTaskType);
             if (task.usePersonalData)
                 await this.legalConsents.assertFeatureAccess(userId, 'ai_data_access', 'ai.personal_data', tx);
             if (task.status === 'processing') throw new ConflictException('AI-запрос ещё выполняется');
@@ -1157,6 +1414,7 @@ export class AiService {
             }
             const messageId = randomUUID();
             const operationId = randomUUID();
+            const operationExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60_000);
             await tx
                 .insertInto('ai_messages')
                 .values({
@@ -1180,6 +1438,25 @@ export class AiService {
                     idempotency_key: idempotencyKey,
                     interval_id: intervalId,
                     message_id: messageId,
+                    ...(canonical
+                        ? {
+                              user_id: userId,
+                              task_id: taskId,
+                              contract_version: 1,
+                              command_kind: 'continuation' as const,
+                              request_hash: canonical.requestHash,
+                              lifecycle_state: 'queued' as const,
+                              financial_state: charged ? ('reserved' as const) : ('none' as const),
+                              queued_at: now,
+                              next_attempt_at: now,
+                              requested_model: this.provider.status().model,
+                              task_policy_version: AI_TASK_RULE_VERSION,
+                              context_manifest_version: AI_CONTEXT_POLICY_VERSION,
+                              provider_profile_version: 'openai-responses-background-v1',
+                              updated_at: now,
+                              expires_at: operationExpiresAt,
+                          }
+                        : {}),
                 })
                 .execute();
             for (const allocation of allocations) {
@@ -1197,21 +1474,53 @@ export class AiService {
                 operationId,
                 taskType: task.taskType as AiTaskType,
                 usePersonalData: task.usePersonalData,
-                personalContext: task.usePersonalData ? personalContextSchema.parse(task.personalContext) : null,
+                personalContext: task.usePersonalData ? parseAiContextSnapshot(task.personalContext) : null,
                 cost: aiCostSchema.parse(task.cost),
             };
         });
     }
 
-    private async reserve(userId: string, previewId: string, idempotencyKey: string, familyReserveAccepted: boolean) {
+    private reserve(
+        userId: string,
+        previewId: string,
+        idempotencyKey: string,
+        familyReserveAccepted: boolean,
+        canonical: { requestHash: string },
+    ): Promise<CanonicalReserveResult>;
+    private reserve(
+        userId: string,
+        previewId: string,
+        idempotencyKey: string,
+        familyReserveAccepted: boolean,
+    ): Promise<LegacyReserveResult>;
+    private async reserve(
+        userId: string,
+        previewId: string,
+        idempotencyKey: string,
+        familyReserveAccepted: boolean,
+        canonical?: { requestHash: string },
+    ): Promise<LegacyReserveResult | CanonicalReserveResult> {
         return this.database.transaction(async (tx) => {
             await this.writable(tx, userId);
-            const existing = (
-                await sql<ExistingRow>`select o.id as "operationId",o.status as "operationStatus",i.task_id as id,c.title,t.preview->>'taskType' as "taskType",t.status,t.accepted_cost::integer cost,t.created_at as "createdAt",o.result_snapshot result,c.archived_at is not null archived,c.version::integer version from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id join meal.ai_tasks t on t.id=i.task_id join meal.ai_conversations c on c.id=t.conversation_id where i.task_id=${previewId}::uuid and o.idempotency_key=${idempotencyKey} and c.user_id=${userId}::uuid for update of o`.execute(
-                    tx,
-                )
-            ).rows[0];
+            const existing = canonical
+                ? (
+                      await sql<
+                          ExistingRow & { requestHash: string }
+                      >`select o.id as "operationId",o.status as "operationStatus",o.request_hash as "requestHash",i.task_id as id,c.title,t.preview->>'taskType' as "taskType",t.status,t.accepted_cost::integer cost,t.created_at as "createdAt",o.result_snapshot result,c.archived_at is not null archived,c.version::integer version from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id join meal.ai_tasks t on t.id=i.task_id join meal.ai_conversations c on c.id=t.conversation_id where o.contract_version=1 and o.idempotency_key=${idempotencyKey} and c.user_id=${userId}::uuid for update of o`.execute(
+                          tx,
+                      )
+                  ).rows[0]
+                : (
+                      await sql<ExistingRow>`select o.id as "operationId",o.status as "operationStatus",i.task_id as id,c.title,t.preview->>'taskType' as "taskType",t.status,t.accepted_cost::integer cost,t.created_at as "createdAt",o.result_snapshot result,c.archived_at is not null archived,c.version::integer version from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id join meal.ai_tasks t on t.id=i.task_id join meal.ai_conversations c on c.id=t.conversation_id where i.task_id=${previewId}::uuid and o.idempotency_key=${idempotencyKey} and c.user_id=${userId}::uuid for update of o`.execute(
+                          tx,
+                      )
+                  ).rows[0];
             if (existing) {
+                if (canonical) {
+                    if ((existing as ExistingRow & { requestHash: string }).requestHash !== canonical.requestHash)
+                        throw new ConflictException('Idempotency key already used for another AI command');
+                    return { operationId: existing.operationId, replayed: true as const };
+                }
                 if (existing.operationStatus === 'processing') throw new ConflictException('AI-запрос ещё выполняется');
                 return { item: this.item(existing) };
             }
@@ -1222,6 +1531,7 @@ export class AiService {
             ).rows[0];
             if (!task || !taskTypes.has(task.taskType as AiTaskType))
                 throw new ConflictException('Предпросмотр недоступен');
+            await this.taskEntitlement(tx, userId, task.taskType as AiTaskType);
             if (task.usePersonalData)
                 await this.legalConsents.assertFeatureAccess(userId, 'ai_data_access', 'ai.personal_data', tx);
             const expiresAt = Date.parse(task.expiresAt);
@@ -1250,6 +1560,7 @@ export class AiService {
             const messageId = randomUUID();
             const operationId = randomUUID();
             const startedAt = new Date();
+            const operationExpiresAt = new Date(startedAt.getTime() + 30 * 24 * 60 * 60_000);
             await tx
                 .insertInto('ai_intervals')
                 .values({
@@ -1285,6 +1596,25 @@ export class AiService {
                     idempotency_key: idempotencyKey,
                     interval_id: intervalId,
                     message_id: messageId,
+                    ...(canonical
+                        ? {
+                              user_id: userId,
+                              task_id: task.id,
+                              contract_version: 1,
+                              command_kind: 'initial' as const,
+                              request_hash: canonical.requestHash,
+                              lifecycle_state: 'queued' as const,
+                              financial_state: 'reserved' as const,
+                              queued_at: startedAt,
+                              next_attempt_at: startedAt,
+                              requested_model: this.provider.status().model,
+                              task_policy_version: AI_TASK_RULE_VERSION,
+                              context_manifest_version: AI_CONTEXT_POLICY_VERSION,
+                              provider_profile_version: 'openai-responses-background-v1',
+                              updated_at: startedAt,
+                              expires_at: operationExpiresAt,
+                          }
+                        : {}),
                 })
                 .execute();
             for (const allocation of allocations) {
@@ -1299,10 +1629,11 @@ export class AiService {
             );
             return {
                 operationId,
+                replayed: false as const,
                 prompt: task.prompt,
                 taskType: task.taskType as AiTaskType,
                 usePersonalData: task.usePersonalData,
-                personalContext: task.usePersonalData ? personalContextSchema.parse(task.personalContext) : null,
+                personalContext: task.usePersonalData ? parseAiContextSnapshot(task.personalContext) : null,
                 cost: aiCostSchema.parse(task.cost),
             };
         });
@@ -1439,19 +1770,99 @@ export class AiService {
             .execute();
     }
 
-    private async personalContext(userId: string, executor?: Tx | NonNullable<DatabaseService['db']>) {
+    private async personalContext(
+        userId: string,
+        taskType: AiTaskType,
+        plan: 'free' | 'plus' | 'pro',
+        executor?: Tx | NonNullable<DatabaseService['db']>,
+    ): Promise<AiContextSnapshot> {
         const db = executor ?? (await this.db());
         await this.legalConsents.assertFeatureAccess(userId, 'ai_data_access', 'ai.personal_data', db);
-        const rows = (
-            await sql<{
-                name: string;
-                quantity: string | null;
-                unit: string;
-            }>`select b.name,b.quantity::text,u.code as unit from meal.inventory_batches b join meal.units u on u.id=b.unit_id join meal.data_scopes s on s.id=b.scope_id where s.kind='private' and s.user_id=${userId}::uuid and b.archived_at is null order by b.expiry_on nulls last,b.created_at desc limit 51`.execute(
-                db,
-            )
-        ).rows;
-        return { items: personalContextSchema.parse(rows.slice(0, 50)), truncated: rows.length > 50 };
+        const policy = aiTaskContextPolicies[taskType];
+        const sources = new Set([...policy.required, ...policy.optional]);
+        const inventoryRows = sources.has('personal_inventory')
+            ? (
+                  await sql<{
+                      name: string;
+                      quantity: string | null;
+                      unit: string;
+                  }>`select b.name,b.quantity::text,u.code as unit from meal.inventory_batches b join meal.units u on u.id=b.unit_id join meal.data_scopes s on s.id=b.scope_id where s.kind='private' and s.user_id=${userId}::uuid and b.archived_at is null order by b.expiry_on nulls last,b.created_at desc limit 51`.execute(
+                      db,
+                  )
+              ).rows
+            : [];
+
+        let preferences: AiContextSnapshot['preferences'] = null;
+        if (sources.has('preferences')) {
+            const row = (
+                await sql<{
+                    preferences: unknown;
+                }>`select preferences from meal.user_settings where user_id=${userId}::uuid limit 1`.execute(db)
+            ).rows[0];
+            const raw = objectValue(row?.preferences);
+            const candidate = aiPreferencesContextSchema.safeParse({
+                diets: stringValues(raw.diets),
+                allergens: stringValues(raw.allergens),
+                dislikes: stringValues(raw.dislikes),
+                allergenMode: raw.allergenMode === 'hide' ? 'hide' : 'warn',
+                equipment: objectValue(raw.equipment),
+                goals: stringValues(raw.goals),
+            });
+            if (candidate.success) {
+                preferences = candidate.data;
+                if (preferences.allergens.length)
+                    await this.legalConsents.assertFeatureAccess(
+                        userId,
+                        'special_category',
+                        'ai.preferences.allergens',
+                        db,
+                    );
+            }
+        }
+
+        let nutrition: AiContextSnapshot['nutrition'] = null;
+        if (sources.has('nutrition_profile') && plan === 'pro') {
+            const row = (
+                await sql<{
+                    profileData: unknown;
+                    targets: unknown;
+                }>`select p.profile_data as "profileData",t.targets from meal.nutrition_profiles p left join lateral (select targets from meal.nutrition_targets where profile_id=p.id and starts_on<=current_date and (ends_on is null or ends_on>=current_date) order by starts_on desc,created_at desc limit 1) t on true where p.user_id=${userId}::uuid order by p.created_at desc limit 1`.execute(
+                    db,
+                )
+            ).rows[0];
+            if (row) {
+                const profile = objectValue(row.profileData);
+                const targets = objectValue(row.targets);
+                const goal = ['maintain', 'lose_weight', 'gain_weight', 'custom'].includes(String(profile.goal))
+                    ? profile.goal
+                    : null;
+                const parsed = aiNutritionContextSchema.safeParse({
+                    goal,
+                    target: row.targets
+                        ? {
+                              energyKcal: decimalValue(targets.energyKcal ?? targets.energy_kcal),
+                              proteinG: decimalValue(targets.proteinG ?? targets.protein_g),
+                              fatG: decimalValue(targets.fatG ?? targets.fat_g),
+                              carbohydrateG: decimalValue(targets.carbohydrateG ?? targets.carbohydrate_g),
+                              fiberG: decimalValue(targets.fiberG ?? targets.fiber_g),
+                          }
+                        : null,
+                });
+                if (parsed.success) nutrition = parsed.data;
+            }
+        }
+
+        const snapshot = aiContextSnapshotSchema.parse({
+            version: AI_CONTEXT_POLICY_VERSION,
+            inventory: inventoryRows.slice(0, 50),
+            inventoryTruncated: inventoryRows.length > 50,
+            preferences,
+            nutrition,
+            capturedAt: new Date().toISOString(),
+        });
+        const missing = policy.required.find((kind) => aiContextSourceCount(snapshot, kind) === 0);
+        if (missing) throw new HttpException(`Для AI-задачи не хватает данных: ${sourceLabels[missing]}`, 422);
+        return snapshot;
     }
 
     private async conversationMessages(userId: string, taskId: string) {
@@ -1465,29 +1876,19 @@ export class AiService {
         ).rows.reverse();
     }
 
-    private providerPrompt(
-        taskType: AiTaskType,
-        prompt: string,
-        context: z.infer<typeof personalContextSchema> | null,
-    ) {
-        const stock = context?.length
-            ? context.map((item) => `${item.name}: ${item.quantity ?? 'количество неизвестно'} ${item.unit}`).join('\n')
-            : 'Личные данные не переданы.';
-        return `Тип задачи: ${taskType}\nЗапрос пользователя:\n${prompt}\n\nРазрешённый снимок личных запасов:\n${stock}`;
+    private providerPrompt(taskType: AiTaskType, prompt: string, context: AiContextSnapshot | null) {
+        return `Тип задачи: ${taskType}\nЗапрос пользователя:\n${prompt}\n\nРазрешённый снимок контекста:\n${renderAiContext(context)}`;
     }
 
     private providerConversationPrompt(
         taskType: AiTaskType,
         messages: Array<{ role: string; body: string }>,
-        context: z.infer<typeof personalContextSchema> | null,
+        context: AiContextSnapshot | null,
     ) {
         const dialogue = messages
             .map((message) => `${message.role === 'assistant' ? 'Помощник' : 'Пользователь'}: ${message.body}`)
             .join('\n\n');
-        const stock = context?.length
-            ? context.map((item) => `${item.name}: ${item.quantity ?? 'количество неизвестно'} ${item.unit}`).join('\n')
-            : 'Личные данные не переданы.';
-        return `Тип задачи: ${taskType}\nПродолжи ту же цель беседы. История:\n${dialogue}\n\nРазрешённый снимок личных запасов:\n${stock}`;
+        return `Тип задачи: ${taskType}\nПродолжи ту же цель беседы. История:\n${dialogue}\n\nРазрешённый снимок контекста:\n${renderAiContext(context)}`;
     }
 
     purchase() {

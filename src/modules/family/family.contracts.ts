@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { entitlementSchema } from '../entitlements/entitlements.contracts.js';
+import { entitlementSchema } from '../entitlements/public.js';
 
 export const familyCreateSchema = z.strictObject({
     name: z.string().trim().min(1).max(80),

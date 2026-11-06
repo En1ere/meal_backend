@@ -10,7 +10,7 @@ import {
     validateOcrSnapshot,
     type OcrProviderStatus,
     type OcrRequest,
-} from '../src/modules/ocr-infrastructure/ocr-provider.js';
+} from '../src/modules/ocr-infrastructure/public.js';
 
 const jobId = 'c9cc69e6-430f-4ef8-b6fe-335647a248d0';
 const sourceId = '988f0dab-5708-426c-a404-6ab18a8e4b80';

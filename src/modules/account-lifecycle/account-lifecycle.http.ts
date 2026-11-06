@@ -13,7 +13,7 @@ import {
 } from './account-lifecycle.contracts.js';
 import { criticalReauthRequestSchema } from './critical-reauth.contracts.js';
 import { CriticalReauthService } from './critical-reauth.service.js';
-import { AdminSessionGuard } from '../admin-auth/admin-auth.http.js';
+import { AdminSessionGuard } from '../admin-auth/public.js';
 
 type Request = FastifyRequest & { principal: Principal };
 type Schema = Extract<NonNullable<Parameters<typeof ApiBody>[0]>, { schema: unknown }>['schema'];

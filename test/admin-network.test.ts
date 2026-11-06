@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomBytes } from 'node:crypto';
 import { UnauthorizedException } from '@nestjs/common';
-import { AdminAccessService } from '../src/modules/admin-auth/admin-access.service.js';
+import { AdminAccessService } from '../src/modules/admin-auth/public.js';
 import { readConfig } from '../src/app/config.js';
 import { createApp } from '../src/app/create-app.js';
 

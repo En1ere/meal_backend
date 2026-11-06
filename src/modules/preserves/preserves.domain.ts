@@ -1,5 +1,5 @@
 import { HttpException } from '@nestjs/common';
-import { decimal, decimalText } from '../inventory/inventory.domain.js';
+import { decimal, decimalText } from '../inventory/public.js';
 export function preserveTotal(values: Array<string | null>): string | null {
     if (values.some((v) => v === null)) return null;
     const sum = values.reduce<bigint>((total, v) => total + decimal(v!), 0n);

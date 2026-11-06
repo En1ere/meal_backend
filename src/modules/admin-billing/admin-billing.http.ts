@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards } from '@n
 import { ApiBody, ApiCookieAuth, ApiParam, ApiTags } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { AdminSessionGuard } from '../admin-auth/admin-auth.http.js';
+import { AdminSessionGuard } from '../admin-auth/public.js';
 import type { Principal } from '../auth/auth.service.js';
 import { billingCommandSchema, billingParamsSchema } from './admin-billing.contracts.js';
 import { AdminBillingService } from './admin-billing.service.js';

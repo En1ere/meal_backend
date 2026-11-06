@@ -15,12 +15,12 @@ import {
     AdminLockedException,
     AdminConfirmationRequiredException,
     criticalExpiry,
-} from '../src/modules/admin-auth/admin-access.service.js';
+} from '../src/modules/admin-auth/public.js';
 import { AuthService, type Principal } from '../src/modules/auth/auth.service.js';
 import type { DatabaseService } from '../src/infrastructure/database/database.service.js';
 import type { DatabaseSchema } from '../src/infrastructure/database/schema.generated.js';
 import { readConfig } from '../src/app/config.js';
-import { adminLoginSchema, adminCodeSchema } from '../src/modules/admin-auth/admin-auth.http.js';
+import { adminLoginSchema, adminCodeSchema } from '../src/modules/admin-auth/public.js';
 import { tokenHash } from '../src/modules/auth/crypto.js';
 import { createApp } from '../src/app/create-app.js';
 

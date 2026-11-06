@@ -3,7 +3,7 @@ import {
     recipeResultSchema,
     recipePersonalSchema,
     recipeBookmarkResultSchema,
-} from '../../modules/recipes/recipes.contracts.js';
+} from '../../modules/recipes/public.js';
 import {
     preserveListSchema,
     preserveResultSchema,
@@ -11,8 +11,8 @@ import {
     preserveHistorySchema,
     preserveRecipeBaseSchema,
     preserveQrResultSchema,
-} from '../../modules/preserves/preserves.contracts.js';
-import { recipePolicySchema } from '../../modules/recipe-policy/recipe-policy.contracts.js';
+} from '../../modules/preserves/public.js';
+import { recipePolicySchema } from '../../modules/recipe-policy/public.js';
 import {
     workspaceReportsSchema,
     workspaceReportDetailSchema,
@@ -20,20 +20,20 @@ import {
     workspaceResultSchema,
     workspaceCommunitySchema,
     workspaceCommunityMutationSchema,
-} from '../../modules/recipe-workspace/recipe-workspace.contracts.js';
+} from '../../modules/recipe-workspace/public.js';
 import {
     cookingListSchema,
     cookingAttemptSchema,
     cookingStockOptionsSchema,
     cookingStatisticsSchema,
     cookingReminderPreferencesSchema,
-} from '../../modules/cooking/cooking.contracts.js';
+} from '../../modules/cooking/public.js';
 import {
     shoppingListsSchema,
     shoppingListSchema,
     shoppingHistorySchema,
     shoppingPreviewSchema,
-} from '../../modules/shopping/shopping.contracts.js';
+} from '../../modules/shopping/public.js';
 import {
     purchaseDetailSchema,
     purchasePreviewSchema,
@@ -41,7 +41,7 @@ import {
     receiptDuplicatesSchema,
     receiptCapabilitiesSchema,
     receiptResultSchema,
-} from '../../modules/receipts/receipts.contracts.js';
+} from '../../modules/receipts/public.js';
 import {
     planSchema,
     planChangePreviewResultSchema,
@@ -49,8 +49,8 @@ import {
     planShoppingCommitResultSchema,
     portionWorkspaceSchema,
     planAutomationPreviewResultSchema,
-} from '../../modules/meal-plan/meal-plan.contracts.js';
-import { accountOutputs, accountRoutes, securitySchema } from '../../modules/account/account.contracts.js';
+} from '../../modules/meal-plan/public.js';
+import { accountOutputs, accountRoutes, securitySchema } from '../../modules/account/public.js';
 import { z } from 'zod';
 import {
     inventoryListSchema,
@@ -59,40 +59,36 @@ import {
     inventoryLocationResultSchema,
     inventoryHistorySchema,
     inventoryImportResultSchema,
-} from '../../modules/inventory/inventory.contracts.js';
+} from '../../modules/inventory/public.js';
+import { productListSchema, productResultSchema, productReferenceSchema } from '../../modules/products/public.js';
+import { importPreviewSchema, scanPreviewSchema } from '../../modules/inventory-ingest/public.js';
 import {
-    productListSchema,
-    productResultSchema,
-    productReferenceSchema,
-} from '../../modules/products/products.contracts.js';
-import { importPreviewSchema, scanPreviewSchema } from '../../modules/inventory-ingest/ingest.contracts.js';
-import { newsResultSchema } from '../../modules/admin-news/admin-news.contracts.js';
-import {
+    newsReadResultSchema,
+    newsResultSchema,
     publicNewsDetailSchema,
     publicNewsListSchema,
-    newsReadResultSchema,
-} from '../../modules/admin-news/admin-news.contracts.js';
-import { searchResultSchema } from '../../modules/search/search.contracts.js';
-import { privacyStateSchema } from '../../modules/privacy/privacy.contracts.js';
+} from '../../modules/admin-news/public.js';
+import { searchResultSchema } from '../../modules/search/public.js';
+import { privacyStateSchema } from '../../modules/privacy/public.js';
 import {
     consentHistorySchema,
     consentStateSchema,
     publicLegalManifestSchema,
-} from '../../modules/legal-consents/legal-consent.contracts.js';
+} from '../../modules/legal-consents/public.js';
 import {
     exportDownloadSchema,
     exportCreateResultSchema,
     exportListSchema,
     exportPreviewSchema,
-} from '../../modules/exports/exports.contracts.js';
+} from '../../modules/exports/public.js';
 import {
     archiveResultSchema,
     deletionPreviewSchema,
     deletionRequestSchema,
     lifecycleStateSchema,
-} from '../../modules/account-lifecycle/account-lifecycle.contracts.js';
-import { criticalReauthResultSchema } from '../../modules/account-lifecycle/critical-reauth.contracts.js';
-import { aiAppealDetailSchema, aiAppealsListSchema } from '../../modules/ai-appeals/ai-appeals.contracts.js';
+    criticalReauthResultSchema,
+} from '../../modules/account-lifecycle/public.js';
+import { aiAppealDetailSchema, aiAppealsListSchema } from '../../modules/ai-appeals/public.js';
 import {
     authorAchievementsSchema,
     authorReputationSchema,
@@ -101,48 +97,39 @@ import {
     releaseHistorySchema,
     releaseListSchema,
     releaseSourcesSchema,
-} from '../../modules/content-releases/content-releases.contracts.js';
-import {
-    governanceViewSchema,
-    governanceResultSchema,
-} from '../../modules/admin-governance/admin-governance.contracts.js';
-import { operationsResultSchema } from '../../modules/admin-operations/operations.contracts.js';
-import { contentResultSchema } from '../../modules/admin-content/admin-content.contracts.js';
-import { billingViewSchema, billingResultSchema } from '../../modules/admin-billing/admin-billing.contracts.js';
-import { reviewResultSchema } from '../../modules/admin-review/admin-review.contracts.js';
-import { notificationCenterSchema } from '../../modules/admin-notifications/notification-center.contracts.js';
-import {
-    supportWorkspaceSchema,
-    supportManagedResultSchema,
-} from '../../modules/admin-support/admin-support.contracts.js';
-import {
-    adminPageSchema,
-    adminDetailSchema,
-    adminRelatedPageSchema,
-} from '../../modules/admin/admin-read.contracts.js';
-import { adminObservabilitySchema } from '../../modules/admin-observability/admin-observability.contracts.js';
+} from '../../modules/content-releases/public.js';
+import { governanceViewSchema, governanceResultSchema } from '../../modules/admin-governance/public.js';
+import { operationsResultSchema } from '../../modules/admin-operations/public.js';
+import { contentResultSchema } from '../../modules/admin-content/public.js';
+import { billingResultSchema, billingViewSchema } from '../../modules/admin-billing/public.js';
+import { reviewResultSchema } from '../../modules/admin-review/public.js';
+import { notificationCenterSchema } from '../../modules/admin-notifications/public.js';
+import { supportWorkspaceSchema, supportManagedResultSchema } from '../../modules/admin-support/public.js';
+import { adminPageSchema, adminDetailSchema, adminRelatedPageSchema } from '../../modules/admin/public.js';
+import { adminObservabilitySchema } from '../../modules/admin-observability/public.js';
+import { adminAiControlPlaneSchema } from '../../modules/admin-ai/public.js';
 import {
     runtimeSettingsSchema,
     webPushPolicyPreviewSchema,
     webPushPolicyResultSchema,
-} from '../../modules/admin-runtime-settings/admin-runtime-settings.contracts.js';
+} from '../../modules/admin-runtime-settings/public.js';
 import {
     acceptanceMutationResultSchema,
     acceptanceWorkspaceSchema,
-} from '../../modules/admin-acceptance-tests/admin-acceptance-tests.contracts.js';
+} from '../../modules/admin-acceptance-tests/public.js';
 import {
     notificationSettingsSchema,
     supportCommandResultSchema,
     supportMessagesSchema,
-} from '../../modules/admin-actions/admin-actions.contracts.js';
+} from '../../modules/admin-actions/public.js';
 import type { OpenAPIObject } from '@nestjs/swagger';
-import { ownProfileSchema, publicProfileSchema } from '../../modules/profiles/profiles.schemas.js';
+import { ownProfileSchema, publicProfileSchema } from '../../modules/profiles/public.js';
 import {
     homeSchema,
     onboardingSchema,
     personalizationSchema,
     preferencesSchema,
-} from '../../modules/personalization/personalization.contracts.js';
+} from '../../modules/personalization/public.js';
 import {
     notificationListSchema,
     notificationMutationSchema,
@@ -150,8 +137,8 @@ import {
     webPushConfigSchema,
     webPushRevokedSchema,
     webPushSubscriptionSchema,
-} from '../../modules/notifications/notifications.contracts.js';
-import { supportDetailSchema, supportListSchema, supportMetaSchema } from '../../modules/support/support.contracts.js';
+} from '../../modules/notifications/public.js';
+import { supportDetailSchema, supportListSchema, supportMetaSchema } from '../../modules/support/public.js';
 import {
     aiBalanceSchema,
     aiCapabilitiesSchema,
@@ -159,16 +146,14 @@ import {
     aiFamilySharingSchema,
     aiHistorySchema,
     aiHistoryArchiveResultSchema,
+    aiOperationSchema,
     aiPreviewSchema,
     aiPurchaseSchema,
     aiRunSchema,
     aiTransferResultSchema,
-} from '../../modules/ai/ai.contracts.js';
-import {
-    adminFreeAiGrantResultSchema,
-    adminFreeAiViewSchema,
-} from '../../modules/admin-free-ai/admin-free-ai.contracts.js';
-import { entitlementSchema } from '../../modules/entitlements/entitlements.contracts.js';
+} from '../../modules/ai/public.js';
+import { adminFreeAiGrantResultSchema, adminFreeAiViewSchema } from '../../modules/admin-free-ai/public.js';
+import { entitlementSchema } from '../../modules/entitlements/public.js';
 import {
     combinationConsentResultSchema,
     combinationPreviewSchema,
@@ -177,16 +162,16 @@ import {
     renewalPreviewSchema,
     subscriptionPreviewSchema,
     subscriptionSettingsSchema,
-} from '../../modules/subscription-settings/subscription-settings.contracts.js';
-import { proOverviewSchema } from '../../modules/pro-overview/pro-overview.contracts.js';
+} from '../../modules/subscription-settings/public.js';
+import { proOverviewSchema } from '../../modules/pro-overview/public.js';
 import {
     diaryDaySchema,
     diaryMediaCapabilitySchema,
     diaryPortionDecisionResultSchema,
     diaryResultSchema,
     diarySourcesSchema,
-} from '../../modules/diary/diary.contracts.js';
-import { nutritionAnalyticsSchema, nutritionSettingsSchema } from '../../modules/nutrition/nutrition.contracts.js';
+} from '../../modules/diary/public.js';
+import { nutritionAnalyticsSchema, nutritionSettingsSchema } from '../../modules/nutrition/public.js';
 import {
     financeBudgetListSchema,
     financeBudgetResultSchema,
@@ -198,7 +183,7 @@ import {
     financePriceCatalogSchema,
     financePriceListSchema,
     financePriceObservationResultSchema,
-} from '../../modules/finance/finance.contracts.js';
+} from '../../modules/finance/public.js';
 import {
     familyContextSchema,
     familyInvitationListSchema,
@@ -212,42 +197,34 @@ import {
     ownershipTransferPreviewSchema,
     ownershipRequestDetailSchema,
     ownershipRequestResultSchema,
-} from '../../modules/family/family.contracts.js';
-import {
-    familyNoteHistorySchema,
-    familyNoteSchema,
-    familyNotesSchema,
-} from '../../modules/family-notes/family-notes.contracts.js';
-import {
-    familyChatDraftSchema,
-    familyChatMutationSchema,
-    familyChatSchema,
-} from '../../modules/family-chat/family-chat.contracts.js';
+} from '../../modules/family/public.js';
+import { familyNoteHistorySchema, familyNoteSchema, familyNotesSchema } from '../../modules/family-notes/public.js';
+import { familyChatDraftSchema, familyChatMutationSchema, familyChatSchema } from '../../modules/family-chat/public.js';
 import {
     authorFollowResultSchema,
     authorFollowingListSchema,
     recommendationEventResultSchema,
     recommendationsResultSchema,
-} from '../../modules/recommendations/recommendations.contracts.js';
-import { communityCommentsSchema, communityFeedSchema } from '../../modules/community/community.contracts.js';
+} from '../../modules/recommendations/public.js';
+import { communityCommentsSchema, communityFeedSchema } from '../../modules/community/public.js';
 import {
     allergenAdminDetailSchema,
     allergenAdminListSchema,
     allergenReportResultSchema,
     allergenSubjectListSchema,
-} from '../../modules/allergen-intelligence/allergen-intelligence.contracts.js';
+} from '../../modules/allergen-intelligence/public.js';
 import {
     moderatorItemSchema,
     moderatorOverviewSchema,
     moderatorQueuePageSchema,
     moderatorSupportSchema,
-} from '../../modules/moderator/moderator.contracts.js';
-import { telemetryAcceptedSchema } from '../../modules/telemetry/telemetry.contracts.js';
+} from '../../modules/moderator/public.js';
+import { telemetryAcceptedSchema } from '../../modules/telemetry/public.js';
 import {
     mediaDownloadTargetResultSchema,
     mediaIntakeResultSchema,
     mediaReservationResultSchema,
-} from '../../modules/media-storage/media-storage.contracts.js';
+} from '../../modules/media-storage/public.js';
 
 const meta = z.strictObject({ requestId: z.uuid() });
 export const principalSchema = z.strictObject({
@@ -318,6 +295,7 @@ export const createdResponseOperationIds = new Set([
     'FamilyChatController_send',
     'MediaStorageController_reserve',
 ]);
+export const acceptedResponseOperationIds = new Set(['AiController_enqueue', 'AiController_enqueueContinuation']);
 
 export function documentResponses(document: OpenAPIObject): OpenAPIObject {
     const routes: Record<string, keyof typeof responseDataSchemas> = {
@@ -380,6 +358,7 @@ export function documentResponses(document: OpenAPIObject): OpenAPIObject {
     accountSchemas['/api/v1/admin/{section}/{id}'] = adminDetailSchema;
     accountSchemas['/api/v1/admin/{section}/{id}/related/{collection}/search'] = adminRelatedPageSchema;
     accountSchemas['/api/v1/admin/observability'] = adminObservabilitySchema;
+    accountSchemas['/api/v1/admin/ai'] = adminAiControlPlaneSchema;
     accountSchemas['/api/v1/admin/acceptance-tests'] = acceptanceWorkspaceSchema;
     accountSchemas['/api/v1/admin/acceptance-tests/{caseId}'] = acceptanceMutationResultSchema;
     accountSchemas['/api/v1/admin/acceptance-tests/{caseId}/reset'] = acceptanceMutationResultSchema;
@@ -653,6 +632,9 @@ export function documentResponses(document: OpenAPIObject): OpenAPIObject {
         'POST /api/v1/ai/transfers/{id}/decision': aiTransferResultSchema,
         'POST /api/v1/ai/preview': aiPreviewSchema,
         'POST /api/v1/ai/run': aiRunSchema,
+        'POST /api/v1/ai/operations': aiOperationSchema,
+        'POST /api/v1/ai/tasks/{id}/operations': aiOperationSchema,
+        'GET /api/v1/ai/operations/{id}': aiOperationSchema,
         'GET /api/v1/ai/tasks/{id}': aiConversationSchema,
         'POST /api/v1/ai/tasks/{id}/messages': aiConversationSchema,
         'POST /api/v1/ai/package/purchase': aiPurchaseSchema,
@@ -674,10 +656,14 @@ export function documentResponses(document: OpenAPIObject): OpenAPIObject {
             const mediaDownload = method === 'get' && path === '/api/v1/media/assets/{id}/content';
             if (!key && !accountSchemas[path] && !domainResponse && !mediaDownload)
                 throw new Error(`Undocumented response: ${path}`);
-            const successStatus = createdResponseOperationIds.has(operation.operationId ?? '') ? '201' : '200';
+            const successStatus = createdResponseOperationIds.has(operation.operationId ?? '')
+                ? '201'
+                : acceptedResponseOperationIds.has(operation.operationId ?? '')
+                  ? '202'
+                  : '200';
             operation.responses = {
                 [successStatus]: {
-                    description: successStatus === '201' ? 'Created' : 'Success',
+                    description: successStatus === '201' ? 'Created' : successStatus === '202' ? 'Accepted' : 'Success',
                     content: mediaDownload
                         ? Object.fromEntries(
                               [
