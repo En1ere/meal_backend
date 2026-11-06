@@ -37,7 +37,7 @@ The versioned model profile persists requested/actual model, input/output/reason
 - Plus cannot invoke nutrition or finance AI tasks merely because it has an action balance.
 - Catalog caching must be account-scoped in the frontend and invalidated after subscription/trial changes.
 - Two ambiguous task codes temporarily disappear from every effective catalog instead of returning misleading results.
-- The next backend slice must introduce versioned per-task context/source and structured-output contracts, followed by the asynchronous operation lifecycle and read-only admin control plane.
+- Subsequent compatible slices introduced `ai-context-policy-v1` and strict structured output in schema v36, the durable asynchronous operation lifecycle in schema v37, and the aggregate read-only admin control plane. Schema v38 adds bounded 30-day content retention. Production provider evidence and the operator action for `unknown/reconciliation_hold` remain separate gates.
 - Model selection remains measurable: compare Luna and Sol on the same accepted fixtures, tracking task success, latency, token usage and cost per successful result.
 
 Official references: [OpenAI model selection](https://developers.openai.com/api/docs/guides/model-selection), [GPT-6 models](https://developers.openai.com/api/docs/models), [API pricing](https://developers.openai.com/api/docs/pricing), [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [data controls](https://developers.openai.com/api/docs/guides/your-data).
