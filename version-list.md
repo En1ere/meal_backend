@@ -1,5 +1,7 @@
 # Backend version-list
 
+0.0.276 - 11.07.2026 | 13:36 - Добавлен канонический `CURRENT_HANDOFF.md` для продолжения работы из нового диалога: зафиксированы состояние трёх репозиториев и стенда, уже готовый AI foundation, обязательная последовательность продуктовых решений, техническая подготовка до состояния «остаётся API key», остальные production gates, ссылки на runbooks/test-cases и правила exact-revision deploy verification. Секреты не добавлялись; runtime, OpenAPI и schema не изменены.
+
 0.0.275 - 11.07.2026 | 13:17 - Зафиксирован отдельный AI activation roadmap перед паузой: текущее готовое состояние, последовательные решения по task/tariff matrix, provider, model routing, eval, данным/согласиям, pricing/stop-loss, safety, reconciliation и admin control plane, техническая подготовка без ключа и строгий Definition of Ready «остаётся только API key». Добавлен список остальных внешних production gates; runtime, OpenAPI и schema не изменены.
 
 0.0.274 - 11.07.2026 | 04:15 - ADR-090 синхронизирован с уже реализованными AI-срезами: versioned task/context policies, strict structured output, schema v37 async lifecycle, read-only admin control plane и schema v38 retention больше не названы будущей работой. Внешний provider evidence и финансово значимое операторское действие для `unknown/reconciliation_hold` сохранены отдельными gates; runtime, OpenAPI и schema не изменены.
