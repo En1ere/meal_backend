@@ -26,6 +26,8 @@
 | 11  | Reliability и сквозная приёмка      | выполнено           | CI, E2E, provider failure drills, load/OOM/leak tests, browser/accessibility, VPS restart/rollback                                                           |
 | 12  | Документация                        | постоянно           | runbook, owner inputs, env/secret inventory, disable/rollback и manual tests обновляются в каждом checkpoint                                                 |
 
+Следующая рабочая сессия начинается с последовательного согласования [AI provider activation roadmap](AI_ACTIVATION_ROADMAP.md). Реализация приостановлена до решений по продуктовым сценариям/тарифам, provider/model routing, данным, quality/safety, бюджету и `unknown/reconciliation_hold`. Цель подготовки — fail-closed release, которому для controlled activation не хватает только значения API key и реального provider evidence.
+
 ## Checkpoint 11: итог 3 ноября 2026
 
 - Backend `npm run check` прошёл полностью: architecture gate, typecheck, lint/format и 395/395 тестов. Dependency audit — 0 уязвимостей. OpenAPI `0.0.65`, schema `v34` и generated client фронта сверены; расхождение устаревшего frontend snapshot `0.0.64` устранено без изменения backend wire-контракта.

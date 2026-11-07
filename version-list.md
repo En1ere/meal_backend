@@ -1,5 +1,7 @@
 # Backend version-list
 
+0.0.275 - 11.07.2026 | 13:17 - Зафиксирован отдельный AI activation roadmap перед паузой: текущее готовое состояние, последовательные решения по task/tariff matrix, provider, model routing, eval, данным/согласиям, pricing/stop-loss, safety, reconciliation и admin control plane, техническая подготовка без ключа и строгий Definition of Ready «остаётся только API key». Добавлен список остальных внешних production gates; runtime, OpenAPI и schema не изменены.
+
 0.0.274 - 11.07.2026 | 04:15 - ADR-090 синхронизирован с уже реализованными AI-срезами: versioned task/context policies, strict structured output, schema v37 async lifecycle, read-only admin control plane и schema v38 retention больше не названы будущей работой. Внешний provider evidence и финансово значимое операторское действие для `unknown/reconciliation_hold` сохранены отдельными gates; runtime, OpenAPI и schema не изменены.
 
 0.0.273 - 11.07.2026 | 03:58 - Синхронизирован production tracker с фактически закрытым бесплатным AI checkpoint: зафиксированы OpenAI Responses/store=false, Luna/low baseline, тарифные task/context policies, canonical async lifecycle, isolated worker, stop-loss, offline eval и 30-дневный retention на schema v38. Реальный provider остаётся fail-closed до production key, положительного месячного бюджета и evidence; операторский `unknown/reconciliation_hold` явно оставлен отдельным финансово значимым решением. Runtime, OpenAPI и schema не изменены.
