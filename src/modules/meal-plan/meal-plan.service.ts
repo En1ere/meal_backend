@@ -11,6 +11,7 @@ import { DiaryService } from '../diary/public.js';
 import { recipeNutritionSchema } from '../recipes/public.js';
 import {
     planSchema,
+    planShoppingPreviewResultSchema,
     type planChangeCommitSchema,
     type planChangePreviewSchema,
     type planShoppingCommitSchema,
@@ -51,6 +52,13 @@ type Impact = {
     priceComplete: boolean;
 };
 
+export type AiMealPlanShoppingPreview = {
+    scopeId: string;
+    revisionId: string;
+    input: z.infer<typeof planShoppingPreviewRequestSchema> & { mealPlanId: string };
+    preview: z.infer<typeof planShoppingPreviewResultSchema>;
+};
+
 function stableUuid(value: unknown) {
     const hex = createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 32).split('');
     hex[12] = '4';
@@ -66,13 +74,13 @@ export class MealPlanService {
         private readonly diary: DiaryService,
     ) {}
 
-    private async load(tx: WorkflowTx, scope: string | null): Promise<LoadedPlan> {
+    private async load(tx: WorkflowTx, scope: string | null, planId?: string): Promise<LoadedPlan> {
         if (!scope) return { id: null, version: 0, revisionId: null, revision: 0, timezone: null, entries: [] };
         const plan = (
             await sql<{
                 id: string;
                 version: number;
-            }>`select id,version::integer from meal.meal_plans where scope_id=${scope}::uuid and archived_at is null order by created_at,id limit 1`.execute(
+            }>`select id,version::integer from meal.meal_plans where scope_id=${scope}::uuid and archived_at is null ${planId ? sql`and id=${planId}::uuid` : sql``} order by created_at,id limit 1`.execute(
                 tx,
             )
         ).rows[0];
@@ -888,9 +896,10 @@ export class MealPlanService {
         userId: string,
         scope: string | null,
         input: z.infer<typeof planShoppingPreviewRequestSchema>,
+        planId?: string,
     ) {
         await this.requireRange(tx, userId, input.selection);
-        const current = await this.load(tx, scope);
+        const current = await this.load(tx, scope, planId);
         if (!current.id || !current.revisionId) throw new HttpException('План пока пуст', 409);
         if (current.version !== input.version) throw new HttpException('План изменился', 412);
         const range = planRange(input.selection);
@@ -923,6 +932,42 @@ export class MealPlanService {
                     items: review.items,
                     estimatedPriceMinor: review.impact.estimatedPriceMinor,
                     priceComplete: review.impact.priceComplete,
+                };
+            },
+        );
+    }
+
+    aiShoppingPreview(
+        userId: string,
+        input: z.infer<typeof planShoppingPreviewRequestSchema> & { mealPlanId: string },
+    ): Promise<AiMealPlanShoppingPreview> {
+        return scopedWorkflow(
+            this.database,
+            this.entitlements,
+            userId,
+            input.selection.scope,
+            false,
+            async (tx, scope) => {
+                await this.requireSmartShopping(tx, userId);
+                const review = await this.shoppingReview(
+                    tx,
+                    userId,
+                    scope,
+                    { version: input.version, selection: input.selection },
+                    input.mealPlanId,
+                );
+                if (!review.current.revisionId) throw new HttpException('План пока пуст', 409);
+                const generated = planShoppingPreviewResultSchema.parse({
+                    ...createPlanToken(review.tokenValue),
+                    items: review.items,
+                    estimatedPriceMinor: review.impact.estimatedPriceMinor,
+                    priceComplete: review.impact.priceComplete,
+                });
+                return {
+                    scopeId: scope,
+                    revisionId: review.current.revisionId,
+                    input,
+                    preview: generated,
                 };
             },
         );

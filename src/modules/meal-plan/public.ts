@@ -1,5 +1,5 @@
 export { MealPlanController, PortionsController } from './meal-plan.http.js';
-export { MealPlanService } from './meal-plan.service.js';
+export { MealPlanService, type AiMealPlanShoppingPreview } from './meal-plan.service.js';
 export {
     planAutomationPreviewResultSchema,
     planAutomationPreviewSchema,
@@ -9,6 +9,7 @@ export {
     planSchema,
     planShoppingCommitResultSchema,
     planShoppingPreviewResultSchema,
+    planShoppingPreviewRequestSchema,
     portionAssignSchema,
     portionDecisionSchema,
     portionWorkspaceSchema,

@@ -804,12 +804,12 @@ export class AiService {
             ? sql`and (t.created_at,t.id)<(${cursor.createdAt}::timestamptz,${cursor.id}::uuid)`
             : sql``;
         const rows =
-            await sql<HistoryRow>`select t.id,c.title,t.preview->>'taskType' as "taskType",t.status,t.accepted_cost::integer cost,t.created_at as "createdAt",o.result_snapshot result,c.archived_at is not null archived,c.version::integer version from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id left join lateral(select result_snapshot from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id where i.task_id=t.id and o.result_snapshot ? 'text' order by o.created_at desc limit 1)o on true where c.user_id=${userId}::uuid ${archiveFilter} ${cursorFilter} order by t.created_at desc,t.id desc limit ${query.limit + 1}`.execute(
+            await sql<HistoryRow>`select t.id,c.title,t.preview->>'taskType' as "taskType",t.status,t.accepted_cost::integer cost,t.created_at as "createdAt",o.result_snapshot result,c.archived_at is not null archived,c.version::integer version from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id left join lateral(select result_snapshot from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id where i.task_id=t.id and o.contract_version=1 and o.result_snapshot ? 'text' order by o.created_at desc limit 1)o on true where c.user_id=${userId}::uuid and t.contract_version=1 ${archiveFilter} ${cursorFilter} order by t.created_at desc,t.id desc limit ${query.limit + 1}`.execute(
                 db,
             );
         const count = await sql<{
             total: number;
-        }>`select count(*)::integer total from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id where c.user_id=${userId}::uuid ${archiveFilter}`.execute(
+        }>`select count(*)::integer total from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id where c.user_id=${userId}::uuid and t.contract_version=1 ${archiveFilter}`.execute(
             db,
         );
         const page = rows.rows.slice(0, query.limit);
@@ -853,7 +853,7 @@ export class AiService {
             const row = (
                 await sql<
                     HistoryRow & { conversationId: string }
-                >`select t.id,t.conversation_id as "conversationId",c.title,t.preview->>'taskType' as "taskType",t.status,t.accepted_cost::integer cost,t.created_at as "createdAt",o.result_snapshot result,c.archived_at is not null archived,c.version::integer version from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id left join lateral(select result_snapshot from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id where i.task_id=t.id and o.result_snapshot ? 'text' order by o.created_at desc limit 1)o on true where t.id=${taskId}::uuid and c.user_id=${userId}::uuid for update of c`.execute(
+                >`select t.id,t.conversation_id as "conversationId",c.title,t.preview->>'taskType' as "taskType",t.status,t.accepted_cost::integer cost,t.created_at as "createdAt",o.result_snapshot result,c.archived_at is not null archived,c.version::integer version from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id left join lateral(select result_snapshot from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id where i.task_id=t.id and o.contract_version=1 and o.result_snapshot ? 'text' order by o.created_at desc limit 1)o on true where t.id=${taskId}::uuid and t.contract_version=1 and c.user_id=${userId}::uuid for update of c`.execute(
                     tx,
                 )
             ).rows[0];
@@ -892,7 +892,7 @@ export class AiService {
         const taskId = aiRunRequestSchema.shape.previewId.parse(rawTaskId);
         const db = await this.db();
         const task = (
-            await sql<HistoryRow>`select t.id,c.title,t.preview->>'taskType' as "taskType",t.status,t.accepted_cost::integer cost,t.created_at as "createdAt",o.result_snapshot result,c.archived_at is not null archived,c.version::integer version from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id left join lateral(select result_snapshot from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id where i.task_id=t.id and o.result_snapshot ? 'text' order by o.created_at desc limit 1)o on true where t.id=${taskId}::uuid and c.user_id=${userId}::uuid`.execute(
+            await sql<HistoryRow>`select t.id,c.title,t.preview->>'taskType' as "taskType",t.status,t.accepted_cost::integer cost,t.created_at as "createdAt",o.result_snapshot result,c.archived_at is not null archived,c.version::integer version from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id left join lateral(select result_snapshot from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id where i.task_id=t.id and o.contract_version=1 and o.result_snapshot ? 'text' order by o.created_at desc limit 1)o on true where t.id=${taskId}::uuid and t.contract_version=1 and c.user_id=${userId}::uuid`.execute(
                 db,
             )
         ).rows[0];
@@ -903,7 +903,7 @@ export class AiService {
                 role: string;
                 body: string;
                 createdAt: Date;
-            }>`select m.id,m.role,m.body,m.created_at as "createdAt" from meal.ai_messages m join meal.ai_conversations c on c.id=m.conversation_id join meal.ai_tasks t on t.conversation_id=c.id where t.id=${taskId}::uuid and c.user_id=${userId}::uuid order by m.created_at,m.id limit 200`.execute(
+            }>`select m.id,m.role,m.body,m.created_at as "createdAt" from meal.ai_messages m join meal.ai_conversations c on c.id=m.conversation_id join meal.ai_tasks t on t.conversation_id=c.id where t.id=${taskId}::uuid and t.contract_version=1 and c.user_id=${userId}::uuid order by m.created_at,m.id limit 200`.execute(
                 db,
             ),
             sql<{
@@ -957,7 +957,7 @@ export class AiService {
                 updatedAt: Date;
                 expiresAt: Date;
                 version: number;
-            }>`select o.id,i.task_id as "taskId",t.conversation_id as "conversationId",t.preview->>'taskType' as "taskType",o.lifecycle_state as "lifecycleState",o.financial_state as "financialState",o.failure_category as "failureCategory",o.failure_retryable as "failureRetryable",o.result_snapshot result,o.created_at as "createdAt",o.updated_at as "updatedAt",o.expires_at as "expiresAt",o.version::integer version from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id join meal.ai_tasks t on t.id=i.task_id join meal.ai_conversations c on c.id=t.conversation_id where o.id=${operationId}::uuid and c.user_id=${userId}::uuid`.execute(
+            }>`select o.id,i.task_id as "taskId",t.conversation_id as "conversationId",t.preview->>'taskType' as "taskType",o.lifecycle_state as "lifecycleState",o.financial_state as "financialState",o.failure_category as "failureCategory",o.failure_retryable as "failureRetryable",o.result_snapshot result,o.created_at as "createdAt",o.updated_at as "updatedAt",o.expires_at as "expiresAt",o.version::integer version from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id join meal.ai_tasks t on t.id=i.task_id join meal.ai_conversations c on c.id=t.conversation_id where o.id=${operationId}::uuid and o.contract_version=1 and c.user_id=${userId}::uuid`.execute(
                 db,
             )
         ).rows[0];
@@ -1336,7 +1336,7 @@ export class AiService {
                     usePersonalData: boolean;
                     personalContext: unknown;
                     cost: number;
-                }>`select t.id,t.status,t.conversation_id as "conversationId",t.preview->>'taskType' as "taskType",coalesce((t.preview->>'usePersonalData')::boolean,false) as "usePersonalData",coalesce(t.preview->'personalContext','[]'::jsonb) as "personalContext",t.accepted_cost::integer cost from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id where t.id=${taskId}::uuid and c.user_id=${userId}::uuid and t.accepted_at is not null and t.content_purged_at is null for update of t`.execute(
+                }>`select t.id,t.status,t.conversation_id as "conversationId",t.preview->>'taskType' as "taskType",coalesce((t.preview->>'usePersonalData')::boolean,false) as "usePersonalData",coalesce(t.preview->'personalContext','[]'::jsonb) as "personalContext",t.accepted_cost::integer cost from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id where t.id=${taskId}::uuid and t.contract_version=1 and c.user_id=${userId}::uuid and t.accepted_at is not null and t.content_purged_at is null for update of t`.execute(
                     tx,
                 )
             ).rows[0];
@@ -1512,7 +1512,7 @@ export class AiService {
                       )
                   ).rows[0]
                 : (
-                      await sql<ExistingRow>`select o.id as "operationId",o.status as "operationStatus",i.task_id as id,c.title,t.preview->>'taskType' as "taskType",t.status,t.accepted_cost::integer cost,t.created_at as "createdAt",o.result_snapshot result,c.archived_at is not null archived,c.version::integer version from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id join meal.ai_tasks t on t.id=i.task_id join meal.ai_conversations c on c.id=t.conversation_id where i.task_id=${previewId}::uuid and o.idempotency_key=${idempotencyKey} and c.user_id=${userId}::uuid for update of o`.execute(
+                      await sql<ExistingRow>`select o.id as "operationId",o.status as "operationStatus",i.task_id as id,c.title,t.preview->>'taskType' as "taskType",t.status,t.accepted_cost::integer cost,t.created_at as "createdAt",o.result_snapshot result,c.archived_at is not null archived,c.version::integer version from meal.ai_operations o join meal.ai_intervals i on i.id=o.interval_id join meal.ai_tasks t on t.id=i.task_id join meal.ai_conversations c on c.id=t.conversation_id where i.task_id=${previewId}::uuid and o.contract_version=1 and o.idempotency_key=${idempotencyKey} and c.user_id=${userId}::uuid for update of o`.execute(
                           tx,
                       )
                   ).rows[0];
@@ -1526,7 +1526,7 @@ export class AiService {
                 return { item: this.item(existing) };
             }
             const task = (
-                await sql<PreviewRow>`select t.id,t.conversation_id as "conversationId",t.goal as prompt,t.preview->>'taskType' as "taskType",coalesce((t.preview->>'usePersonalData')::boolean,false) as "usePersonalData",coalesce(t.preview->'personalContext','[]'::jsonb) as "personalContext",t.preview->>'expiresAt' as "expiresAt",t.accepted_cost::integer cost from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id where t.id=${previewId}::uuid and c.user_id=${userId}::uuid and t.status='preview' and t.content_purged_at is null for update of t`.execute(
+                await sql<PreviewRow>`select t.id,t.conversation_id as "conversationId",t.goal as prompt,t.preview->>'taskType' as "taskType",coalesce((t.preview->>'usePersonalData')::boolean,false) as "usePersonalData",coalesce(t.preview->'personalContext','[]'::jsonb) as "personalContext",t.preview->>'expiresAt' as "expiresAt",t.accepted_cost::integer cost from meal.ai_tasks t join meal.ai_conversations c on c.id=t.conversation_id where t.id=${previewId}::uuid and t.contract_version=1 and c.user_id=${userId}::uuid and t.status='preview' and t.content_purged_at is null for update of t`.execute(
                     tx,
                 )
             ).rows[0];
@@ -1872,7 +1872,7 @@ export class AiService {
             await sql<{
                 role: string;
                 body: string;
-            }>`select m.role,m.body from meal.ai_messages m join meal.ai_conversations c on c.id=m.conversation_id join meal.ai_tasks t on t.conversation_id=c.id where t.id=${taskId}::uuid and c.user_id=${userId}::uuid order by m.created_at desc,m.id desc limit 40`.execute(
+            }>`select m.role,m.body from meal.ai_messages m join meal.ai_conversations c on c.id=m.conversation_id join meal.ai_tasks t on t.conversation_id=c.id where t.id=${taskId}::uuid and t.contract_version=1 and c.user_id=${userId}::uuid order by m.created_at desc,m.id desc limit 40`.execute(
                 await this.db(),
             )
         ).rows.reverse();

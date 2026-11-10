@@ -62,6 +62,7 @@ import { FinanceCapabilityModule } from '../contexts/inventory-commerce/finance-
 import { SubscriptionSettingsCapabilityModule } from '../contexts/household-entitlements/subscription-settings-capability.module.js';
 import { FamilyCapabilityModule } from '../contexts/household-entitlements/family-capability.module.js';
 import { AiCapabilityModule } from '../contexts/integrations/ai-capability.module.js';
+import { AiMealPlanCapabilityModule } from '../contexts/integrations/ai-meal-plan-capability.module.js';
 import { ProOverviewCapabilityModule } from '../contexts/household-entitlements/pro-overview-capability.module.js';
 import { AdminBillingCapabilityModule } from '../contexts/inventory-commerce/admin-billing-capability.module.js';
 import { AdminNewsCapabilityModule } from '../contexts/community-content/admin-news-capability.module.js';
@@ -143,6 +144,7 @@ export class AppModule {
                 SubscriptionSettingsCapabilityModule,
                 FamilyCapabilityModule,
                 AiCapabilityModule,
+                AiMealPlanCapabilityModule,
                 ProOverviewCapabilityModule,
                 AdminBillingCapabilityModule,
                 AdminNewsCapabilityModule,

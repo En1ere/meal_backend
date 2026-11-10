@@ -14,18 +14,18 @@
 
 ## 2. Каталог задач и тарифы
 
-`ai-task-policy-v3` — текущая минимальная матрица:
+`ai-task-policy-v4` — утверждённая целевая матрица. Она вводит обязательный `mode` и четыре класса исполнения: `backend`, `economy`, `balanced`, `disabled`.
 
-| Минимум                          | Задачи                                                                                                                                                                                                                                   |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Free + доступный AI balance      | `culinary_question`, `substitution`, `storage_advice`, `ingredient_extraction`, `product_classification`, `recipe_from_stock`, `personal_recommendation`, `beverage_pairing`, `recipe_adaptation`, `registry_analysis`, `review_summary` |
-| Plus                             | всё Free + `shopping_list_generation`, `meal_plan_generation`, `event_menu`                                                                                                                                                              |
-| Pro                              | всё Plus + `nutrition_calculation`, `portion_cost_calculation`                                                                                                                                                                           |
-| Disabled до отдельного контракта | `seasonal_analysis`, `document_analysis`                                                                                                                                                                                                 |
+| Минимум                          | Задачи                                                                                                                                                                                                                                                                                                          |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Free + доступный AI balance      | `culinary_question`, `substitution`, `storage_advice`, `ingredient_extraction`, `product_classification`, `recipe_from_stock`, `beverage_pairing`, `recipe_adaptation`, `registry_analysis`; `personal_recommendation/weekly` и публичный `review_summary` выполняются backend/artifact и не требуют AI balance |
+| Plus                             | всё Free + `shopping_list_generation`, `meal_plan_generation`, `event_menu`                                                                                                                                                                                                                                     |
+| Pro                              | всё Plus + `nutrition_calculation`, `portion_cost_calculation`                                                                                                                                                                                                                                                  |
+| Disabled до отдельного контракта | `seasonal_analysis`, `document_analysis`                                                                                                                                                                                                                                                                        |
 
 Purchased, transferred, trial, family-reserve и administrative-compensation buckets не изменяют эту матрицу. Pro может использовать полный разрешённый контекст; Plus и Free получают только источники своих доменов.
 
-Следующая версия каталога может вводить modes внутри task code, например `shopping.personal`, `shopping.family` и `shopping.budget_optimized`. Mode обязан иметь собственные required capabilities/sources/output schema; автоматическое молчаливое повышение режима запрещено.
+Mode владеет required capabilities/sources, route, cost, limits и output schema. Backend/SQL обязателен для поиска, статистики, арифметики, подборок и проверок. Тариф меняет entitlement, доступный контекст, квоту и queue priority, но не model profile для одного task/mode. Автоматическое повышение route/model запрещено на frontend, backend, worker и provider adapter.
 
 ## 3. Контекст
 
@@ -137,50 +137,72 @@ type AiOperation = {
 - Повтор exact key + exact hash возвращает тот же operation/readback.
 - Тот же key с другим hash возвращает `409` без нового reserve или provider call.
 - Frontend сохраняет key вместе с fingerprint до подтверждённого terminal/readback. Новый click после timeout не создаёт новый UUID.
-- Transport timeout, connection reset и provider acceptance без подтверждённого response становятся `unknown`, а не `failed`/`released`.
-- Автоматический retry допустим только когда доказано, что provider не принял запрос. Иначе работает reconciliation/readback.
+- Provider port возвращает ровно один submit outcome: `accepted` с `providerResponseId`, `rejected` с нормализованной категорией либо `unknown_without_identity` с локальным `clientRequestId`. `x-client-request-id` используется только для correlation/support и не доказывает идемпотентность provider create.
+- Transport timeout/reset до получения `providerResponseId` становится `unknown_without_identity`. Автоматический повтор submit запрещён. Пользовательский резерв освобождается, потому что доступный пользователю результат отсутствует; консервативная возможная стоимость остаётся в отдельном provider budget hold до reconciliation/invoice evidence.
+- После сохранения `providerResponseId` разрешён только canonical GET/readback. Его состояния нормализуются в `queued`, `running`, `succeeded`, `failed`, `cancelled`, `incomplete` или `unknown`. Timeout/readback failure переводит operation в `unknown/reconciliation_hold`, но не создаёт новый submit.
+- Lifecycle state, user financial state и provider cost state независимы. Release пользовательской квоты не удаляет provider cost evidence и не превращает неизвестный provider outcome в `failed`.
+- Admin не может вручную выставить `succeeded`, подменить result или повторить submit. Разрешённые будущие действия: force readback по существующему ID и подтверждённое освобождение user reservation через permission → MFA → preview → confirm → execute → audit/readback.
+- Если contract spike докажет необходимость `store:true`, после terminal GET worker сначала валидирует и транзакционно сохраняет минимальный локальный result/usage, затем вызывает provider DELETE. Повтор DELETE безопасен и не считается повтором генерации; delete failure создаёт retention alert и отдельную cleanup job.
 - Cancel после provider completion возвращает canonical state и `cancel_too_late`, но не маскирует completed result.
 
-## 6. Provider profile
+Минимальный provider-neutral port:
 
-Launch profile:
+```ts
+type ProviderSubmitOutcome =
+    | { kind: 'accepted'; providerResponseId: string; clientRequestId: string }
+    | { kind: 'rejected'; category: string; retryable: false }
+    | { kind: 'unknown_without_identity'; clientRequestId: string };
 
-```json
-{
-    "version": "openai-gpt-6-luna-standard-2026-11-07",
-    "provider": "openai",
-    "transport": "responses",
-    "model": "gpt-6-luna",
-    "reasoningEffort": "low",
-    "background": true,
-    "store": false
+type ProviderReadOutcome =
+    | { kind: 'queued' | 'running' }
+    | { kind: 'succeeded'; rawResult: unknown; usage: unknown }
+    | { kind: 'failed' | 'cancelled' | 'incomplete'; category: string }
+    | { kind: 'unknown' };
+
+interface AiProviderPort {
+    submit(request: FrozenProviderRequest): Promise<ProviderSubmitOutcome>;
+    read(providerResponseId: string): Promise<ProviderReadOutcome>;
+    delete?(providerResponseId: string): Promise<'deleted' | 'already_absent' | 'unknown'>;
 }
 ```
 
-`gpt-6.1-sol` может быть отдельным disabled-by-default evaluation profile для тяжёлых задач. Переключение разрешается только после eval по одинаковым fixtures и acceptance criteria: correctness, safety, schema success, latency, input/output/reasoning tokens, provider cost и cost per successful task.
+## 6. Provider profiles и routing
 
-Профиль фиксирует Standard pricing snapshot: Luna `$0.10` за 1M input tokens и `$0.50` за 1M output tokens. При текущих bounded token budgets консервативная верхняя оценка одной задачи классов 1–5 равна соответственно `$0.00155000`, `$0.00310000`, `$0.00570000`, `$0.00830000`, `$0.01140000`. Reasoning tokens входят в provider `output_tokens` и не прибавляются второй раз.
+Целевые launch-профили:
 
-Worker запускается только при явном положительном `AI_MONTHLY_BUDGET_USD`. Перед новым provider submit он под транзакционным advisory lock суммирует фактическую либо ещё удерживаемую оценочную стоимость UTC-месяца. Превышение лимита даёт `provider_budget_exhausted`, не вызывает provider и освобождает пользовательский резерв. Pending/unknown сохраняют консервативную оценку; terminal response заменяет её фактической стоимостью. Несовпадение model/profile также fail closed до внешнего вызова.
+| Route      | Profile                         | Provider/model                        | Reasoning | Верхний input/output |
+| ---------- | ------------------------------- | ------------------------------------- | --------- | -------------------- |
+| `economy`  | `yandex-alice-flash-economy-v1` | Yandex AI Studio / Alice AI LLM Flash | minimal   | 24 KB / 1 000 tokens |
+| `balanced` | `yandexgpt-5.1-balanced-v1`     | Yandex AI Studio / YandexGPT Pro 5.1  | low       | 48 KB / 2 000 tokens |
 
-На operation/attempt сохраняются provider profile version, requested/actual model, OpenAI request id, timestamps, HTTP/provider outcome, token usage, service tier и estimated/actual cost. Prompt/result в operational logs запрещены.
+Оба профиля целятся в Responses/background, `store:false`, отключённое provider conversation state и не имеют runtime fallback. До реализации требуется provider contract spike: документация Yandex связывает получение response по ID с сохранённым response и не документирует идемпотентный create. Если background readback с `store:false` не подтверждается, activation блокируется до отдельного owner decision между другим transport/provider и ограниченным `store:true` с немедленным `DELETE` после terminal readback. `x-client-request-id` считается только диагностическим correlation id, а не idempotency key. Task-specific limits всегда уже profile ceiling: например meal plan — 32 KB/700 tokens, adaptation — 18 KB/1 200 tokens, `replace_slot` — 4 KB/100 tokens и не более 10 кандидатов. Превышение лимита не исправляется скрытым усечением результата.
+
+OpenAI/Luna остаётся описанием существующего выключенного технического baseline и offline eval candidate, но не целевым коммерческим маршрутом. Production activation Yandex запрещена до подтверждения отключённого provider logging/tracing, корректного background readback, допустимого региона и правовых условий, least-privilege service account и точного versioned pricing snapshot.
+
+Provider cost ceilings: economy — 1 ₽/operation; recipe generation/adaptation — 6 ₽; event menu — 7 ₽; meal plan — 12 ₽ вместе с двумя уточнениями, из них initial не более 9,50 ₽ и каждое уточнение не более 1,25 ₽. Preflight выше ceiling либо неизвестный/устаревший pricing snapshot возвращает `provider_cost_limit_exceeded` до reserve/provider call. Rolling cost guardrails: warning 1 ₽/действие, critical 1,50 ₽/действие; provider budget utilization 70%/90%/100% = warning/critical/stop.
+
+Worker запускается только при явном положительном месячном бюджете в валюте provider. Перед submit он под транзакционным advisory lock суммирует фактическую либо ещё удерживаемую оценочную стоимость периода. Превышение лимита даёт `provider_budget_exhausted`, не вызывает provider и освобождает пользовательский резерв. Pending/unknown сохраняют консервативную оценку; terminal response заменяет её фактической стоимостью. Несовпадение frozen route/profile/model также fail closed до внешнего вызова.
+
+На operation/attempt сохраняются provider profile version, requested/actual model, provider request id, timestamps, HTTP/provider outcome, token usage и estimated/actual cost. Prompt/result в operational logs запрещены.
 
 API key хранится в root-owned Docker secret file. User/admin APIs могут показывать только configured/profile/readiness, но никогда secret, полный endpoint credential или raw provider error.
 
 ## 7. Structured Outputs
 
-Каждый task code/mode владеет JSON Schema и версией результата. Общие envelopes не подменяют доменные типы.
+Каждый task code/mode владеет JSON Schema и версией результата. Минимальный общий envelope — `{schemaVersion,data,warningCodes}`; task/mode и route уже находятся в operation и не дублируются. Extra fields запрещены, строки и коллекции bounded. После schema validation backend отдельно проверяет owned references, hard constraints и safety.
 
-- recipe: title, servings, ingredients, steps, warnings, source rationale;
-- shopping: normalized items, quantity/unit, source reference, unresolved rows;
-- meal plan: bounded days/slots/recipe references, constraints and warnings;
+- recipe generation: только минимальные поля нового рецепта, необходимые для backend preview; метаданные и warning codes добавляет backend;
+- shopping: полностью deterministic backend projection, без provider output;
+- meal plan/event: только bounded slot-to-candidate indices; recipe ids, порции, продукты, allergens, nutrition и cost восстанавливает и проверяет backend;
 - nutrition: deterministic server-calculated numbers; AI может объяснять или сопоставлять, но не является источником арифметики;
 - finance/cost: deterministic server values, currency and missing-price evidence;
-- extraction/classification: candidates with confidence and explicit `requiresReview=true`.
+- extraction/classification: минимальные normalized values либо индекс из backend shortlist; review policy определяет backend.
 
 Refusal и schema failure — отдельные terminal categories. Некорректный JSON никогда не преобразуется в domain mutation эвристикой.
 
 ## 8. Safety
+
+`ai-safety-policy-v1` закрепляет backend как единственный источник аллергенов, сроков, температур, КБЖУ, стоимости и структурированных противопоказаний. Модель может объяснить server verdict, но не изменить его, удалить warning, ослабить hard constraint, назначить лечение/препарат/лечебную диету или самостоятельно вычислить индивидуальную медицинскую норму.
 
 До provider call:
 
@@ -189,6 +211,8 @@ Refusal и schema failure — отдельные terminal categories. Некор
 - trusted instructions separated from untrusted content;
 - owned references and exact scope;
 - applicable moderation decision.
+- для заявленной аллергии неизвестный состав или непроверяемая замена дают `insufficient_safety_data`; provider call и автоматическое применение блокируются;
+- pregnancy, child nutrition, chronic condition и другие health-risk признаки ограничивают ответ общей информацией и recovery к профильному специалисту.
 
 После provider call:
 
@@ -197,6 +221,18 @@ Refusal и schema failure — отдельные terminal categories. Некор
 - dangerous food/allergen/medical claims warning policy;
 - output moderation where applicable;
 - no secret/internal instruction leakage.
+- server-owned allergen, food-safety, medical and source-rule verdicts повторно проверяются после schema validation;
+- critical failure не показывается частично, user action освобождается, а фактическая provider cost учитывается отдельно без fallback.
+
+Нормализованные safety outcomes:
+
+- `safety_rejected` — сценарий нельзя безопасно выполнить;
+- `insufficient_safety_data` — недостаточно проверяемых данных;
+- `professional_review_required` — запрос выходит в медицинскую область;
+- `unsafe_provider_result` — provider output нарушил hard safety policy;
+- `source_rule_unavailable` — отсутствует актуальное server rule/source release.
+
+Production safety incident выключает затронутый task/profile fail-closed. Автоматический переход на другой профиль запрещён.
 
 Safety event хранит policy version, category, confidence, evidence hash и operation linkage. Raw content доступен только отдельной минимальной privileged projection, если она будет юридически разрешена.
 
@@ -218,9 +254,14 @@ OpenAI request uses `store: false`. According to official OpenAI data controls, 
 
 ```text
 GET /api/v1/admin/ai/control-plane
+POST /api/v1/admin/ai/actions/preview
+POST /api/v1/admin/ai/actions/{previewId}/confirm
+GET /api/v1/admin/ai/actions/{operationId}
+GET /api/v1/admin/ai/history/users/{userId}/conversations
+GET /api/v1/admin/ai/history/conversations/{conversationId}/messages
 ```
 
-Без prompt/result/secret он агрегирует:
+Основной control plane без prompt/result/secret агрегирует:
 
 1. provider/profile/policy readiness;
 2. tariff × task availability;
@@ -229,7 +270,11 @@ GET /api/v1/admin/ai/control-plane
 5. queued/running/unknown/reconciliation counts and age;
 6. safety/retention/kill-switch state.
 
-Дальнейшие mutations (`reconcile`, policy edit, kill switch) требуют allowlisted action, permission, MFA, preview, CAS/version, stable idempotency key, execute, audit and authoritative readback. Generic arbitrary retry запрещён.
+`ai-admin-control-policy-v1` разрешает только закрытый enum действий: аварийные `disable_global|disable_profile|disable_task_mode`, gated `enable_profile|enable_task_mode`, `force_readback`, `release_user_reservation`, `set_monthly_budget` и `acknowledge_safety_incident`. Deferred capabilities так включить нельзя. Любая mutation требует отдельный permission, MFA, reason, preview, CAS/version, stable idempotency key, confirm, execute, before/after audit hash и authoritative readback. Увеличение бюджета требует owner-level permission; повторное включение — свежий eval, provider readiness, положительный budget и отсутствие незакрытого critical safety incident. Generic retry, ручной success/result override и browser secret management запрещены.
+
+Отдельная вкладка `/admin/ai/history` показывает локальную продуктовую историю сообщений конкретного пользователя в пределах действующей retention/legal-hold policy. Это не часть агрегированного control plane и не общий feed. Доступ требует отдельного `ai.history.read`, действующей MFA-сессии, точного user lookup, обязательной purpose/reason или support/moderation case reference; каждое открытие conversation и страницы сообщений создаёт audit event. Первая версия не предоставляет bulk export.
+
+History projection содержит user/assistant messages, task/mode, timestamps, operation status и user-facing warning codes. Она не раскрывает system/developer prompt, internal context snapshot, provider payload/logs, provider request id, secret, hidden safety detector или operational stack. Purged content показывается только как факт удаления; admin view не обходит 30-дневную очистку, account deletion, consent/revocation rules или legal hold. Такой доступ и его цели должны быть отражены в privacy/legal документах до production activation.
 
 ## 11. Совместимая миграция
 

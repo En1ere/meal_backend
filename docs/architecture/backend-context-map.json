@@ -70,6 +70,7 @@
         "integrations": [
             "admin-free-ai",
             "ai",
+            "ai-meal-plan",
             "delivery-infrastructure",
             "media-infrastructure",
             "media-processing",
@@ -133,6 +134,10 @@
         { "from": "ai", "to": "operational-runtime" },
         { "from": "ai-appeals", "to": "auth" },
         { "from": "ai-appeals", "to": "support" },
+        { "from": "ai-meal-plan", "to": "ai" },
+        { "from": "ai-meal-plan", "to": "auth" },
+        { "from": "ai-meal-plan", "to": "entitlements" },
+        { "from": "ai-meal-plan", "to": "meal-plan" },
         { "from": "allergen-intelligence", "to": "admin-auth" },
         { "from": "allergen-intelligence", "to": "auth" },
         { "from": "community", "to": "recipes" },

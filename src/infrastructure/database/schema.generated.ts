@@ -1898,6 +1898,20 @@ export interface DatabaseSchema {
     };
     ai_tasks: {
         content_purged_at: OptionalInsert<Timestamp | null>;
+        contract_version: OptionalInsert<number>;
+        task_code: OptionalInsert<string | null>;
+        task_mode: OptionalInsert<string | null>;
+        execution_route: OptionalInsert<'backend' | 'economy' | 'balanced' | null>;
+        task_policy_version: OptionalInsert<string | null>;
+        context_policy_version: OptionalInsert<string | null>;
+        routing_policy_version: OptionalInsert<string | null>;
+        price_policy_version: OptionalInsert<string | null>;
+        result_schema_version: OptionalInsert<string | null>;
+        safety_policy_version: OptionalInsert<string | null>;
+        cache_policy_version: OptionalInsert<string | null>;
+        provider_profile_version: OptionalInsert<string | null>;
+        provider_cost_ceiling_minor: OptionalInsert<number | null>;
+        source_snapshot_hash: OptionalInsert<string | null>;
         id: string;
         goal: string;
         status: string;
@@ -1958,7 +1972,15 @@ export interface DatabaseSchema {
         service_tier: OptionalInsert<string | null>;
         task_policy_version: OptionalInsert<string>;
         context_manifest_version: OptionalInsert<string>;
-        provider_profile_version: OptionalInsert<string>;
+        provider_profile_version: OptionalInsert<string | null>;
+        execution_route: OptionalInsert<'backend' | 'economy' | 'balanced' | null>;
+        routing_policy_version: OptionalInsert<string | null>;
+        price_policy_version: OptionalInsert<string | null>;
+        result_schema_version: OptionalInsert<string | null>;
+        safety_policy_version: OptionalInsert<string | null>;
+        cache_policy_version: OptionalInsert<string | null>;
+        provider_cost_state: OptionalInsert<'none' | 'estimated_hold' | 'actual' | 'released' | null>;
+        provider_cost_currency: OptionalInsert<string | null>;
         updated_at: OptionalInsert<Timestamp>;
         expires_at: OptionalInsert<Timestamp>;
         content_purged_at: OptionalInsert<Timestamp | null>;

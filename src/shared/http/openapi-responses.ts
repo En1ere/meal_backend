@@ -152,6 +152,7 @@ import {
     aiRunSchema,
     aiTransferResultSchema,
 } from '../../modules/ai/public.js';
+import { aiV2MealPlanOperationSchema, aiV2MealPlanPreviewSchema } from '../../modules/ai-meal-plan/public.js';
 import { adminFreeAiGrantResultSchema, adminFreeAiViewSchema } from '../../modules/admin-free-ai/public.js';
 import { entitlementSchema } from '../../modules/entitlements/public.js';
 import {
@@ -632,6 +633,9 @@ export function documentResponses(document: OpenAPIObject): OpenAPIObject {
         'POST /api/v1/ai/transfers/{id}/decision': aiTransferResultSchema,
         'POST /api/v1/ai/preview': aiPreviewSchema,
         'POST /api/v1/ai/run': aiRunSchema,
+        'POST /api/v1/ai/v2/preview': aiV2MealPlanPreviewSchema,
+        'POST /api/v1/ai/v2/run': aiV2MealPlanOperationSchema,
+        'GET /api/v1/ai/v2/operations/{id}': aiV2MealPlanOperationSchema,
         'POST /api/v1/ai/operations': aiOperationSchema,
         'POST /api/v1/ai/tasks/{id}/operations': aiOperationSchema,
         'GET /api/v1/ai/operations/{id}': aiOperationSchema,

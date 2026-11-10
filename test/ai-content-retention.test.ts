@@ -16,11 +16,14 @@ void test('schema v38 records irreversible AI content purge without deleting fin
     const manifest = JSON.parse(readFileSync('database/manifest.json', 'utf8')) as {
         migrations: Array<{ version: number; file: string; sha256: string }>;
     };
-    assert.deepEqual(manifest.migrations.at(-1), {
-        version: 38,
-        file: '038_ai_content_retention.sql',
-        sha256: createHash('sha256').update(migration).digest('hex'),
-    });
+    assert.deepEqual(
+        manifest.migrations.find((candidate) => candidate.version === 38),
+        {
+            version: 38,
+            file: '038_ai_content_retention.sql',
+            sha256: createHash('sha256').update(migration).digest('hex'),
+        },
+    );
 });
 
 void test('AI retention is bounded, leased, legal-hold aware and idempotent', () => {
@@ -33,6 +36,8 @@ void test('AI retention is bounded, leased, legal-hold aware and idempotent', ()
     assert.match(service, /set body='',content_purged_at=/);
     assert.match(service, /set result_snapshot=null,content_purged_at=/);
     assert.match(service, /'contentExpired',true/);
+    assert.match(service, /'task',task\.task_code/);
+    assert.match(service, /'mode',task\.task_mode/);
     assert.doesNotMatch(service, /provider_request_id|provider_cost|token_usage|ai_ledger/);
 });
 

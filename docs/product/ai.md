@@ -1,5 +1,64 @@
 # AI: задачи, списания и безопасность
 
+## Решение 9 ноября 2026: минимальный AI-контур controlled launch
+
+Утверждены целевые политики `ai-task-policy-v4`, `ai-routing-policy-v1`, `ai-price-policy-v1`, `ai-context-policy-v2`, `ai-result-contract-v2`, `ai-cache-policy-v1` и `ai-safety-policy-v1`. Это целевая спецификация следующего среза; существующий OpenAI/Luna runtime остаётся выключенным техническим baseline до отдельной реализации и activation gate.
+
+Основной принцип: backend/SQL выполняет всё, что можно детерминированно найти, вычислить, сопоставить или проверить. Модель получает только минимальный подготовленный контекст и нужна для языкового анализа либо синтеза. Тариф определяет доступную capability, контекст, квоту и приоритет очереди, но не качество модели. Один task/mode всегда использует один и тот же профиль во всех тарифах.
+
+Маршруты имеют четыре класса: `backend`, `economy`, `balanced`, `disabled`. Frontend не выбирает provider/model и может отправить только разрешённые `task`, `mode` и минимальный input. Backend повторно проверяет доступ, выбирает маршрут и замораживает его в preview/operation. Worker исполняет только замороженный профиль; adapter запрещает автоматические retry, fallback и переход на более дорогую модель. Несовпадение профиля, неизвестный исход или превышение cost ceiling завершаются fail-closed.
+
+### Матрица task/mode
+
+| Task/mode                                 | Маршрут                                 |               Цена |
+| ----------------------------------------- | --------------------------------------- | -----------------: |
+| `culinary_question/answer`                | retrieval + economy                     |                  1 |
+| `substitution/candidates`                 | backend                                 |                  0 |
+| `substitution/explain`                    | economy                                 |                  1 |
+| `storage_advice/rule`                     | backend                                 |                  0 |
+| `storage_advice/explain`                  | backend verdict + economy               |                  1 |
+| `ingredient_extraction/extract`           | economy                                 |                  1 |
+| `product_classification/candidates`       | backend                                 |                  0 |
+| `product_classification/classify`         | backend shortlist + economy             |                  1 |
+| `recipe_from_stock/select_existing`       | backend                                 |                  0 |
+| `recipe_from_stock/generate_new`          | balanced                                |                  2 |
+| `personal_recommendation/weekly`          | backend weekly artifact                 |                  0 |
+| `beverage_pairing/catalog`                | backend, только безалкогольный каталог  |                  0 |
+| `beverage_pairing/custom`                 | backend shortlist + economy             |                  1 |
+| `recipe_adaptation/scale`                 | backend                                 |                  0 |
+| `recipe_adaptation/adapt`                 | balanced                                |                  2 |
+| `registry_analysis/facts`                 | SQL/backend                             |                  0 |
+| `registry_analysis/explain`               | backend facts + economy                 |                  1 |
+| `review_summary/public_summary`           | shared backend batch + economy artifact | 0 для пользователя |
+| `shopping_list_generation/from_recipes`   | backend                                 |                  0 |
+| `shopping_list_generation/from_meal_plan` | backend                                 |                  0 |
+| `meal_plan_generation/generate`           | backend shortlist + balanced            |                  4 |
+| `meal_plan_generation/replace_slot`       | balanced, до двух включённых уточнений  | 0 внутри интервала |
+| `event_menu/generate`                     | backend shortlist + balanced            |                  3 |
+| `nutrition_calculation/calculate`         | backend                                 |                  0 |
+| `nutrition_calculation/explain`           | backend facts + economy                 |                  1 |
+| `portion_cost_calculation/calculate`      | backend                                 |                  0 |
+| `portion_cost_calculation/explain`        | backend facts + economy                 |                  1 |
+| `seasonal_analysis`, `document_analysis`  | disabled                                |                  — |
+
+Free-рекомендации полностью формируются backend. План питания и меню выбирают только существующие recipe ids из backend shortlist; модель не вычисляет порции, продукты, аллергены, КБЖУ или стоимость и не создаёт новый рецепт молча. Результат применяется отдельной подтверждённой доменной командой. Для будущего переноса планировщика на backend собираются явная оценка результата, причины замены/отказа и фактическое использование.
+
+### Минимальные контракты и кэш
+
+Preview принимает `{task, mode, input, context?}` и возвращает frozen `{id, task, mode, route, cost, sources, expiresAt, policyVersion}`. Run принимает только `{previewId, idempotencyKey}`. Результат имеет минимальный envelope `{schemaVersion, data, warningCodes}`; task/mode уже известны из operation. Для каждого task/mode действует отдельная strict schema без лишних полей, затем backend выполняет доменную проверку ссылок, ограничений и безопасности.
+
+Первая public v2 boundary открыта только для готового `shopping_list_generation/from_meal_plan`. Его scenario-specific preview не возвращает пустые `sources`, а operation не раскрывает внутренние financial/provider states; эти инварианты сохраняются в БД и операторском контуре. Остальные backend/economy/balanced mode не становятся публично доступными до появления resolver/adapter и тестов конкретного сценария.
+
+Повторное открытие сохранённого результата и cache/artifact hit стоят 0 действий и имеют `financialState=none`. Shared cache разрешён только для allowlisted публичных versioned artifacts; произвольный semantic cache пользовательских prompts запрещён. Персональные результаты из inventory, preferences, allergens, nutrition, finance, documents и conversation не попадают в shared cache. Exact key включает canonical input, source/snapshot releases, locale/units/currency, schema/prompt/routing/model/safety/cache policy versions и feature flags; entitlement, consent и scope проверяются повторно даже при hit.
+
+### Профили, лимиты стоимости и deferred backlog
+
+Предварительно выбран Yandex AI Studio: `yandex-alice-flash-economy-v1` для economy и `yandexgpt-5.1-balanced-v1` для balanced, Responses/background, целевой `store:false`, без provider conversation state. Production activation запрещена, пока не подтверждены отключение provider logging и tracing, background readback именно при `store:false`, регион/юридические условия и least-privilege service account. Документированный `x-client-request-id` не считается идемпотентностью create. Если Yandex требует `store:true` для readback, это отдельное owner decision с немедленным provider `DELETE` после terminal state либо основание сменить transport/provider. OpenAI/GigaChat допускаются только как offline eval candidates, не runtime fallback.
+
+Provider cost ceilings: economy — 1 ₽, генерация/адаптация рецепта — 6 ₽, event menu — 7 ₽, meal plan — 12 ₽ всего, включая два уточнения. Preflight выше ceiling не резервирует действия и не вызывает provider; возвращается `provider_cost_limit_exceeded` с безопасным вариантом уменьшить контекст, период или использовать backend-result. Pricing snapshot mismatch также блокирует вызов.
+
+Read-only admin backlog содержит `seasonal_analysis`, `document_analysis`, `meal_plan_backend_optimizer` и `beverage_alcohol_mode`. Эти записи не имеют кнопки включения: `activationAllowed=false` до отдельного owner-approved контракта, данных, safety/eval и controlled rollout.
+
 6 ноября 2026: утверждена `ai-task-policy-v3`. AI-баланс больше не считается способом открыть функции старшего тарифа: каталог строится по effective entitlement, а backend повторно проверяет доступность при preview, запуске и продолжении. Free/Plus/Pro получают только AI-сценарии существующих доменных возможностей; `seasonal_analysis` и `document_analysis` fail-closed до появления достоверного набора сезонности и owned document input. OpenAI Responses API с `store: false` и `gpt-6-luna`/low принят как стартовый профиль; Sol допускается только после сравнительных eval на реальных сценариях. Продуктовая история и контекст хранятся 30 дней по отдельной локальной retention-политике.
 
 14 октября 2026: владелец продукта подтвердил, что административная компенсационная AI-квота может выдаваться пользователю любого тарифа — Free, Plus или Pro. Она является отдельным аудируемым bucket, не меняет тариф, не создаёт платёж и не подменяет подписочную либо купленную квоту. Сервер обязан одинаково применять critical confirmation, idempotency, срок действия и readback для всех тарифов.

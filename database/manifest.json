@@ -195,6 +195,16 @@
             "version": 38,
             "file": "038_ai_content_retention.sql",
             "sha256": "2358421eedda99f750b22f49734a3f7f298a6ff426ac229ce705f7e582418d0c"
+        },
+        {
+            "version": 39,
+            "file": "039_ai_policy_v4_foundation.sql",
+            "sha256": "f9da2cca0d37325c8961e4d870e48658d122f9e0cf98371108f558ebed6208e2"
+        },
+        {
+            "version": 40,
+            "file": "040_ai_backend_zero_cost.sql",
+            "sha256": "4177d579fb8050d98bd8cfee29402dc7c25d9ef4a2c6fede75b68b942cee389d"
         }
     ]
 }

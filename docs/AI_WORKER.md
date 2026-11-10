@@ -1,5 +1,7 @@
 # AI worker: настройка и эксплуатация
 
+> Реализационное состояние на 9 ноября 2026 года: этот runbook описывает существующий выключенный OpenAI/Luna technical baseline. Утверждённая целевая маршрутизация Yandex и новые economy/balanced profiles описаны в [AI interaction v1](architecture/AI_INTERACTION_V1.md), но ещё не реализованы; команды ниже нельзя использовать для их условной активации.
+
 AI-выполнение изолировано от HTTP и общего scheduler. Первичный `POST /api/v1/ai/operations` и continuation `POST /api/v1/ai/tasks/{id}/operations` атомарно проверяют доступ, резервируют действия при необходимости и возвращают `202`; отдельный контейнер `ai-worker` повторно проверяет доступ непосредственно перед OpenAI-вызовом, отправляет Background Response и обновляет canonical readback.
 
 ## Секреты и настройки
@@ -35,7 +37,7 @@ AI_WORKER_LEASE_SECONDS=180
 
 1. Создать token-файл с указанными owner/mode; не печатать значение в shell history.
 2. Добавить non-secret настройки и `AI_WORKER_ENABLED=true` в root-owned `deploy.env`.
-3. Выполнить обычный backend rollout. Он применит schema v38, вызовет `provision-ai-worker-runtime.sh`, поднимет `ai-worker` и дождётся healthcheck.
+3. Выполнить обычный backend rollout. Он применит schema v40, вызовет `provision-ai-worker-runtime.sh`, поднимет `ai-worker` и дождётся healthcheck.
 4. Проверить `docker compose ... ps ai-worker`, отсутствие host ports и сети `meal-db, meal-egress`.
 5. Выполнить первичный и continuation запросы: каждый POST должен дать `202/queued`; polling — `queued → running → succeeded`; платный интервал меняет баланс `reserved → captured`, включённое уточнение сохраняет `financialState=none`.
 

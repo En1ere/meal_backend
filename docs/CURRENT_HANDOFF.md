@@ -1,10 +1,10 @@
 # Точка передачи проекта meal
 
-Актуально на 7 ноября 2026 года. Этот файл — стартовая точка для нового диалога после удаления предыдущей переписки. Он не содержит секретов и не разрешает продолжать архитектурную реализацию без последовательного согласования решений ниже.
+Актуально на 10 ноября 2026 года. Этот файл — стартовая точка для нового диалога после удаления предыдущей переписки. Он не содержит секретов и не разрешает provider call либо архитектурную реализацию несогласованных блоков.
 
 ## 1. Где остановились
 
-Глобальный production-hardening и архитектурный этап приостановлены по решению владельца. Последняя завершённая работа — бесплатный AI foundation и отдельный план внешней активации. Следующая сессия начинается не с написания кода, а с подробного согласования AI-продукта, провайдера, моделей, тарифов, данных, экономики и safety.
+9 ноября 2026 года владелец согласовал все девять блоков: продуктовые сценарии, тарифы, backend-first routing, минимальные контракты, кэш, предварительный Yandex provider/model choice, launch-экономику, provider-neutral adapter/reconciliation, safety/eval и admin control plane. Реализованы четыре совместимых среза: runtime-neutral `ai-task-policy-v4`/v2 contracts, additive schema v39 с frozen task/mode/route/policy identity, первый internal backend-only executor `shopping_list_generation/from_meal_plan` со schema v40 и отдельная public v2 orchestration boundary. Публично разрешён только этот cost-0 сценарий через `/api/v1/ai/v2/preview|run|operations/{id}`; он переиспользует доменный SQL-расчёт и не обращается к AI-провайдеру. Provider path и Yandex adapter ещё не включены; текущая OpenAI/Luna связка остаётся выключенным техническим baseline.
 
 Целевая формулировка следующего этапа: подготовить AI-контур до состояния, в котором после всех согласований, реализации и проверок для controlled activation останется только безопасно добавить provider API key и выполнить ограниченный activation smoke/eval.
 
@@ -16,11 +16,11 @@
 
 Корень `test-roject` используется только как источник исходной информации; изменения выполняются независимо в трёх репозиториях.
 
-| Репозиторий     | Ветка  | Зафиксированная версия/ревизия на момент handoff                              | Назначение                                                           |
-| --------------- | ------ | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `meal_backend`  | `main` | release `0.0.276`; точный SHA — `git rev-parse HEAD`                          | API, PostgreSQL migrations, workers, deployment и общая документация |
-| `meal_admin`    | `main` | `0.0.166`, `890dd9c3c92f68ab1d6d3a70f462e93eb7f1a235`                         | операторская админка                                                 |
-| `meal_frontend` | `main` | workspace `0.0.50`, app `0.0.267`, `1d0270e1e428cbc2a7119a8b7beaee50685919e3` | пользовательское приложение и design system                          |
+| Репозиторий     | Ветка  | Зафиксированная версия/ревизия на момент handoff                     | Назначение                                                           |
+| --------------- | ------ | -------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `meal_backend`  | `main` | workspace `0.0.284`; точный SHA — `git rev-parse HEAD`               | API, PostgreSQL migrations, workers, deployment и общая документация |
+| `meal_admin`    | `main` | workspace `0.0.167`; точный SHA — `git rev-parse HEAD`               | операторская админка                                                 |
+| `meal_frontend` | `main` | workspace `0.0.51`, app `0.0.268`; точный SHA — `git rev-parse HEAD` | пользовательское приложение и design system                          |
 
 Перед любой новой работой в каждом затронутом репозитории выполнить `git status --short`, `git rev-parse HEAD`, `git rev-parse origin/main` и прочитать его локальные инструкции. Не переносить незакоммиченные изменения между репозиториями и не изменять корень `test-roject`.
 
@@ -33,22 +33,25 @@
 - Read-only AI control plane в админке без раскрытия provider payload/secret.
 - Offline `ai-model-eval-v1`, provider simulator/failure tests и 30-дневная очистка AI content с legal-hold исключением.
 - Docker secret-file boundary, disable switch, observability и runbooks.
+- Runtime-neutral policy v4 registry, minimal v2 contracts, schema v39 frozen preview identity и internal preview builder без provider call.
+- Internal backend-only executor `shopping_list_generation/from_meal_plan`: точная plan version/selection, immutable source snapshot hash, deterministic persisted result, cost 0 и structured readback без provider/quota path.
+- Public AI-v2 boundary открывает только готовый backend resolver: strict preview/run/readback, owner scope, CSRF/session guards и минимальная проекция без provider/financial internals. Legacy routes и model execution не переключались.
 
 Текущая связка OpenAI Responses + `gpt-6-luna`/low — только проверенный технический baseline. Это не утверждённый коммерческий выбор провайдера или модели.
 
-## 4. Следующая последовательность решений
+## 4. Статус последовательности решений
 
-Каждый блок обсуждается отдельно. Нельзя молча переходить к следующему или кодировать предположение как принятое решение.
+Каждый блок обсуждается отдельно. Нельзя молча кодировать предположение как принятое решение.
 
-1. **Продуктовые сценарии и тарифы.** Для каждого task code определить пользовательскую ценность, Free/Plus/Pro entitlement, необходимые доменные capabilities, источники контекста, стоимость в AI-действиях, уточнения, лимиты и разрешённое действие после результата.
-2. **Провайдер.** Сравнить юридическую доступность, регион/retention/training policy, DPA, structured/background API, request identity/readback, rate limits, SLA, pricing и unknown-outcome semantics. Зафиксировать основной provider и допустимость fallback.
-3. **Модели и routing.** Утвердить versioned model/profile для классов задач, reasoning, token/deadline limits, multimodal inputs, escalation/fallback и deprecation policy. Автоматическая эскалация на более дорогую модель запрещена.
-4. **Качество и eval.** Утвердить correctness/schema/safety thresholds, негативные кейсы, latency/cost ceilings, human-review rubric и promotion gate.
+1. **Продуктовые сценарии и тарифы — согласовано.** `ai-task-policy-v4`: Free AI-рекомендации отсутствуют, backend/SQL обслуживает вычисления и подборки; Plus 20 действий, Pro 60, trial 5, пакет 20.
+2. **Провайдер — target и adapter согласованы.** Yandex AI Studio выбран основным без runtime fallback; submit/readback/unknown contract зафиксирован. Legal/region/logging, `store:false` readback spike и activation evidence ещё обязательны.
+3. **Модели и routing — согласовано как target.** Economy: Alice AI LLM Flash; balanced: YandexGPT Pro 5.1. Автоматические retry/escalation/fallback запрещены на всех слоях; task-specific token limits и provider ceilings зафиксированы в канонической AI-спецификации.
+4. **Качество и eval — согласовано как target.** Strict schema, hard constraints и critical safety требуют 100%; economy correctness ≥95%, balanced ≥90%, p95 latency 45/120 секунд; утверждены минимальный объём fixtures, повтор critical cases и promotion gate.
 5. **Данные и согласия.** Для каждого источника определить purpose/minimization, scope, consent/revocation, регион/subprocessors, provider storage/training и product retention/legal hold.
-6. **Экономика.** Зафиксировать pricing snapshot, conservative ceilings, AI allowances/packages, положительный monthly budget, alert thresholds, stop-loss и contribution-margin target.
-7. **Safety.** Утвердить аллергенные/медицинские границы, обязательные предупреждения, входную/выходную moderation policy, жалобы и запрет прямых доменных mutations из ответа модели.
-8. **Unknown/reconciliation.** Отдельно решить операторский workflow. Рекомендуемый baseline: readback по существующему provider request id; без повторного submit и без ручного `succeeded`; release только при MFA и внешнем evidence.
-9. **Админка.** Утвердить settings registry, безопасные статусы, budget/usage/queue/worker/eval views и allowlisted mutation flows через permission → MFA → preview → confirm → execute → audit/readback. Значение secret не вводится через браузер.
+6. **Экономика — launch-гипотеза согласована.** Цены, квоты, package limits и per-task ceilings зафиксированы; перед реализацией ещё нужны точный pricing snapshot, положительный monthly budget и controlled-launch dashboards/alerts.
+7. **Safety — согласовано как target.** Backend verdict нельзя переопределить моделью; неизвестный аллергенный состав и медицинские запросы fail closed с отдельными recovery codes; critical incident отключает task/profile без fallback.
+8. **Unknown/reconciliation — согласовано как target.** До provider ID — `unknown_without_identity` с release user quota и отдельным provider budget hold; после ID — только GET/readback и `reconciliation_hold`. Повтор submit и ручной `succeeded` запрещены; operator release требует MFA и evidence.
+9. **Админка — согласовано как target.** Readiness/budget/queue/eval/safety views и закрытый action registry проходят permission/MFA/preview/CAS/confirm/audit/readback; secret и deferred enable недоступны. Отдельная history-вкладка с `ai.history.read` показывает локальные user/assistant messages конкретного пользователя, требует reason/case reference и аудирует каждый просмотр.
 
 Полные вопросы, артефакты и Definition of Ready находятся в AI roadmap. При противоречии этот handoff является кратким указателем, а roadmap — подробным источником.
 
@@ -127,4 +130,19 @@ Manual test sources:
 - Не раскрывать provider payload, prompt/context/result, request identity, ключи или PII в telemetry, логах и admin UI.
 - Если внешний provider/key/budget/evidence отсутствует, состояние остаётся disabled/unconfigured, а не условно успешным.
 
-Текущий статус глобальной задачи: **paused по просьбе владельца**. Возобновление начинается фразой уровня: «Продолжаем по `docs/CURRENT_HANDOFF.md`, сначала согласуем AI-сценарии и тарифы».
+Текущий статус AI-подготовки: **решения A–I согласованы; policy/contracts, schema-v39 preview foundation, schema-v40 backend-only executor и его public v2 orchestration boundary реализованы без включения model runtime**. Следующий срез — provider-neutral port и Yandex adapter с fail-closed configuration/readiness, но без production enable. Наличие одного API key само по себе не включает provider call: нужны утверждённые endpoint/folder/profile/budget, `store:false` evidence и явный enable.
+
+## 10. Точный checkpoint и очередь продолжения
+
+Текущий завершённый шаг: public AI-v2 preview/run/readback открыт только для cost-0 `shopping_list_generation/from_meal_plan`; backend/OpenAPI/frontend/admin snapshots синхронизированы. Legacy AI runtime не переключён, provider call невозможен через v2 boundary.
+
+Следующий шаг выполняется одним совместимым срезом: **provider-neutral port + выключенный Yandex adapter**.
+
+1. Ввести provider-neutral submit/readback types с согласованными `accepted`, `rejected`, `unknown_without_identity`; повторный submit после unknown запретить контрактом и тестом.
+2. Добавить точную fail-closed Yandex-конфигурацию: secret-file API key, endpoint, folder/service-account identity, economy/balanced profile versions, RUB budget и explicit enable. Наличие только ключа оставляет readiness `unconfigured`.
+3. Реализовать adapter без подключения к public task routes; проверить bounded timeout, structured output, safe error mapping, отсутствие payload/secret в logs и запрет автоматического fallback/escalation.
+4. Добавить simulator/contract tests для success, confirmed rejection, timeout, malformed response, unknown до provider id и readback после provider id. User quota и provider budget hold проверять независимо.
+5. Выполнить отдельный Yandex sandbox spike для background retrieve при `store:false`. Без подтверждённого evidence adapter остаётся disabled; переход на `store:true` требует нового owner decision.
+6. После port/adapter перейти к provider operation persistence/reconciliation, затем к economy route, balanced route, cache/artifacts, оставшимся backend resolvers, frontend migration и admin readiness/actions. Каждый task/mode открывать отдельно только после resolver/schema/safety/eval tests.
+
+Не смешивать следующий срез с production enable, вводом реального ключа, массовым переводом legacy endpoints или реализацией deferred backlog. Коммиты checkpoint: backend `0.0.284`, frontend root/app `0.0.51/0.0.268`, admin `0.0.167`; после push заменить это предложение точными commit SHA при следующем возобновлении.

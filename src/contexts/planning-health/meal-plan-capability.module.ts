@@ -7,6 +7,6 @@ import { DiaryCapabilityModule } from './diary-capability.module.js';
     imports: [EntitlementsCapabilityModule, DiaryCapabilityModule],
     controllers: [MealPlanController, PortionsController],
     providers: [MealPlanService],
-    exports: [],
+    exports: [MealPlanService],
 })
 export class MealPlanCapabilityModule {}

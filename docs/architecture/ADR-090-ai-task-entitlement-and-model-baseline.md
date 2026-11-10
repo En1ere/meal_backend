@@ -1,5 +1,7 @@
 # ADR-090: AI task entitlement and model baseline
 
+> Частично superseded 9 ноября 2026 года: entitlement-инварианты сохранены, а целевые task modes, routing и provider profiles заменены политиками `ai-task-policy-v4`/`ai-routing-policy-v1` в [AI interaction v1](AI_INTERACTION_V1.md). OpenAI/Luna ниже описывает существующий выключенный technical baseline, а не целевой launch route.
+
 - Status: accepted
 - Date: 2026-11-06
 - Scope: AI task availability, provider model baseline and data minimization

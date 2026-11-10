@@ -4,5 +4,6 @@ export {
     StaffAuthController,
     StaffSessionGuard,
     StaffSessionRouteGuard,
+    UserSessionGuard,
 } from './auth.http.js';
-export type { Principal } from './auth.service.js';
+export { AuthService, type Principal } from './auth.service.js';

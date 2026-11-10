@@ -153,7 +153,9 @@ GRANT SELECT ON meal.ai_rule_versions,meal.ai_conversations,meal.ai_tasks,meal.a
 GRANT INSERT ON meal.ai_conversations,meal.ai_tasks,meal.ai_intervals,meal.ai_messages,meal.ai_ledger TO meal_app;
 GRANT INSERT(id,status,result_snapshot,started_at,finished_at,provider_cost,idempotency_key,interval_id,message_id,
  user_id,task_id,contract_version,command_kind,request_hash,lifecycle_state,financial_state,queued_at,next_attempt_at,
- requested_model,task_policy_version,context_manifest_version,provider_profile_version,updated_at,expires_at)
+ requested_model,task_policy_version,context_manifest_version,provider_profile_version,execution_route,
+ routing_policy_version,price_policy_version,result_schema_version,safety_policy_version,cache_policy_version,
+ provider_cost_state,provider_cost_currency,updated_at,expires_at)
  ON meal.ai_operations TO meal_app;
 GRANT UPDATE(title,archived_at,version) ON meal.ai_conversations TO meal_app;
 GRANT UPDATE(status,accepted_at,version) ON meal.ai_tasks TO meal_app;

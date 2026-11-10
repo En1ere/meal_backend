@@ -1,6 +1,19 @@
 # AI: план решений и подготовки к подключению provider key
 
-Статус на 7 ноября 2026 года: реализация приостановлена перед внешней активацией. Документ фиксирует оставшиеся решения и артефакты. Он не разрешает provider call, не задаёт бюджет и не содержит секретов.
+Статус на 10 ноября 2026 года: все девять блоков согласованы владельцем; policy/contracts, frozen persistence, первый cost-0 backend executor и его public v2 boundary реализованы совместимыми срезами. Документ не разрешает provider call, не содержит секретов и не означает, что целевой Yandex adapter уже реализован.
+
+## 0. Зафиксированные owner decisions
+
+- Политики следующего среза: `ai-task-policy-v4`, `ai-routing-policy-v1`, `ai-price-policy-v1`, `ai-context-policy-v2`, `ai-result-contract-v2`, `ai-cache-policy-v1`, `ai-safety-policy-v1`.
+- Всё вычислимое, поисковое и статистическое выполняется backend/SQL. Модель используется только для минимального языкового анализа/синтеза.
+- Маршруты: `backend`, `economy`, `balanced`, `disabled`. Один task/mode имеет одинаковый model profile на всех тарифах; автоматические escalation, fallback и повторный submit запрещены на всех слоях.
+- Free-рекомендации, shopping lists, nutrition/cost calculation и общие подборки не вызывают AI. Meal plan/event выбирают только из backend shortlist; доменные расчёты и применение результата остаются на backend.
+- Предварительный provider — Yandex AI Studio: Alice AI LLM Flash для economy и YandexGPT Pro 5.1 для balanced. Это решение условно до закрытия provider logging/retention, region/legal, readback, least-privilege и pricing-snapshot gates.
+- Shared cache разрешён только для allowlisted публичных versioned artifacts. Произвольный semantic cache пользовательских запросов запрещён; personal/family exact cache изолирован scope и повторно проверяет entitlement/consent.
+- Цены и квоты controlled launch: Free 0/0; Plus 499 ₽/месяц или 4 899 ₽/год и 20 действий; Pro 999 ₽/месяц или 9 799 ₽/год и 60 действий; trial 7 дней/5 действий; пакет 299 ₽/20 несгораемых действий, не более трёх покупок за 30 дней и 60 неиспользованных действий.
+- Provider ceilings: economy 1 ₽, recipe generation/adaptation 6 ₽, event menu 7 ₽, meal plan 12 ₽ с двумя уточнениями. Превышение блокирует вызов до reserve. `seasonal_analysis`, `document_analysis`, `meal_plan_backend_optimizer`, `beverage_alcohol_mode` остаются read-only deferred backlog без возможности включения.
+
+Provider-neutral adapter и reconciliation contract согласованы: submit возвращает accepted/rejected/`unknown_without_identity`; повтор submit запрещён; после получения provider ID разрешён только readback; пользовательский резерв и provider budget hold учитываются независимо; admin не может вручную выставить success. Обязательный spike должен отдельно доказать background retrieve при `store:false`: документированный `x-client-request-id` является correlation id для диагностики, но не гарантией идемпотентного create. Если доказательства нет, нельзя молча включать `store:true` или повторять submit. Следующий реализационный срез — provider-neutral port и выключенный Yandex adapter с fail-closed readiness.
 
 ## 1. Что уже готово
 
@@ -10,8 +23,10 @@
 - Независимые lifecycle/financial states, conservative cost reservation, monthly stop-loss и read-only admin control plane.
 - Offline `ai-model-eval-v1`, provider simulator/failure tests и 30-дневное удаление AI content с legal-hold исключением.
 - Docker/secret-file boundary, disable switch, observability и deployment runbook.
+- `ai-task-policy-v4`, minimal v2 contracts, schema v39/v40 frozen identity и zero-cost backend persistence.
+- Public `/api/v1/ai/v2/preview|run|operations/{id}` разрешён только для готового `shopping_list_generation/from_meal_plan`; model routes остаются закрыты.
 
-Текущий OpenAI Responses + `gpt-6-luna`/low profile является проверенным техническим baseline, а не необратимым коммерческим выбором. Его сохранение либо замена должны быть оформлены отдельным решением до внешней активации.
+Текущий OpenAI Responses + `gpt-6-luna`/low profile является проверенным выключенным техническим baseline. Целевой выбор Yandex оформлен выше, но замена runtime ещё не реализована и не активирована.
 
 ## 2. Решения, которые принимаем последовательно
 
@@ -103,35 +118,38 @@ Luna и Sol сравниваются только на одном `ai-model-eval
 
 Артефакт: versioned pricing/budget policy и admin-safe projection.
 
-### G. Safety и модерация
+### G. Safety и модерация — согласовано как target
 
-Утвердить:
+Утверждено в `ai-safety-policy-v1` и `ai-eval-policy-v2`:
 
-- границы пищевой безопасности, аллергенов и медицинских рекомендаций;
-- обязательные предупреждения и случаи отказа;
-- входную/выходную moderation policy;
-- обработку жалоб и апелляций;
-- запрет прямых доменных mutations из AI-ответа.
+- backend-owned allergen, food-safety, nutrition/cost и medical boundaries нельзя переопределить моделью;
+- неизвестный состав при заявленной аллергии блокирует применение как `insufficient_safety_data`;
+- medical-risk сценарии ограничиваются общей информацией и recovery к специалисту;
+- critical result не показывается частично, action освобождается, provider cost учитывается отдельно;
+- strict schema/hard constraints/critical safety требуют 100%, economy correctness ≥95%, balanced ≥90%, p95 latency 45/120 секунд;
+- минимум 20 representative fixtures на AI-mode, 100 adversarial/safety fixtures и три прогона каждого critical fixture;
+- feedback apply/reject/rating/reason/edit volume сохраняется локально для будущего backend planner.
 
 Артефакт: safety policy, тесты и user-facing recovery states.
 
-### H. Unknown outcome и reconciliation — критическое решение
+### H. Unknown outcome и reconciliation — согласовано как target
 
-Нужно отдельно согласовать рекомендуемую модель:
+Утверждено:
 
-1. обычное операторское действие выполняет только provider readback по существующему `provider_request_id`;
-2. новый submit с тем же бизнес-намерением не отправляется;
-3. ручной `succeeded` запрещён;
-4. release возможен только после MFA и подтверждения, что provider не обработал запрос, с причиной, внешним evidence reference, expected version, idempotency и audit;
-5. отсутствие достаточного evidence сохраняет `unknown/reconciliation_hold`.
+1. canonical provider status читается только по уже сохранённому `providerResponseId`;
+2. timeout до получения ID создаёт `unknown_without_identity`, освобождает user reservation и сохраняет conservative provider budget hold;
+3. timeout после получения ID создаёт `unknown/reconciliation_hold`; разрешён повтор GET, но не submit;
+4. operator release требует permission/MFA/preview/confirm/execute/audit/readback;
+5. ручные `succeeded`, result override и retry submit запрещены;
+6. при согласованном `store:true` terminal result сначала сохраняется локально, затем provider response удаляется с отдельным retention alert на неизвестный DELETE.
 
-После решения потребуются additive backend/admin contracts, capability/grant, preview-confirm flow, CAS/idempotency tests и ручной test-case.
+Для реализации потребуются additive backend/admin contracts, capability/grant, preview-confirm flow, CAS/idempotency tests и ручной test-case.
 
 Артефакт: отдельный ADR и утверждённая state transition matrix.
 
-### I. Управление через админку
+### I. Управление через админку — согласовано как target
 
-До подключения key администратор должен безопасно видеть:
+До подключения key основной control plane безопасно показывает:
 
 - выбранные provider/model/routing/pricing policy versions;
 - configured/disabled/ready/exhausted без значения secret;
@@ -139,9 +157,11 @@ Luna и Sol сравниваются только на одном `ai-model-eval
 - queue/running/unknown ages и worker health;
 - retention/eval status и явные blockers.
 
-Редактируемыми могут быть только заранее allowlisted versioned settings через permission → MFA → preview → confirm → execute → audit/readback. Secret вводится и ротируется вне browser UI.
+`ai-admin-control-policy-v1` разрешает только emergency disable, gated enable, force readback, evidence-based user-reservation release, monthly budget update и safety-incident acknowledgement. Все действия проходят permission → MFA → reason → preview → CAS/idempotency → confirm → execute → audit/readback. Deferred backlog, arbitrary policy JSON, manual success/result override и provider retry недоступны. Secret вводится и ротируется вне browser UI.
 
-Артефакт: утверждённый settings registry и operator runbook.
+Отдельная `/admin/ai/history` доступна только с `ai.history.read`, MFA и обязательной причиной/case reference. Она показывает локальные user/assistant messages конкретного найденного пользователя в пределах retention, но не system prompt, internal context, provider payload/request id, secret или hidden detectors. Каждый просмотр аудируется; bulk feed/export в первой версии отсутствует. Privacy/legal disclosure является activation gate.
+
+Артефакт: утверждённый settings/action registry, history access policy и operator runbook.
 
 ## 3. Техническая подготовка до API key
 

@@ -56,7 +56,10 @@ export class AiContentRetentionService {
                 update meal.ai_tasks task
                    set goal='',
                        preview=jsonb_build_object(
-                           'taskType',task.preview->>'taskType',
+                           'contractVersion',task.contract_version,
+                           'taskType',coalesce(task.task_code,task.preview->>'taskType'),
+                           'task',task.task_code,
+                           'mode',task.task_mode,
                            'contentExpired',true
                        ),
                        content_purged_at=${clock},version=task.version+1
