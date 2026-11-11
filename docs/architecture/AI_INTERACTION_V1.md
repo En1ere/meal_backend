@@ -166,6 +166,8 @@ interface AiProviderPort {
 }
 ```
 
+Реализационный статус на 11 ноября 2026 года: neutral types/strict schemas, dispatch guard и независимые user-quota/provider-budget effects реализованы. Schema v41 сохраняет один submit claim, immutable provider ID, normalized read outcomes, conservative RUB hold и CAS/lease fencing; expiry reconciliation не вызывает provider. Internal `culinary_question/answer` и backend-first `substitution/candidates|explain` проходят strict safety/minimal-contract path только через simulator, включая quota capture/release/hold и локальную историю. Изолированный Yandex adapter нормализует HTTP/transport outcomes, не повторяет submit и после accepted допускает только readback, но ещё не подключён к model task routes.
+
 ## 6. Provider profiles и routing
 
 Целевые launch-профили:
@@ -186,6 +188,8 @@ Worker запускается только при явном положител�
 На operation/attempt сохраняются provider profile version, requested/actual model, provider request id, timestamps, HTTP/provider outcome, token usage и estimated/actual cost. Prompt/result в operational logs запрещены.
 
 API key хранится в root-owned Docker secret file. User/admin APIs могут показывать только configured/profile/readiness, но никогда secret, полный endpoint credential или raw provider error.
+
+Fail-closed Yandex configuration использует `YANDEX_AI_API_KEY_FILE`, точный `YANDEX_AI_ENDPOINT=https://ai.api.cloud.yandex.net/v1/`, `YANDEX_AI_FOLDER_ID`, `YANDEX_AI_SERVICE_ACCOUNT_ID`, обе фиксированные profile versions, положительный `YANDEX_AI_MONTHLY_BUDGET_RUB`, `YANDEX_AI_STORE_FALSE_READBACK_VERIFIED=true` и отдельный `YANDEX_AI_ENABLED=true`. Наличие только key-файла оставляет `unconfigured`; полный набор при false enable остаётся `disabled`. До sandbox evidence флаг readback запрещено выставлять в deployment.
 
 ## 7. Structured Outputs
 

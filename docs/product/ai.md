@@ -2,7 +2,7 @@
 
 ## Решение 9 ноября 2026: минимальный AI-контур controlled launch
 
-Утверждены целевые политики `ai-task-policy-v4`, `ai-routing-policy-v1`, `ai-price-policy-v1`, `ai-context-policy-v2`, `ai-result-contract-v2`, `ai-cache-policy-v1` и `ai-safety-policy-v1`. Это целевая спецификация следующего среза; существующий OpenAI/Luna runtime остаётся выключенным техническим baseline до отдельной реализации и activation gate.
+Утверждены целевые политики `ai-task-policy-v4`, `ai-routing-policy-v1`, `ai-price-policy-v1`, `ai-context-policy-v2`, `ai-result-contract-v2`, `ai-cache-policy-v1` и `ai-safety-policy-v1`. Provider-neutral port и выключенный Yandex adapter реализованы, но не подключены к task routes; существующий OpenAI/Luna runtime остаётся выключенным legacy baseline до durable reconciliation и activation gates.
 
 Основной принцип: backend/SQL выполняет всё, что можно детерминированно найти, вычислить, сопоставить или проверить. Модель получает только минимальный подготовленный контекст и нужна для языкового анализа либо синтеза. Тариф определяет доступную capability, контекст, квоту и приоритет очереди, но не качество модели. Один task/mode всегда использует один и тот же профиль во всех тарифах.
 

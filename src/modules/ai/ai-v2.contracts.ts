@@ -4,7 +4,7 @@ import { aiTaskTypeSchema, type AiTaskType } from './ai.contracts.js';
 import { AI_TASK_POLICY_V4, aiTaskModeKey, aiTaskModeV4 } from './ai-policy-v4.js';
 
 const shortText = z.string().trim().min(1).max(500);
-const question = z.string().trim().min(3).max(1_500);
+const question = z.string().trim().min(3).max(500);
 const boundedIdList = z.array(z.uuid()).min(1).max(20);
 
 export const aiV2ShoppingListFromMealPlanInputSchema = z.strictObject({
@@ -149,6 +149,47 @@ export const aiV2ResultEnvelopeSchema = z.strictObject({
     warningCodes: z.array(aiV2WarningCodeSchema).max(20),
 });
 
+export const aiV2CulinaryWarningCodeSchema = z.enum([
+    'medical_boundary',
+    'allergen_boundary',
+    'food_safety_boundary',
+    'prompt_injection_detected',
+]);
+
+export const aiV2CulinaryRecoveryCodeSchema = z.enum([
+    'ask_general_cooking_question',
+    'check_product_label',
+    'follow_official_food_safety_guidance',
+    'contact_healthcare_professional',
+]);
+
+export const aiV2CulinaryAnswerResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:culinary_question:answer'),
+    answer: z.string().trim().min(1).max(2_000),
+    warningCodes: z.array(aiV2CulinaryWarningCodeSchema).max(2),
+    recoveryCode: aiV2CulinaryRecoveryCodeSchema.nullable(),
+});
+
+export const aiV2SubstitutionWarningCodeSchema = z.enum([
+    'allergen_status_unknown',
+    'medical_boundary',
+    'allergen_boundary',
+    'prompt_injection_detected',
+]);
+
+export const aiV2SubstitutionRecoveryCodeSchema = z.enum([
+    'check_product_label',
+    'contact_healthcare_professional',
+    'ask_substitution_question',
+]);
+
+export const aiV2SubstitutionExplainResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:substitution:explain'),
+    explanation: z.string().trim().min(1).max(1_800),
+    warningCodes: z.array(aiV2SubstitutionWarningCodeSchema).max(2),
+    recoveryCode: aiV2SubstitutionRecoveryCodeSchema.nullable(),
+});
+
 export const aiV2BackendOperationSchema = z.strictObject({
     item: z.strictObject({
         id: z.uuid(),
@@ -191,6 +232,8 @@ export const aiV2FrozenPreviewSchema = z.strictObject({
 export type AiV2Preview = z.infer<typeof aiV2PreviewSchema>;
 export type AiV2RunRequest = z.infer<typeof aiV2RunRequestSchema>;
 export type AiV2ResultEnvelope = z.infer<typeof aiV2ResultEnvelopeSchema>;
+export type AiV2CulinaryAnswerResult = z.infer<typeof aiV2CulinaryAnswerResultSchema>;
+export type AiV2SubstitutionExplainResult = z.infer<typeof aiV2SubstitutionExplainResultSchema>;
 export type AiV2FrozenPreview = z.infer<typeof aiV2FrozenPreviewSchema>;
 export type AiV2ShoppingListFromMealPlanInput = z.infer<typeof aiV2ShoppingListFromMealPlanInputSchema>;
 export type AiV2BackendOperation = z.infer<typeof aiV2BackendOperationSchema>;

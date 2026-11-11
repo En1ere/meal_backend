@@ -72,8 +72,8 @@ void test('schema v39 manifest hash binds the additive migration', () => {
         foreignKeys: number;
         migrations: Array<{ version: number; file: string; sha256: string }>;
     };
-    assert.equal(manifest.totalTables, 228);
-    assert.equal(manifest.foreignKeys, 522);
+    assert.equal(manifest.totalTables, 229);
+    assert.equal(manifest.foreignKeys, 523);
     assert.deepEqual(
         manifest.migrations.find((entry) => entry.version === 39),
         {

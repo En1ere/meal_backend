@@ -94,7 +94,7 @@ docker compose run --rm backend npm run db:plan
 
 Before enabling traffic, verify all of the following:
 
-1. migration manifest matches the current `database/manifest.json` exactly (currently v38 / 228 tables / 522 foreign keys / PostgreSQL 18);
+1. migration manifest matches the current `database/manifest.json` exactly (currently v41 / 229 tables / 523 foreign keys / PostgreSQL 18);
 2. provider images are immutable-digest pinned and S3 port is not published on the host;
 3. quarantine credentials cannot read/write the ready bucket except through the backend/scanner roles defined by the later checkpoint;
 4. both buckets exist, public ACL/policy is absent, versioning/retention choice is recorded, and disk-pressure alerting is active;

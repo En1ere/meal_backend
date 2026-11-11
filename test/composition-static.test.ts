@@ -136,7 +136,21 @@ import {
     OBJECT_STORAGE_PROVIDER,
 } from '../src/modules/media-infrastructure/public.js';
 import { HealthController } from '../src/modules/health/public.js';
-import { AiController, AiProvider, AiReconciliationService, AiService } from '../src/modules/ai/public.js';
+import {
+    AI_V2_PROVIDER_PORT,
+    AI_V2_PROVIDER_RUNTIME,
+    AiController,
+    AiProvider,
+    AiProviderSimulator,
+    AiReconciliationService,
+    AiService,
+    AiV2CulinaryExecutor,
+    AiV2CulinaryInternalService,
+    AiV2SubstitutionExecutor,
+    AiV2SubstitutionInternalService,
+    AiV2PublicActivationGate,
+    AiV2ProviderOperationStore,
+} from '../src/modules/ai/public.js';
 import { AiAppealsController, AiAppealsService } from '../src/modules/ai-appeals/public.js';
 import {
     ACCOUNT_MAIL_OUTBOX,
@@ -374,6 +388,7 @@ void test('root composition delegates pilot and core providers without duplicate
         AiProvider,
         AiService,
         AiReconciliationService,
+        AiV2ProviderOperationStore,
         ProOverviewService,
         DisabledPaymentProvider,
         PAYMENT_PROVIDER,
@@ -752,7 +767,7 @@ void test('root composition delegates pilot and core providers without duplicate
     assert.deepEqual(mealPlanImports, [EntitlementsCapabilityModule, DiaryCapabilityModule]);
     assert.deepEqual(mealPlanControllers, [MealPlanController, PortionsController]);
     assert.deepEqual(mealPlanProviders, [MealPlanService]);
-    assert.deepEqual(mealPlanExports, []);
+    assert.deepEqual(mealPlanExports, [MealPlanService]);
     assert.equal(mealPlanImports.includes(RecipesCapabilityModule), false);
     assert.equal(mealPlanImports.includes(InventoryCapabilityModule), false);
     assert.equal(mealPlanImports.includes(RecommendationsCapabilityModule), false);
@@ -1371,8 +1386,13 @@ void test('root composition delegates pilot and core providers without duplicate
         []) as unknown[];
     assert.deepEqual(aiProviderImports, []);
     assert.deepEqual(aiProviderControllers, []);
-    assert.deepEqual(aiProviderProviders, [AiProvider]);
-    assert.deepEqual(aiProviderExports, [AiProvider]);
+    assert.deepEqual(aiProviderProviders, [
+        AiProvider,
+        AiProviderSimulator,
+        AI_V2_PROVIDER_PORT,
+        AI_V2_PROVIDER_RUNTIME,
+    ]);
+    assert.deepEqual(aiProviderExports, [AiProvider, AI_V2_PROVIDER_PORT, AI_V2_PROVIDER_RUNTIME]);
     const aiImports = (Reflect.getMetadata(MODULE_METADATA.IMPORTS, AiCapabilityModule) ?? []) as unknown[];
     const aiControllers = (Reflect.getMetadata(MODULE_METADATA.CONTROLLERS, AiCapabilityModule) ?? []) as unknown[];
     const aiProviders = ((Reflect.getMetadata(MODULE_METADATA.PROVIDERS, AiCapabilityModule) ?? []) as Provider[]).map(
@@ -1386,7 +1406,16 @@ void test('root composition delegates pilot and core providers without duplicate
         OperationalRuntimeCapabilityModule,
     ]);
     assert.deepEqual(aiControllers, [AiController]);
-    assert.deepEqual(aiProviders, [AiService, AiReconciliationService]);
+    assert.deepEqual(aiProviders, [
+        AiService,
+        AiReconciliationService,
+        AiV2ProviderOperationStore,
+        AiV2CulinaryExecutor,
+        AiV2CulinaryInternalService,
+        AiV2SubstitutionExecutor,
+        AiV2SubstitutionInternalService,
+        AiV2PublicActivationGate,
+    ]);
     assert.deepEqual(aiExports, [AiService]);
     assert.deepEqual(Reflect.getMetadata(GUARDS_METADATA, AiController), [UserSessionGuard]);
     const proOverviewImports = (Reflect.getMetadata(MODULE_METADATA.IMPORTS, ProOverviewCapabilityModule) ??
@@ -1937,8 +1966,8 @@ void test('HTTP composition has exact root ownership and a unique reachable modu
     };
     visit(root);
 
-    assert.equal(controllerOwners.size, 69);
-    assert.equal(providerOwners.size, 122);
+    assert.equal(controllerOwners.size, 70);
+    assert.equal(providerOwners.size, 133);
     for (const [controller, owners] of controllerOwners)
         assert.equal(owners.length, 1, `duplicate controller ${String(controller)}: ${owners.join(', ')}`);
     for (const [provider, owners] of providerOwners) {
@@ -1961,7 +1990,7 @@ void test('HTTP composition has exact root ownership and a unique reachable modu
         }
     };
     collectContextModules(path.resolve('src/contexts'));
-    assert.equal(contextModuleNames.length, 80);
+    assert.equal(contextModuleNames.length, 81);
     assert.deepEqual(
         [...contextModuleNames].sort(),
         [...visited]

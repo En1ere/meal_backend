@@ -1,4 +1,4 @@
-// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029/030/031/032/033/034/037 overlays.
+// Generated from database/type-source-v1.json plus migrations 002/004/005/006/007/008/009/010/012/013/014/016/017/018/019/020/021/022/024/025/026/029/030/031/032/033/034/037/041 overlays.
 import type { ColumnType, Generated } from 'kysely';
 type Timestamp = ColumnType<Date, Date | string, Date | string>;
 type Int64 = ColumnType<string, string | number | bigint, string | number | bigint>;
@@ -652,6 +652,45 @@ export interface DatabaseSchema {
         published_release_id: string;
         created_at: OptionalInsert<Timestamp>;
         version: OptionalInsert<Int64>;
+    };
+    ai_provider_dispatches: {
+        operation_id: string;
+        client_request_id: string;
+        profile_version: string;
+        requested_model: string;
+        state:
+            | 'prepared'
+            | 'submit_claimed'
+            | 'accepted'
+            | 'read_claimed'
+            | 'queued'
+            | 'running'
+            | 'read_unknown'
+            | 'succeeded'
+            | 'failed'
+            | 'cancelled'
+            | 'incomplete'
+            | 'rejected'
+            | 'unknown_without_identity';
+        submit_outcome: 'accepted' | 'rejected' | 'unknown_without_identity' | null;
+        read_outcome: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'incomplete' | 'unknown' | null;
+        provider_response_id: string | null;
+        estimated_cost_rub: string;
+        actual_cost_rub: string | null;
+        input_tokens: number | null;
+        output_tokens: number | null;
+        cached_input_tokens: number | null;
+        reasoning_tokens: number | null;
+        error_category: string | null;
+        lease_owner: string | null;
+        lease_token: string | null;
+        lease_until: Timestamp | null;
+        read_count: OptionalInsert<number>;
+        next_read_at: Timestamp | null;
+        created_at: OptionalInsert<Timestamp>;
+        updated_at: OptionalInsert<Timestamp>;
+        terminal_at: Timestamp | null;
+        version: OptionalInsert<number>;
     };
     users: {
         id: string;

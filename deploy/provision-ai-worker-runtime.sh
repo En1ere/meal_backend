@@ -46,7 +46,7 @@ revoke meal_app,meal_mail_worker,meal_media_worker from meal_ai_runtime;
 grant meal_ai_worker to meal_ai_runtime with inherit false,set true;
 grant connect on database meal_planner_postgres to meal_ai_runtime;
 grant usage on schema meal to meal_ai_worker;
-grant select on meal.ai_operations,meal.ai_operation_attempts,meal.ai_tasks,meal.ai_intervals,meal.ai_messages,
+grant select on meal.ai_operations,meal.ai_operation_attempts,meal.ai_provider_dispatches,meal.ai_tasks,meal.ai_intervals,meal.ai_messages,
  meal.ai_buckets,meal.ai_ledger,meal.users,meal.sanctions,meal.legal_consent_events,meal.subscriptions,
  meal.billing_products,meal.subscription_periods,meal.grace_incidents,meal.subscription_changes,
  meal.family_memberships,meal.family_coverages to meal_ai_worker;
@@ -56,6 +56,9 @@ grant update(lifecycle_state,financial_state,failure_category,failure_retryable,
  service_tier,result_snapshot,provider_cost,provider_cost_state,finished_at,updated_at,version) on meal.ai_operations to meal_ai_worker;
 grant update(state,provider_request_id,actual_model,service_tier,input_tokens,output_tokens,reasoning_tokens,
  estimated_cost,actual_cost,error_category,error_code,submitted_at,finished_at,latency_ms) on meal.ai_operation_attempts to meal_ai_worker;
+grant update(state,submit_outcome,read_outcome,provider_response_id,actual_cost_rub,input_tokens,output_tokens,
+ cached_input_tokens,reasoning_tokens,error_category,lease_owner,lease_token,lease_until,read_count,next_read_at,
+ updated_at,terminal_at,version) on meal.ai_provider_dispatches to meal_ai_worker;
 grant update(balance_projection,reserved_projection,version) on meal.ai_buckets to meal_ai_worker;
 grant update(status,version) on meal.ai_intervals,meal.ai_tasks to meal_ai_worker;
 SQL

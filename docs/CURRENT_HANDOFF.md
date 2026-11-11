@@ -1,10 +1,10 @@
 # Точка передачи проекта meal
 
-Актуально на 10 ноября 2026 года. Этот файл — стартовая точка для нового диалога после удаления предыдущей переписки. Он не содержит секретов и не разрешает provider call либо архитектурную реализацию несогласованных блоков.
+Актуально на 11 ноября 2026 года. Этот файл — стартовая точка для нового диалога после удаления предыдущей переписки. Он не содержит секретов и не разрешает provider call либо архитектурную реализацию несогласованных блоков.
 
 ## 1. Где остановились
 
-9 ноября 2026 года владелец согласовал все девять блоков: продуктовые сценарии, тарифы, backend-first routing, минимальные контракты, кэш, предварительный Yandex provider/model choice, launch-экономику, provider-neutral adapter/reconciliation, safety/eval и admin control plane. Реализованы четыре совместимых среза: runtime-neutral `ai-task-policy-v4`/v2 contracts, additive schema v39 с frozen task/mode/route/policy identity, первый internal backend-only executor `shopping_list_generation/from_meal_plan` со schema v40 и отдельная public v2 orchestration boundary. Публично разрешён только этот cost-0 сценарий через `/api/v1/ai/v2/preview|run|operations/{id}`; он переиспользует доменный SQL-расчёт и не обращается к AI-провайдеру. Provider path и Yandex adapter ещё не включены; текущая OpenAI/Luna связка остаётся выключенным техническим baseline.
+9 ноября 2026 года владелец согласовал все девять блоков: продуктовые сценарии, тарифы, backend-first routing, минимальные контракты, кэш, предварительный Yandex provider/model choice, launch-экономику, provider-neutral adapter/reconciliation, safety/eval и admin control plane. Реализованы девять совместимых срезов: runtime-neutral `ai-task-policy-v4`/v2 contracts, schema v39 frozen identity, backend-only executor со schema v40, public backend-only v2 boundary, provider-neutral port с выключенным Yandex adapter, durable provider-dispatch persistence/reconciliation schema v41, internal simulator-only `culinary_question/answer`, его fail-closed public activation boundary и internal simulator-only `substitution/candidates|explain`. Публично разрешён только cost-0 `shopping_list_generation/from_meal_plan`; Yandex adapter не подключён к task routes/worker и не может активироваться одним key. OpenAI/Luna остаётся выключенным legacy baseline.
 
 Целевая формулировка следующего этапа: подготовить AI-контур до состояния, в котором после всех согласований, реализации и проверок для controlled activation останется только безопасно добавить provider API key и выполнить ограниченный activation smoke/eval.
 
@@ -18,7 +18,7 @@
 
 | Репозиторий     | Ветка  | Зафиксированная версия/ревизия на момент handoff                     | Назначение                                                           |
 | --------------- | ------ | -------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `meal_backend`  | `main` | workspace `0.0.284`; точный SHA — `git rev-parse HEAD`               | API, PostgreSQL migrations, workers, deployment и общая документация |
+| `meal_backend`  | `main` | workspace `0.0.289`; точный SHA — `git rev-parse HEAD`               | API, PostgreSQL migrations, workers, deployment и общая документация |
 | `meal_admin`    | `main` | workspace `0.0.167`; точный SHA — `git rev-parse HEAD`               | операторская админка                                                 |
 | `meal_frontend` | `main` | workspace `0.0.51`, app `0.0.268`; точный SHA — `git rev-parse HEAD` | пользовательское приложение и design system                          |
 
@@ -36,6 +36,8 @@
 - Runtime-neutral policy v4 registry, minimal v2 contracts, schema v39 frozen preview identity и internal preview builder без provider call.
 - Internal backend-only executor `shopping_list_generation/from_meal_plan`: точная plan version/selection, immutable source snapshot hash, deterministic persisted result, cost 0 и structured readback без provider/quota path.
 - Public AI-v2 boundary открывает только готовый backend resolver: strict preview/run/readback, owner scope, CSRF/session guards и минимальная проекция без provider/financial internals. Legacy routes и model execution не переключались.
+- Provider-neutral port фиксирует accepted/rejected/`unknown_without_identity`, readback states, запрет повторного submit и независимые user-quota/provider-budget effects. Выключенный Yandex adapter имеет exact endpoint/model URI, secret-file config, bounded timeout, structured output и simulator tests, но не подключён к public routes.
+- Schema v41 хранит один sanitized provider dispatch на v2 model operation: immutable client/provider identity, normalized submit/read outcomes, RUB estimate/actual usage, CAS/version и lease fencing. Expiry reconciliation не вызывает provider: submit-crash становится `unknown_without_identity`, read-crash остаётся GET-reconcilable.
 
 Текущая связка OpenAI Responses + `gpt-6-luna`/low — только проверенный технический baseline. Это не утверждённый коммерческий выбор провайдера или модели.
 
@@ -59,14 +61,15 @@
 
 Только после owner approval блоков 1–9:
 
-1. адаптировать provider-neutral port и выбранный adapter;
-2. зафиксировать routing/pricing/data/safety profiles;
-3. реализовать согласованный reconciliation contract и admin flow;
-4. подготовить exact env/secret-file names, Docker overlay, least-privilege role и egress allowlist;
-5. обеспечить disabled/unconfigured startup, rotation/revoke и emergency disable;
-6. пройти unit/contract/integration/provider-simulator failures, offline eval, architecture/security/secret scans и сборки;
-7. обновить OpenAPI/generated clients, тест-кейсы и deployment/rollback/incident runbooks;
-8. развернуть fail-closed release без key и доказать невозможность provider call.
+1. ~~адаптировать provider-neutral port и выбранный adapter~~ — выполнено изолированно и fail closed;
+2. ~~реализовать durable provider operation persistence/reconciliation для v2~~ — выполнено schema v41;
+3. ~~реализовать первый internal economy task через simulator и реальные quota/dispatch invariants~~ — выполнено для `culinary_question/answer`;
+4. зафиксировать public activation boundary, routing/pricing/data/safety evidence и admin flow;
+5. подготовить exact env/secret-file names, Docker overlay, least-privilege role и egress allowlist;
+6. обеспечить disabled/unconfigured startup, rotation/revoke и emergency disable;
+7. пройти unit/contract/integration/provider-simulator failures, offline eval, architecture/security/secret scans и сборки;
+8. обновить OpenAPI/generated clients, тест-кейсы и deployment/rollback/incident runbooks;
+9. развернуть fail-closed release без key и доказать невозможность provider call.
 
 Definition of Ready: все решения и versioned artifacts утверждены; adapter/routing/tariffs/budget/reconciliation/admin реализованы; тесты и eval проходят; production worker выключен; secret inventory содержит только имя/владельца/rotation procedure; единственный отсутствующий конфигурационный материал — значение API key.
 
@@ -130,19 +133,19 @@ Manual test sources:
 - Не раскрывать provider payload, prompt/context/result, request identity, ключи или PII в telemetry, логах и admin UI.
 - Если внешний provider/key/budget/evidence отсутствует, состояние остаётся disabled/unconfigured, а не условно успешным.
 
-Текущий статус AI-подготовки: **решения A–I согласованы; policy/contracts, schema-v39 preview foundation, schema-v40 backend-only executor и его public v2 orchestration boundary реализованы без включения model runtime**. Следующий срез — provider-neutral port и Yandex adapter с fail-closed configuration/readiness, но без production enable. Наличие одного API key само по себе не включает provider call: нужны утверждённые endpoint/folder/profile/budget, `store:false` evidence и явный enable.
+Текущий статус AI-подготовки: **решения A–I согласованы; policy/contracts, schema-v39/v40 backend foundation, public backend-only v2 boundary, provider-neutral/Yandex adapter, schema-v41 persistence, internal simulator-only `culinary_question/answer`, его activation gate и `substitution/candidates|explain` реализованы без включения model runtime**. Наличие одного API key само по себе не включает provider call: нужны точные endpoint/folder/service-account/profile/budget, `store:false` evidence, явный enable и task-specific eval.
 
 ## 10. Точный checkpoint и очередь продолжения
 
-Текущий завершённый шаг: public AI-v2 preview/run/readback открыт только для cost-0 `shopping_list_generation/from_meal_plan`; backend/OpenAPI/frontend/admin snapshots синхронизированы. Legacy AI runtime не переключён, provider call невозможен через v2 boundary.
+Текущий завершённый шаг: internal `substitution/candidates|explain` замкнут на backend-first simulator pipeline. Кандидаты вычисляются SQL по активному каталогу и общей категории, сохраняются как короткоживущие owner-scoped артефакты; перед economy dispatch повторно проверяются owner, expiry, версии, category и статусы обоих ингредиентов. Модель получает только два названия и необязательный короткий вопрос, не выбирает и не применяет замену. Medical/allergen/prompt-injection boundary блокируется до модели; неизвестность аллергенного статуса добавляется backend. Quota/dispatch/readback/history используют schema-v41 invariants. Public route и Yandex binding не добавлены; OpenAPI и schema БД не изменены.
 
-Следующий шаг выполняется одним совместимым срезом: **provider-neutral port + выключенный Yandex adapter**.
+Внешний gate текущего шага: отдельный Yandex sandbox spike должен доказать background GET/readback при `store:false`. Официальная документация указывает, что `store:false` не сохраняет response; поэтому до реального evidence `YANDEX_AI_STORE_FALSE_READBACK_VERIFIED` нельзя выставлять в deployment. `store:true` требует нового owner decision.
 
-1. Ввести provider-neutral submit/readback types с согласованными `accepted`, `rejected`, `unknown_without_identity`; повторный submit после unknown запретить контрактом и тестом.
-2. Добавить точную fail-closed Yandex-конфигурацию: secret-file API key, endpoint, folder/service-account identity, economy/balanced profile versions, RUB budget и explicit enable. Наличие только ключа оставляет readiness `unconfigured`.
-3. Реализовать adapter без подключения к public task routes; проверить bounded timeout, structured output, safe error mapping, отсутствие payload/secret в logs и запрет автоматического fallback/escalation.
-4. Добавить simulator/contract tests для success, confirmed rejection, timeout, malformed response, unknown до provider id и readback после provider id. User quota и provider budget hold проверять независимо.
-5. Выполнить отдельный Yandex sandbox spike для background retrieve при `store:false`. Без подтверждённого evidence adapter остаётся disabled; переход на `store:true` требует нового owner decision.
-6. После port/adapter перейти к provider operation persistence/reconciliation, затем к economy route, balanced route, cache/artifacts, оставшимся backend resolvers, frontend migration и admin readiness/actions. Каждый task/mode открывать отдельно только после resolver/schema/safety/eval tests.
+Следующий внутренний шаг: **`storage_advice/rule|explain` через backend-first simulator-only pipeline**.
 
-Не смешивать следующий срез с production enable, вводом реального ключа, массовым переводом legacy endpoints или реализацией deferred backlog. Коммиты checkpoint: backend `0.0.284`, frontend root/app `0.0.51/0.0.268`, admin `0.0.167`; после push заменить это предложение точными commit SHA при следующем возобновлении.
+1. `rule` должен вычислить хранение и срок только из versioned catalog/composition/domain facts без модели и с cost 0.
+2. `explain` принимает только backend verdict ID; модель получает минимальный уже проверенный verdict без профиля, истории и произвольного контекста.
+3. Food-safety, medical и unknown-composition boundary остаются backend-authoritative; модель не меняет срок/температуру и не выдаёт безопасность как факт.
+4. Переиспользовать schema-v41 dispatch, quota settlement, simulator failures и закрытую public activation boundary.
+
+Не смешивать следующий срез с production enable, реальным ключом, `store:true`, массовым переводом legacy endpoints или deferred backlog. Checkpoint versions: backend `0.0.289`, frontend root/app `0.0.51/0.0.268`, admin `0.0.167`; точный backend SHA проверить после push через `git rev-parse HEAD`.

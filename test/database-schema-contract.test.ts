@@ -23,12 +23,12 @@ void test('runtime schema contract is derived from the checked migration manifes
         foreignKeys: manifest.foreignKeys,
     });
     assert.deepEqual(DATABASE_SCHEMA_CONTRACT, {
-        version: 40,
-        migrationCount: 40,
-        versions: Array.from({ length: 40 }, (_, index) => index + 1),
+        version: 41,
+        migrationCount: 41,
+        versions: Array.from({ length: 41 }, (_, index) => index + 1),
         postgresMajor: 18,
-        totalTables: 228,
-        foreignKeys: 522,
+        totalTables: 229,
+        foreignKeys: 523,
     });
 });
 
@@ -54,15 +54,15 @@ void test('readiness and deployment gates use manifest-bound schema facts', asyn
     assert.match(grants, /every migration listed in database\/manifest\.json/);
 });
 
-void test('operator documentation identifies the current v40 recovery contract', async () => {
+void test('operator documentation identifies the current v41 recovery contract', async () => {
     const [recovery, databaseTesting, deployment] = await Promise.all([
         text('docs/backup-recovery.md'),
         text('docs/DATABASE_TESTING.md'),
         text('docs/DEPLOYMENT.md'),
     ]);
-    assert.match(recovery, /Recovery set v15 для schema v40/);
-    assert.match(recovery, /40 migration rows/);
-    assert.match(recovery, /228 таблиц, 522 FK/);
-    assert.match(databaseTesting, /schema v40, 40 миграций, 228 таблиц/);
+    assert.match(recovery, /Recovery set v16 для schema v41/);
+    assert.match(recovery, /41 migration rows/);
+    assert.match(recovery, /229 таблиц, 523 FK/);
+    assert.match(databaseTesting, /schema v41, 41 миграция, 229 таблиц/);
     assert.match(deployment, /gate читает значения из candidate manifest/);
 });

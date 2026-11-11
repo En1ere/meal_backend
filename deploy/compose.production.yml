@@ -58,6 +58,7 @@ services:
             AI_MONTHLY_BUDGET_USD: ${AI_MONTHLY_BUDGET_USD:-}
             AI_BACKGROUND_EXECUTION_ENABLED: ${AI_WORKER_ENABLED:-false}
             AI_RECONCILIATION_ENABLED: 'false'
+            AI_V2_CULINARY_PUBLIC_ENABLED: 'false'
             COOKING_LIFECYCLE_ENABLED: 'false'
         secrets: [backend_database_url, backend_security_key, backend_mfa_encryption_key]
         ports: ['127.0.0.1:3001:3001']

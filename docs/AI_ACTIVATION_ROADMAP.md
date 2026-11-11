@@ -1,6 +1,6 @@
 # AI: план решений и подготовки к подключению provider key
 
-Статус на 10 ноября 2026 года: все девять блоков согласованы владельцем; policy/contracts, frozen persistence, первый cost-0 backend executor и его public v2 boundary реализованы совместимыми срезами. Документ не разрешает provider call, не содержит секретов и не означает, что целевой Yandex adapter уже реализован.
+Статус на 11 ноября 2026 года: все девять блоков согласованы владельцем; policy/contracts, frozen preview, cost-0 backend executor, public backend-only v2 boundary, provider-neutral port, выключенный Yandex adapter, durable provider-dispatch persistence, simulator-only economy slices `culinary_question/answer` и `substitution/explain`, а также culinary public activation gate реализованы совместимыми срезами. Adapter не подключён к model task routes, не содержит production key и не разрешает provider call без полного fail-closed readiness.
 
 ## 0. Зафиксированные owner decisions
 
@@ -13,7 +13,7 @@
 - Цены и квоты controlled launch: Free 0/0; Plus 499 ₽/месяц или 4 899 ₽/год и 20 действий; Pro 999 ₽/месяц или 9 799 ₽/год и 60 действий; trial 7 дней/5 действий; пакет 299 ₽/20 несгораемых действий, не более трёх покупок за 30 дней и 60 неиспользованных действий.
 - Provider ceilings: economy 1 ₽, recipe generation/adaptation 6 ₽, event menu 7 ₽, meal plan 12 ₽ с двумя уточнениями. Превышение блокирует вызов до reserve. `seasonal_analysis`, `document_analysis`, `meal_plan_backend_optimizer`, `beverage_alcohol_mode` остаются read-only deferred backlog без возможности включения.
 
-Provider-neutral adapter и reconciliation contract согласованы: submit возвращает accepted/rejected/`unknown_without_identity`; повтор submit запрещён; после получения provider ID разрешён только readback; пользовательский резерв и provider budget hold учитываются независимо; admin не может вручную выставить success. Обязательный spike должен отдельно доказать background retrieve при `store:false`: документированный `x-client-request-id` является correlation id для диагностики, но не гарантией идемпотентного create. Если доказательства нет, нельзя молча включать `store:true` или повторять submit. Следующий реализационный срез — provider-neutral port и выключенный Yandex adapter с fail-closed readiness.
+Provider-neutral adapter и reconciliation contract реализованы на внутренней и durable DB-границе: schema v41 хранит один submit claim, immutable provider ID, normalized readback, independent quota/budget evidence и lease/version fencing. Timeout до ID становится terminal `unknown_without_identity`; после ID допускается только повторный GET. Yandex adapter использует фиксированный Responses endpoint/model URI, bounded timeout, strict structured output, safe errors и не имеет retry/fallback/escalation. Обязательный spike должен отдельно доказать background retrieve при `store:false`; до evidence adapter остаётся отключённым, а `store:true` требует нового решения владельца. Следующий срез — backend-first `storage_advice/rule|explain` без production activation.
 
 ## 1. Что уже готово
 
@@ -25,8 +25,13 @@ Provider-neutral adapter и reconciliation contract согласованы: subm
 - Docker/secret-file boundary, disable switch, observability и deployment runbook.
 - `ai-task-policy-v4`, minimal v2 contracts, schema v39/v40 frozen identity и zero-cost backend persistence.
 - Public `/api/v1/ai/v2/preview|run|operations/{id}` разрешён только для готового `shopping_list_generation/from_meal_plan`; model routes остаются закрыты.
+- Внутренний provider-neutral port и выключенный Yandex adapter: exact endpoint/model profiles, secret-file key, folder/service-account identity, RUB budget, explicit enable и обязательный `store:false` evidence gate. Simulator покрывает success/rejection/timeout/malformed/unknown/readback без подключения public routes.
+- Schema v41 и internal store: one-submit provider dispatch, immutable readback identity, normalized outcomes, conservative RUB hold, CAS/lease fencing и safe expiry reconciliation без provider payload.
+- Internal `culinary_question/answer`: strict 500-char input, backend safety boundary, minimal 500-token request, simulator-only DI, schema-v41 dispatch, quota capture/release/hold и сохранение истории. Public route отсутствует.
+- Internal `substitution/candidates|explain`: SQL-кандидаты cost 0, owner/version/status/category recheck, минимальный 350-token economy request только с названиями и необязательным вопросом, backend medical/allergen/injection boundary, schema-v41 quota/dispatch/readback и локальная история. Модель не выбирает и не применяет замену; public route отсутствует.
+- Culinary activation boundary: explicit enable плюс exact Yandex runtime, versioned readback/eval/legal/rollback evidence и RUB budget. Key/simulator/частичный config не открывают route; public OpenAPI не изменён.
 
-Текущий OpenAI Responses + `gpt-6-luna`/low profile является проверенным выключенным техническим baseline. Целевой выбор Yandex оформлен выше, но замена runtime ещё не реализована и не активирована.
+Текущий OpenAI Responses + `gpt-6-luna`/low profile остаётся выключенным legacy technical baseline. Durable v2 persistence и simulator runtime реализованы; целевой Yandex adapter изолирован и не связан с task runtime, provider activation запрещена.
 
 ## 2. Решения, которые принимаем последовательно
 
@@ -167,8 +172,8 @@ Luna и Sol сравниваются только на одном `ai-model-eval
 
 После согласования A–I выполнить без реального ключа:
 
-1. адаптировать provider-neutral port и выбранный adapter без утечки provider DTO в публичные контракты;
-2. зафиксировать model/routing/pricing/data/safety profiles и миграцию только при необходимости durable evidence;
+1. ~~адаптировать provider-neutral port и выбранный adapter без утечки provider DTO в публичные контракты~~ — выполнено без подключения task routes;
+2. ~~зафиксировать durable provider operation persistence/reconciliation~~ — выполнено schema v41; model/routing/pricing/data/safety evidence закрывается отдельно для каждого task;
 3. закрыть reconciliation contract и admin flow согласно принятому ADR;
 4. подготовить exact env/secret-file names, Docker overlay, least-privilege role и egress allowlist;
 5. обеспечить disabled/unconfigured startup, key rotation и аварийное отключение;

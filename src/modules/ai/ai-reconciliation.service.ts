@@ -4,6 +4,7 @@ import { APP_CONFIG, type AppConfig } from '../../shared/config/app-config.js';
 import { DatabaseService } from '../../infrastructure/database/database.service.js';
 import { WorkerRuntimeFactory } from '../../infrastructure/workers/worker-runtime.factory.js';
 import type { WorkerCounters } from '../operational-runtime/public.js';
+import { AiV2ProviderOperationStore } from './ai-provider-operation.store.js';
 
 const intervalMs = 60_000;
 const staleAfterMinutes = 15;
@@ -17,6 +18,7 @@ export class AiReconciliationService implements OnModuleInit, OnApplicationShutd
     constructor(
         private readonly database: DatabaseService,
         private readonly workerRuntime: WorkerRuntimeFactory,
+        private readonly providerOperations: AiV2ProviderOperationStore,
         @Inject(APP_CONFIG) private readonly config: AppConfig,
     ) {}
 
@@ -60,7 +62,8 @@ export class AiReconciliationService implements OnModuleInit, OnApplicationShutd
             with expired as (
                 select id
                 from meal.ai_operations
-                where lifecycle_state='running'
+                where contract_version in(0,1)
+                  and lifecycle_state='running'
                   and lease_until<=now()
                   and started_at<=now()-${staleAfterMinutes}*interval '1 minute'
                 order by lease_until,id
@@ -81,10 +84,35 @@ export class AiReconciliationService implements OnModuleInit, OnApplicationShutd
         `.execute(this.database.db);
         if (operations.rows.length)
             this.logger.warn(`${operations.rows.length} expired AI operation lease(s) moved to reconciliation hold`);
+        const expiredDispatches = await sql<{
+            operationId: string;
+            leaseToken: string;
+            version: number;
+        }>`select operation_id "operationId",lease_token "leaseToken",version::integer
+              from meal.ai_provider_dispatches
+             where state in('submit_claimed','read_claimed') and lease_until<=now()
+             order by lease_until,operation_id limit ${batchSize}`.execute(this.database.db);
+        let reconciledDispatches = 0;
+        for (const dispatch of expiredDispatches.rows) {
+            if (
+                await this.providerOperations.expireClaim({
+                    operationId: dispatch.operationId,
+                    expectedVersion: dispatch.version,
+                    leaseToken: dispatch.leaseToken,
+                    clock: new Date(),
+                    nextReadAt: new Date(Date.now() + intervalMs),
+                })
+            )
+                reconciledDispatches += 1;
+        }
+        if (reconciledDispatches)
+            this.logger.warn(`${reconciledDispatches} expired AI provider claim(s) moved to safe reconciliation state`);
+        const attempted = operations.rows.length + expiredDispatches.rows.length;
+        const succeeded = operations.rows.length + reconciledDispatches;
         return {
-            attempted: operations.rows.length,
-            succeeded: operations.rows.length,
-            deferred: 0,
+            attempted,
+            succeeded,
+            deferred: attempted - succeeded,
             failed: 0,
         };
     }

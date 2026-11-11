@@ -13,7 +13,7 @@ void test('schema v40 permits zero cost only for a frozen contract-v2 backend ta
     const manifest = JSON.parse(manifestText) as {
         migrations: ReadonlyArray<{ version: number; file: string; sha256: string }>;
     };
-    const entry = manifest.migrations.at(-1);
+    const entry = manifest.migrations.find((migration) => migration.version === 40);
 
     assert.match(migration, /ADD COLUMN source_snapshot_hash char\(64\)/u);
     assert.match(migration, /cost BETWEEN 0 AND 5/u);

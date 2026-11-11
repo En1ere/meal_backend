@@ -256,8 +256,8 @@ void test('prepared worker lease migration is manifest-bound and grants no delet
             sha256: createHash('sha256').update(migration).digest('hex'),
         },
     );
-    assert.equal(manifest.totalTables, 228);
-    assert.equal(manifest.foreignKeys, 522);
+    assert.equal(manifest.totalTables, 229);
+    assert.equal(manifest.foreignKeys, 523);
     assert.match(grants, /GRANT SELECT,INSERT ON meal\.worker_leases TO meal_app/);
     assert.doesNotMatch(grants, /GRANT DELETE ON meal\.worker_leases/);
 });

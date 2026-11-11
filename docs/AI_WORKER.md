@@ -1,8 +1,18 @@
 # AI worker: настройка и эксплуатация
 
-> Реализационное состояние на 9 ноября 2026 года: этот runbook описывает существующий выключенный OpenAI/Luna technical baseline. Утверждённая целевая маршрутизация Yandex и новые economy/balanced profiles описаны в [AI interaction v1](architecture/AI_INTERACTION_V1.md), но ещё не реализованы; команды ниже нельзя использовать для их условной активации.
+> Реализационное состояние на 11 ноября 2026 года: основной runbook ниже описывает существующий выключенный OpenAI/Luna legacy baseline. Provider-neutral port, schema-v41 store и internal `culinary_question/answer`/`substitution/explain` simulator paths реализованы, но Yandex adapter не подключён к worker/task routes. Команды legacy-раздела нельзя использовать для условной активации Yandex.
 
 AI-выполнение изолировано от HTTP и общего scheduler. Первичный `POST /api/v1/ai/operations` и continuation `POST /api/v1/ai/tasks/{id}/operations` атомарно проверяют доступ, резервируют действия при необходимости и возвращают `202`; отдельный контейнер `ai-worker` повторно проверяет доступ непосредственно перед OpenAI-вызовом, отправляет Background Response и обновляет canonical readback.
+
+## Подготовленный Yandex adapter — не активирован
+
+Adapter принимает только полный fail-closed набор: secret-file `YANDEX_AI_API_KEY_FILE`, точный endpoint `https://ai.api.cloud.yandex.net/v1/`, folder/service-account identity, фиксированные economy/balanced profile versions, положительный RUB budget, подтверждённый sandbox evidence для `store:false` readback и explicit enable. Key-файл без остальных полей даёт `unconfigured`; полный набор с false enable — `disabled`.
+
+Он всегда отправляет `background:true`, `store:false`, `conversation:null`, strict JSON schema и фиксированный model URI. Transport/5xx/missing ID нормализуется в `unknown_without_identity` без повторного submit; после ID разрешён только GET. Schema v41 уже хранит one-submit/readback evidence и безопасно reconciles истёкшие claims без provider-вызова. До отдельного sandbox spike и task-specific economy/eval gates adapter не добавляется в Compose, не получает production key и не обслуживает public model route.
+
+Первый economy slice использует тот же port только через `AiProviderSimulator`. Safe culinary request ограничен вопросом и 500 output tokens; unsafe boundary завершается на backend. Это внутренний acceptance path без controller, worker registration, Compose service или production egress.
+
+Public activation gate также остаётся закрытым: production Compose фиксирует `AI_V2_CULINARY_PUBLIC_ENABLED=false`. Даже при enable требуются exact Yandex runtime/profile, versioned sandbox readback, eval, legal/region и rollback evidence и положительный RUB budget; simulator или один key readiness не дают.
 
 ## Секреты и настройки
 
@@ -37,7 +47,7 @@ AI_WORKER_LEASE_SECONDS=180
 
 1. Создать token-файл с указанными owner/mode; не печатать значение в shell history.
 2. Добавить non-secret настройки и `AI_WORKER_ENABLED=true` в root-owned `deploy.env`.
-3. Выполнить обычный backend rollout. Он применит schema v40, вызовет `provision-ai-worker-runtime.sh`, поднимет `ai-worker` и дождётся healthcheck.
+3. Выполнить обычный backend rollout. Он применит schema v41, вызовет `provision-ai-worker-runtime.sh`, поднимет legacy `ai-worker` и дождётся healthcheck. Этот шаг сам по себе не подключает Yandex adapter.
 4. Проверить `docker compose ... ps ai-worker`, отсутствие host ports и сети `meal-db, meal-egress`.
 5. Выполнить первичный и continuation запросы: каждый POST должен дать `202/queued`; polling — `queued → running → succeeded`; платный интервал меняет баланс `reserved → captured`, включённое уточнение сохраняет `financialState=none`.
 

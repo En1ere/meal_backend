@@ -163,6 +163,21 @@ export const configSchema = z.object({
         .enum(['true', 'false'])
         .default('false')
         .transform((value) => value === 'true'),
+    AI_V2_CULINARY_PUBLIC_ENABLED: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
+    AI_V2_CULINARY_STORE_FALSE_READBACK_EVIDENCE: z.literal('yandex-store-false-readback-v1').optional(),
+    AI_V2_CULINARY_EVAL_EVIDENCE: z.literal('ai-culinary-eval-v1').optional(),
+    AI_V2_CULINARY_LEGAL_EVIDENCE: z.literal('ai-yandex-ru-processing-v1').optional(),
+    AI_V2_CULINARY_ROLLBACK_EVIDENCE: z.literal('ai-culinary-rollback-v1').optional(),
+    AI_V2_CULINARY_MONTHLY_BUDGET_RUB: z.preprocess(
+        (value) => (value === '' ? undefined : value),
+        z
+            .string()
+            .regex(/^\d{1,7}(?:\.\d{1,8})?$/)
+            .optional(),
+    ),
     TRUSTED_PROXY_CIDRS: z
         .string()
         .default('')
@@ -256,6 +271,22 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
     }
     if (config.AI_MONTHLY_BUDGET_USD !== undefined && aiMoneyUnits(config.AI_MONTHLY_BUDGET_USD) <= 0n)
         throw new Error('AI_MONTHLY_BUDGET_USD must be greater than zero');
+    if (
+        config.AI_V2_CULINARY_MONTHLY_BUDGET_RUB !== undefined &&
+        aiMoneyUnits(config.AI_V2_CULINARY_MONTHLY_BUDGET_RUB) <= 0n
+    )
+        throw new Error('AI_V2_CULINARY_MONTHLY_BUDGET_RUB must be greater than zero');
+    if (
+        config.AI_V2_CULINARY_PUBLIC_ENABLED &&
+        (!config.AI_V2_CULINARY_STORE_FALSE_READBACK_EVIDENCE ||
+            !config.AI_V2_CULINARY_EVAL_EVIDENCE ||
+            !config.AI_V2_CULINARY_LEGAL_EVIDENCE ||
+            !config.AI_V2_CULINARY_ROLLBACK_EVIDENCE ||
+            !config.AI_V2_CULINARY_MONTHLY_BUDGET_RUB)
+    )
+        throw new Error(
+            'AI v2 culinary public activation requires readback, eval, legal, rollback and RUB budget evidence',
+        );
     if (
         config.AI_BACKGROUND_EXECUTION_ENABLED &&
         (aiEndpointFields !== 3 || config.AI_MONTHLY_BUDGET_USD === undefined)

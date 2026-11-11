@@ -149,8 +149,10 @@ GRANT UPDATE(status,version) ON meal.stock_reservations TO meal_app;
 -- AI execution: application may reserve/capture/release quota; ledger and rules stay append-only.
 GRANT SELECT(id,user_id,family_id,quota_period_id,kind,granted,balance_projection,reserved_projection,expires_at,created_at,version)
  ON meal.ai_buckets TO meal_app;
-GRANT SELECT ON meal.ai_rule_versions,meal.ai_conversations,meal.ai_tasks,meal.ai_intervals,meal.ai_messages,meal.ai_operations TO meal_app;
+GRANT SELECT ON meal.ai_rule_versions,meal.ai_conversations,meal.ai_tasks,meal.ai_intervals,meal.ai_messages,meal.ai_operations,meal.ai_provider_dispatches TO meal_app;
 GRANT INSERT ON meal.ai_conversations,meal.ai_tasks,meal.ai_intervals,meal.ai_messages,meal.ai_ledger TO meal_app;
+GRANT INSERT(operation_id,client_request_id,profile_version,requested_model,state,estimated_cost_rub,created_at,updated_at)
+ ON meal.ai_provider_dispatches TO meal_app;
 GRANT INSERT(id,status,result_snapshot,started_at,finished_at,provider_cost,idempotency_key,interval_id,message_id,
  user_id,task_id,contract_version,command_kind,request_hash,lifecycle_state,financial_state,queued_at,next_attempt_at,
  requested_model,task_policy_version,context_manifest_version,provider_profile_version,execution_route,

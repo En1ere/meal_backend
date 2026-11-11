@@ -55,6 +55,12 @@ export interface AppConfig {
     AI_MONTHLY_BUDGET_USD?: string | undefined;
     AI_BACKGROUND_EXECUTION_ENABLED: boolean;
     AI_RECONCILIATION_ENABLED: boolean;
+    AI_V2_CULINARY_PUBLIC_ENABLED?: boolean | undefined;
+    AI_V2_CULINARY_STORE_FALSE_READBACK_EVIDENCE?: string | undefined;
+    AI_V2_CULINARY_EVAL_EVIDENCE?: string | undefined;
+    AI_V2_CULINARY_LEGAL_EVIDENCE?: string | undefined;
+    AI_V2_CULINARY_ROLLBACK_EVIDENCE?: string | undefined;
+    AI_V2_CULINARY_MONTHLY_BUDGET_RUB?: string | undefined;
     TRUSTED_PROXY_CIDRS: string[];
 }
 

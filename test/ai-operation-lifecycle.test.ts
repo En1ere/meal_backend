@@ -71,9 +71,9 @@ void test('schema v37 manifest hash and counts bind the prepared migration', () 
         foreignKeys: number;
         migrations: Array<{ version: number; file: string; sha256: string }>;
     };
-    assert.equal(manifest.domainTables, 223);
-    assert.equal(manifest.totalTables, 228);
-    assert.equal(manifest.foreignKeys, 522);
+    assert.equal(manifest.domainTables, 224);
+    assert.equal(manifest.totalTables, 229);
+    assert.equal(manifest.foreignKeys, 523);
     assert.deepEqual(
         manifest.migrations.find((candidate) => candidate.version === 37),
         {
