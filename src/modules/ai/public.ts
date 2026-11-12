@@ -58,6 +58,16 @@ export { AiV2CulinaryExecutor } from './ai-culinary-executor.js';
 export { AiV2CulinaryInternalService } from './ai-culinary-internal.service.js';
 export { AiV2SubstitutionExecutor } from './ai-substitution-executor.js';
 export { AiV2SubstitutionInternalService } from './ai-substitution-internal.service.js';
+export { AiV2StorageAdviceExecutor } from './ai-storage-advice-executor.js';
+export { AiV2StorageAdviceInternalService } from './ai-storage-advice-internal.service.js';
+export {
+    AI_V2_STORAGE_MAX_OUTPUT_TOKENS,
+    aiV2StorageTypeSchema,
+    aiV2StorageVerdictSchema,
+    storageAdviceProviderRequest,
+    validateStorageAdviceProviderResult,
+    type AiV2StorageVerdict,
+} from './ai-storage-advice.js';
 export {
     AI_V2_SUBSTITUTION_MAX_OUTPUT_TOKENS,
     aiV2SubstitutionCandidateSchema,
@@ -178,6 +188,9 @@ export {
     aiV2SubstitutionExplainResultSchema,
     aiV2SubstitutionRecoveryCodeSchema,
     aiV2SubstitutionWarningCodeSchema,
+    aiV2StorageExplainResultSchema,
+    aiV2StorageRecoveryCodeSchema,
+    aiV2StorageWarningCodeSchema,
     aiV2ContextSelectionSchema,
     aiV2BackendOperationSchema,
     aiV2FrozenPreviewSchema,
@@ -197,6 +210,7 @@ export {
     type AiV2ResultEnvelope,
     type AiV2CulinaryAnswerResult,
     type AiV2SubstitutionExplainResult,
+    type AiV2StorageExplainResult,
     type AiV2RunRequest,
     type AiV2ShoppingListFromMealPlanInput,
 } from './ai-v2.contracts.js';

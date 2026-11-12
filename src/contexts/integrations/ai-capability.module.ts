@@ -7,6 +7,8 @@ import {
     AiV2CulinaryInternalService,
     AiV2PublicActivationGate,
     AiV2ProviderOperationStore,
+    AiV2StorageAdviceExecutor,
+    AiV2StorageAdviceInternalService,
     AiV2SubstitutionExecutor,
     AiV2SubstitutionInternalService,
 } from '../../modules/ai/public.js';
@@ -31,6 +33,8 @@ import { AiProviderCapabilityModule } from './ai-provider-capability.module.js';
         AiV2CulinaryInternalService,
         AiV2SubstitutionExecutor,
         AiV2SubstitutionInternalService,
+        AiV2StorageAdviceExecutor,
+        AiV2StorageAdviceInternalService,
         AiV2PublicActivationGate,
     ],
     exports: [AiService],

@@ -1,10 +1,10 @@
 # Точка передачи проекта meal
 
-Актуально на 11 ноября 2026 года. Этот файл — стартовая точка для нового диалога после удаления предыдущей переписки. Он не содержит секретов и не разрешает provider call либо архитектурную реализацию несогласованных блоков.
+Актуально на 12 ноября 2026 года. Этот файл — стартовая точка для нового диалога после удаления предыдущей переписки. Он не содержит секретов и не разрешает provider call либо архитектурную реализацию несогласованных блоков.
 
 ## 1. Где остановились
 
-9 ноября 2026 года владелец согласовал все девять блоков: продуктовые сценарии, тарифы, backend-first routing, минимальные контракты, кэш, предварительный Yandex provider/model choice, launch-экономику, provider-neutral adapter/reconciliation, safety/eval и admin control plane. Реализованы девять совместимых срезов: runtime-neutral `ai-task-policy-v4`/v2 contracts, schema v39 frozen identity, backend-only executor со schema v40, public backend-only v2 boundary, provider-neutral port с выключенным Yandex adapter, durable provider-dispatch persistence/reconciliation schema v41, internal simulator-only `culinary_question/answer`, его fail-closed public activation boundary и internal simulator-only `substitution/candidates|explain`. Публично разрешён только cost-0 `shopping_list_generation/from_meal_plan`; Yandex adapter не подключён к task routes/worker и не может активироваться одним key. OpenAI/Luna остаётся выключенным legacy baseline.
+9 ноября 2026 года владелец согласовал все девять блоков: продуктовые сценарии, тарифы, backend-first routing, минимальные контракты, кэш, предварительный Yandex provider/model choice, launch-экономику, provider-neutral adapter/reconciliation, safety/eval и admin control plane. Реализованы десять совместимых срезов: runtime-neutral `ai-task-policy-v4`/v2 contracts, schema v39 frozen identity, backend-only executor со schema v40, public backend-only v2 boundary, provider-neutral port с выключенным Yandex adapter, durable provider-dispatch persistence/reconciliation schema v41, internal simulator-only `culinary_question/answer`, его fail-closed public activation boundary, internal simulator-only `substitution/candidates|explain` и backend-first `storage_advice/rule|explain`. Публично разрешён только cost-0 `shopping_list_generation/from_meal_plan`; Yandex adapter не подключён к task routes/worker и не может активироваться одним key. OpenAI/Luna остаётся выключенным legacy baseline.
 
 Целевая формулировка следующего этапа: подготовить AI-контур до состояния, в котором после всех согласований, реализации и проверок для controlled activation останется только безопасно добавить provider API key и выполнить ограниченный activation smoke/eval.
 
@@ -18,7 +18,7 @@
 
 | Репозиторий     | Ветка  | Зафиксированная версия/ревизия на момент handoff                     | Назначение                                                           |
 | --------------- | ------ | -------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `meal_backend`  | `main` | workspace `0.0.289`; точный SHA — `git rev-parse HEAD`               | API, PostgreSQL migrations, workers, deployment и общая документация |
+| `meal_backend`  | `main` | workspace `0.0.290`; точный SHA — `git rev-parse HEAD`               | API, PostgreSQL migrations, workers, deployment и общая документация |
 | `meal_admin`    | `main` | workspace `0.0.167`; точный SHA — `git rev-parse HEAD`               | операторская админка                                                 |
 | `meal_frontend` | `main` | workspace `0.0.51`, app `0.0.268`; точный SHA — `git rev-parse HEAD` | пользовательское приложение и design system                          |
 
@@ -133,19 +133,19 @@ Manual test sources:
 - Не раскрывать provider payload, prompt/context/result, request identity, ключи или PII в telemetry, логах и admin UI.
 - Если внешний provider/key/budget/evidence отсутствует, состояние остаётся disabled/unconfigured, а не условно успешным.
 
-Текущий статус AI-подготовки: **решения A–I согласованы; policy/contracts, schema-v39/v40 backend foundation, public backend-only v2 boundary, provider-neutral/Yandex adapter, schema-v41 persistence, internal simulator-only `culinary_question/answer`, его activation gate и `substitution/candidates|explain` реализованы без включения model runtime**. Наличие одного API key само по себе не включает provider call: нужны точные endpoint/folder/service-account/profile/budget, `store:false` evidence, явный enable и task-specific eval.
+Текущий статус AI-подготовки: **решения A–I согласованы; policy/contracts, schema-v39/v40 backend foundation, public backend-only v2 boundary, provider-neutral/Yandex adapter, schema-v41 persistence, internal simulator-only `culinary_question/answer`, его activation gate, `substitution/candidates|explain` и `storage_advice/rule|explain` реализованы без включения model runtime**. Наличие одного API key само по себе не включает provider call: нужны точные endpoint/folder/service-account/profile/budget, `store:false` evidence, явный enable и task-specific eval.
 
 ## 10. Точный checkpoint и очередь продолжения
 
-Текущий завершённый шаг: internal `substitution/candidates|explain` замкнут на backend-first simulator pipeline. Кандидаты вычисляются SQL по активному каталогу и общей категории, сохраняются как короткоживущие owner-scoped артефакты; перед economy dispatch повторно проверяются owner, expiry, версии, category и статусы обоих ингредиентов. Модель получает только два названия и необязательный короткий вопрос, не выбирает и не применяет замену. Medical/allergen/prompt-injection boundary блокируется до модели; неизвестность аллергенного статуса добавляется backend. Quota/dispatch/readback/history используют schema-v41 invariants. Public route и Yandex binding не добавлены; OpenAPI и schema БД не изменены.
+Текущий завершённый шаг: internal `storage_advice/rule|explain` замкнут на backend-first simulator pipeline. Cost-0 rule разрешает активный product → variant → ingredient, берёт только catalog `default_storage_type` и приоритетную product/variant/ingredient composition revision, а отсутствующий срок честно фиксирует как `null` с `shelf_life_unknown`/`check_product_label`. Verdict сохраняется как короткоживущий owner-scoped артефакт и перед reserve повторно проверяется по всем версиям и composition identity. Economy-модель получает только названия, backend storage type, null-срок и warning/recovery codes; результат с любым придуманным числом, сроком или температурой отклоняется. Schema-v41 quota/dispatch/readback/history переиспользованы. Public route, Yandex binding, OpenAPI и schema БД не изменены.
 
 Внешний gate текущего шага: отдельный Yandex sandbox spike должен доказать background GET/readback при `store:false`. Официальная документация указывает, что `store:false` не сохраняет response; поэтому до реального evidence `YANDEX_AI_STORE_FALSE_READBACK_VERIFIED` нельзя выставлять в deployment. `store:true` требует нового owner decision.
 
-Следующий внутренний шаг: **`storage_advice/rule|explain` через backend-first simulator-only pipeline**.
+Следующий внутренний шаг: **`ingredient_extraction/extract` через simulator-only economy pipeline**.
 
-1. `rule` должен вычислить хранение и срок только из versioned catalog/composition/domain facts без модели и с cost 0.
-2. `explain` принимает только backend verdict ID; модель получает минимальный уже проверенный verdict без профиля, истории и произвольного контекста.
-3. Food-safety, medical и unknown-composition boundary остаются backend-authoritative; модель не меняет срок/температуру и не выдаёт безопасность как факт.
-4. Переиспользовать schema-v41 dispatch, quota settlement, simulator failures и закрытую public activation boundary.
+1. Input принимает только ограниченный plain text; файлы, OCR, URL, profile/history/context и model parameters не допускаются.
+2. Result содержит только нормализованные candidate strings с bounded count/confidence/warning codes; модель не создаёт catalog entities и не применяет результат.
+3. Backend до provider удаляет control characters, блокирует prompt injection и после result повторно нормализует/дедуплицирует кандидатов.
+4. Переиспользовать schema-v41 dispatch, quota settlement и simulator failure fixtures; public route оставить закрытым.
 
-Не смешивать следующий срез с production enable, реальным ключом, `store:true`, массовым переводом legacy endpoints или deferred backlog. Checkpoint versions: backend `0.0.289`, frontend root/app `0.0.51/0.0.268`, admin `0.0.167`; точный backend SHA проверить после push через `git rev-parse HEAD`.
+Не смешивать следующий срез с production enable, реальным ключом, `store:true`, массовым переводом legacy endpoints или deferred backlog. Checkpoint versions: backend `0.0.290`, frontend root/app `0.0.51/0.0.268`, admin `0.0.167`; точный backend SHA проверить после push через `git rev-parse HEAD`.

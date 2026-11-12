@@ -1,5 +1,16 @@
 # Полная программа ручной приёмки Meal Planner
 
+## Internal storage-advice economy slice — backend 0.0.290 — 12.11.2026
+
+1. `storage_advice/rule` принимает только product ID. Product, variant и ingredient должны быть активны; rule использует SQL/catalog и не вызывает provider или AI quota.
+2. Composition выбирается детерминированно в порядке product → variant → ingredient с максимальной revision. Verdict фиксирует версии product/variant/ingredient и composition identity.
+3. Каталожный `default_storage_type` принимается только из allowlist. Отсутствующий/неизвестный тип получает `storage_type_unknown`; отсутствующая composition — `composition_unknown`.
+4. Срок хранения без подтверждённого catalog fact всегда `null`, `shelf_life_unknown` и `check_product_label`; backend и модель не придумывают дни или температуру.
+5. `storage_advice/explain` принимает только owner-scoped verdict ID. Чужой/истёкший verdict и изменение любой версии/composition/storage fact блокируются до reserve/provider.
+6. Provider request содержит только product/ingredient names, storage type, null-срок и backend warning/recovery codes; catalog IDs, versions, history, profile и context отсутствуют.
+7. Strict result с числом, днями, часами, неделями, месяцами либо температурой отклоняется. Provider warning/recovery заменяются backend-authoritative значениями verdict.
+8. Simulator использует schema-v41 dispatch и quota `reserved → captured|released|reconciliation_hold`; public controller, Yandex binding, OpenAPI и schema БД не меняются.
+
 ## Internal substitution economy slice — backend 0.0.289 — 11.11.2026
 
 1. `substitution/candidates` принимает только название ингредиента и optional recipe ID; extra fields отклоняются. Поиск exact name/alias и до пяти кандидатов одной категории выполняются SQL без provider и без AI-квоты.

@@ -18,7 +18,7 @@ const inputSchemas = {
     'substitution/candidates': z.strictObject({ ingredient: shortText, recipeId: z.uuid().optional() }),
     'substitution/explain': z.strictObject({ candidateId: z.uuid(), question: shortText.optional() }),
     'storage_advice/rule': z.strictObject({ productId: z.uuid() }),
-    'storage_advice/explain': z.strictObject({ productId: z.uuid(), verdictId: z.uuid() }),
+    'storage_advice/explain': z.strictObject({ verdictId: z.uuid() }),
     'ingredient_extraction/extract': z.strictObject({ text: z.string().trim().min(3).max(8_000) }),
     'product_classification/candidates': z.strictObject({ query: shortText }),
     'product_classification/classify': z.strictObject({ query: shortText }),
@@ -190,6 +190,21 @@ export const aiV2SubstitutionExplainResultSchema = z.strictObject({
     recoveryCode: aiV2SubstitutionRecoveryCodeSchema.nullable(),
 });
 
+export const aiV2StorageWarningCodeSchema = z.enum([
+    'shelf_life_unknown',
+    'storage_type_unknown',
+    'composition_unknown',
+]);
+
+export const aiV2StorageRecoveryCodeSchema = z.enum(['check_product_label', 'use_conservative_storage']);
+
+export const aiV2StorageExplainResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:storage_advice:explain'),
+    explanation: z.string().trim().min(1).max(1_500),
+    warningCodes: z.array(aiV2StorageWarningCodeSchema).min(1).max(3),
+    recoveryCode: aiV2StorageRecoveryCodeSchema,
+});
+
 export const aiV2BackendOperationSchema = z.strictObject({
     item: z.strictObject({
         id: z.uuid(),
@@ -234,6 +249,7 @@ export type AiV2RunRequest = z.infer<typeof aiV2RunRequestSchema>;
 export type AiV2ResultEnvelope = z.infer<typeof aiV2ResultEnvelopeSchema>;
 export type AiV2CulinaryAnswerResult = z.infer<typeof aiV2CulinaryAnswerResultSchema>;
 export type AiV2SubstitutionExplainResult = z.infer<typeof aiV2SubstitutionExplainResultSchema>;
+export type AiV2StorageExplainResult = z.infer<typeof aiV2StorageExplainResultSchema>;
 export type AiV2FrozenPreview = z.infer<typeof aiV2FrozenPreviewSchema>;
 export type AiV2ShoppingListFromMealPlanInput = z.infer<typeof aiV2ShoppingListFromMealPlanInputSchema>;
 export type AiV2BackendOperation = z.infer<typeof aiV2BackendOperationSchema>;
