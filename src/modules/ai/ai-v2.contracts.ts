@@ -205,6 +205,27 @@ export const aiV2StorageExplainResultSchema = z.strictObject({
     recoveryCode: aiV2StorageRecoveryCodeSchema,
 });
 
+export const aiV2IngredientExtractionWarningCodeSchema = z.enum([
+    'input_normalized',
+    'candidate_truncated',
+    'candidate_rejected',
+    'low_confidence',
+    'prompt_injection_detected',
+    'url_not_allowed',
+]);
+
+export const aiV2IngredientExtractionCandidateSchema = z.strictObject({
+    text: z.string().trim().min(1).max(120),
+    confidence: z.enum(['high', 'medium', 'low']),
+});
+
+export const aiV2IngredientExtractionResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:ingredient_extraction:extract'),
+    candidates: z.array(aiV2IngredientExtractionCandidateSchema).max(20),
+    warningCodes: z.array(aiV2IngredientExtractionWarningCodeSchema).max(3),
+    recoveryCode: z.enum(['review_candidates', 'provide_plain_ingredient_text']).nullable(),
+});
+
 export const aiV2BackendOperationSchema = z.strictObject({
     item: z.strictObject({
         id: z.uuid(),
@@ -250,6 +271,7 @@ export type AiV2ResultEnvelope = z.infer<typeof aiV2ResultEnvelopeSchema>;
 export type AiV2CulinaryAnswerResult = z.infer<typeof aiV2CulinaryAnswerResultSchema>;
 export type AiV2SubstitutionExplainResult = z.infer<typeof aiV2SubstitutionExplainResultSchema>;
 export type AiV2StorageExplainResult = z.infer<typeof aiV2StorageExplainResultSchema>;
+export type AiV2IngredientExtractionResult = z.infer<typeof aiV2IngredientExtractionResultSchema>;
 export type AiV2FrozenPreview = z.infer<typeof aiV2FrozenPreviewSchema>;
 export type AiV2ShoppingListFromMealPlanInput = z.infer<typeof aiV2ShoppingListFromMealPlanInputSchema>;
 export type AiV2BackendOperation = z.infer<typeof aiV2BackendOperationSchema>;

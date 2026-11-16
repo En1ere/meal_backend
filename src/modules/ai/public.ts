@@ -60,6 +60,17 @@ export { AiV2SubstitutionExecutor } from './ai-substitution-executor.js';
 export { AiV2SubstitutionInternalService } from './ai-substitution-internal.service.js';
 export { AiV2StorageAdviceExecutor } from './ai-storage-advice-executor.js';
 export { AiV2StorageAdviceInternalService } from './ai-storage-advice-internal.service.js';
+export { AiV2IngredientExtractionExecutor } from './ai-ingredient-extraction-executor.js';
+export { AiV2IngredientExtractionInternalService } from './ai-ingredient-extraction-internal.service.js';
+export {
+    AI_V2_INGREDIENT_EXTRACTION_MAX_OUTPUT_TOKENS,
+    classifyIngredientExtractionText,
+    ingredientExtractionBoundaryResult,
+    ingredientExtractionProviderRequest,
+    sanitizeIngredientExtractionText,
+    validateIngredientExtractionProviderResult,
+    type IngredientExtractionBoundary,
+} from './ai-ingredient-extraction.js';
 export {
     AI_V2_STORAGE_MAX_OUTPUT_TOKENS,
     aiV2StorageTypeSchema,
@@ -191,6 +202,9 @@ export {
     aiV2StorageExplainResultSchema,
     aiV2StorageRecoveryCodeSchema,
     aiV2StorageWarningCodeSchema,
+    aiV2IngredientExtractionCandidateSchema,
+    aiV2IngredientExtractionResultSchema,
+    aiV2IngredientExtractionWarningCodeSchema,
     aiV2ContextSelectionSchema,
     aiV2BackendOperationSchema,
     aiV2FrozenPreviewSchema,
@@ -211,6 +225,7 @@ export {
     type AiV2CulinaryAnswerResult,
     type AiV2SubstitutionExplainResult,
     type AiV2StorageExplainResult,
+    type AiV2IngredientExtractionResult,
     type AiV2RunRequest,
     type AiV2ShoppingListFromMealPlanInput,
 } from './ai-v2.contracts.js';

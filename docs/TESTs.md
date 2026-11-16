@@ -1,5 +1,16 @@
 # Полная программа ручной приёмки Meal Planner
 
+## Internal ingredient-extraction economy slice — backend 0.0.291 — 16.11.2026
+
+1. Input принимает только `{text}` длиной 3–8000 символов. File/OCR/URL/profile/history/context/model fields отклоняются strict schema или backend boundary.
+2. Backend до quota/provider применяет NFKC, удаляет control characters, нормализует whitespace и блокирует URL/prompt injection с versioned warning/recovery result.
+3. Provider request содержит только sanitized text, фиксированные инструкции, strict schema и ceiling 700 output tokens.
+4. Provider result содержит только candidate strings и bounded confidence; extra fields, invalid schema и token overflow дают failed/release.
+5. Backend повторно нормализует кандидатов, отбрасывает URL/пустые/>120 символов, удаляет case-insensitive дубли и возвращает не более 20 элементов.
+6. Warning codes отражают input normalization, rejected/truncated candidates и low confidence; recovery требует review candidates.
+7. Результат не создаёт ingredient/product/catalog rows и не применяется автоматически. История сохраняет только sanitized user text и нормализованные candidate names.
+8. Simulator использует schema-v41 quota/dispatch/readback; public controller, Yandex binding, OpenAPI и schema БД не меняются.
+
 ## Internal storage-advice economy slice — backend 0.0.290 — 12.11.2026
 
 1. `storage_advice/rule` принимает только product ID. Product, variant и ingredient должны быть активны; rule использует SQL/catalog и не вызывает provider или AI quota.
