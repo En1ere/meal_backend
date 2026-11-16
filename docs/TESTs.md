@@ -1,5 +1,16 @@
 # Полная программа ручной приёмки Meal Planner
 
+## Internal weekly recommendation backend artifact — backend 0.0.294 — 16.11.2026
+
+1. Strict input принимает только Monday `weekStartsOn` и `inventoryScope=personal|family`; arbitrary prompt, model/provider fields и дополнительные параметры отклоняются.
+2. Personal scope принадлежит пользователю. Family scope требует active membership/family и effective family capability; downgrade и выход из семьи блокируют cache readback.
+3. Ранжирование полностью выполняется backend/SQL по published versioned recipes, inventory coverage/expiry, ratings, cooking history и только несекретным `diets/goals`.
+4. Allergen preferences не читаются и не передаются; результат содержит `allergen_profile_not_applied`. Optional special-category consent recheck входит в source snapshot и инвалидирует cache при изменении.
+5. Result ограничен семью `{recipeId,revisionId,reasonCodes}`; reason codes выбираются только из allowlist, provider-generated text и score во внешний artifact не попадают.
+6. Exact cache key включает owner, personal/family scope, week и SHA-256 versioned snapshot: scope/family/membership, settings, inventory batches, recipe/revision/publication и все вычисленные ranking signals.
+7. Транзакционный advisory lock исключает параллельное создание дублей. Cache hit разрешён только для неизменившегося source hash и неистёкшего artifact.
+8. AI quota, provider port/dispatch, model, recipe/inventory writes и public controller отсутствуют. OpenAPI и schema БД не меняются.
+
 ## Internal recipe-from-stock balanced slice — backend 0.0.293 — 16.11.2026
 
 1. `select_existing` принимает только inventory scope, необязательную короткую цель и `maxResults` 1–10. URL/prompt injection в цели блокируются до сохранения snapshot.

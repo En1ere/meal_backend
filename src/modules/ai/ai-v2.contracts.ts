@@ -31,7 +31,10 @@ const inputSchemas = {
         shortlistId: z.uuid(),
         servings: z.number().int().min(1).max(20).default(2),
     }),
-    'personal_recommendation/weekly': z.strictObject({ weekStartsOn: z.iso.date() }),
+    'personal_recommendation/weekly': z.strictObject({
+        weekStartsOn: z.iso.date(),
+        inventoryScope: z.enum(['personal', 'family']).default('personal'),
+    }),
     'beverage_pairing/catalog': z.strictObject({ recipeId: z.uuid() }),
     'beverage_pairing/custom': z.strictObject({ recipeId: z.uuid(), preferences: shortText.optional() }),
     'recipe_adaptation/scale': z.strictObject({
@@ -255,6 +258,33 @@ export const aiV2RecipeFromStockResultSchema = z.strictObject({
     recoveryCode: z.literal('review_recipe'),
 });
 
+export const aiV2PersonalRecommendationReasonCodeSchema = z.enum([
+    'inventory_match',
+    'expiring_ingredients',
+    'diet_match',
+    'quick_goal',
+    'high_rating',
+    'new_recipe',
+    'variety',
+]);
+
+export const aiV2PersonalRecommendationResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:personal_recommendation:weekly'),
+    weekStartsOn: z.iso.date(),
+    inventoryScope: z.enum(['personal', 'family']),
+    algorithmVersion: z.literal('weekly-backend-v1'),
+    items: z
+        .array(
+            z.strictObject({
+                recipeId: z.uuid(),
+                revisionId: z.uuid(),
+                reasonCodes: z.array(aiV2PersonalRecommendationReasonCodeSchema).min(1).max(3),
+            }),
+        )
+        .max(7),
+    warningCodes: z.array(z.literal('allergen_profile_not_applied')).max(1),
+});
+
 export const aiV2BackendOperationSchema = z.strictObject({
     item: z.strictObject({
         id: z.uuid(),
@@ -303,6 +333,7 @@ export type AiV2StorageExplainResult = z.infer<typeof aiV2StorageExplainResultSc
 export type AiV2IngredientExtractionResult = z.infer<typeof aiV2IngredientExtractionResultSchema>;
 export type AiV2ProductClassificationResult = z.infer<typeof aiV2ProductClassificationResultSchema>;
 export type AiV2RecipeFromStockResult = z.infer<typeof aiV2RecipeFromStockResultSchema>;
+export type AiV2PersonalRecommendationResult = z.infer<typeof aiV2PersonalRecommendationResultSchema>;
 export type AiV2FrozenPreview = z.infer<typeof aiV2FrozenPreviewSchema>;
 export type AiV2ShoppingListFromMealPlanInput = z.infer<typeof aiV2ShoppingListFromMealPlanInputSchema>;
 export type AiV2BackendOperation = z.infer<typeof aiV2BackendOperationSchema>;

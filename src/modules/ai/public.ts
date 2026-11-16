@@ -62,6 +62,15 @@ export { AiV2StorageAdviceExecutor } from './ai-storage-advice-executor.js';
 export { AiV2StorageAdviceInternalService } from './ai-storage-advice-internal.service.js';
 export { AiV2IngredientExtractionExecutor } from './ai-ingredient-extraction-executor.js';
 export { AiV2IngredientExtractionInternalService } from './ai-ingredient-extraction-internal.service.js';
+export { AiV2PersonalRecommendationInternalService } from './ai-personal-recommendation-internal.service.js';
+export {
+    AI_V2_WEEKLY_RECOMMENDATION_LIMIT,
+    aiV2WeeklyRecommendationCandidateSchema,
+    assertWeeklyRecommendationMonday,
+    rankWeeklyRecommendations,
+    type AiV2WeeklyRecommendationCandidate,
+    type AiV2WeeklyRecommendationPreferences,
+} from './ai-personal-recommendation.js';
 export { AiV2ProductClassificationExecutor } from './ai-product-classification-executor.js';
 export { AiV2ProductClassificationInternalService } from './ai-product-classification-internal.service.js';
 export { AiV2RecipeFromStockExecutor } from './ai-recipe-from-stock-executor.js';
@@ -228,6 +237,8 @@ export {
     aiV2IngredientExtractionResultSchema,
     aiV2IngredientExtractionWarningCodeSchema,
     aiV2ProductClassificationResultSchema,
+    aiV2PersonalRecommendationReasonCodeSchema,
+    aiV2PersonalRecommendationResultSchema,
     aiV2RecipeFromStockIngredientSchema,
     aiV2RecipeFromStockResultSchema,
     aiV2ContextSelectionSchema,
@@ -252,6 +263,7 @@ export {
     type AiV2StorageExplainResult,
     type AiV2IngredientExtractionResult,
     type AiV2ProductClassificationResult,
+    type AiV2PersonalRecommendationResult,
     type AiV2RecipeFromStockResult,
     type AiV2RunRequest,
     type AiV2ShoppingListFromMealPlanInput,

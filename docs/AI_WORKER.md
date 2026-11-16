@@ -1,6 +1,6 @@
 # AI worker: настройка и эксплуатация
 
-> Реализационное состояние на 16 ноября 2026 года: основной runbook ниже описывает существующий выключенный OpenAI/Luna legacy baseline. Provider-neutral port, schema-v41 store и internal `culinary_question/answer`/`substitution/explain`/`storage_advice/explain`/`ingredient_extraction/extract`/`product_classification/classify`/`recipe_from_stock/generate_new` simulator paths реализованы, но Yandex adapter не подключён к worker/task routes. Команды legacy-раздела нельзя использовать для условной активации Yandex.
+> Реализационное состояние на 16 ноября 2026 года: основной runbook ниже описывает существующий выключенный OpenAI/Luna legacy baseline. Provider-neutral port, schema-v41 store и internal `culinary_question/answer`/`substitution/explain`/`storage_advice/explain`/`ingredient_extraction/extract`/`product_classification/classify`/`recipe_from_stock/generate_new` simulator paths, а также providerless `personal_recommendation/weekly`, реализованы, но Yandex adapter не подключён к worker/task routes. Команды legacy-раздела нельзя использовать для условной активации Yandex.
 
 AI-выполнение изолировано от HTTP и общего scheduler. Первичный `POST /api/v1/ai/operations` и continuation `POST /api/v1/ai/tasks/{id}/operations` атомарно проверяют доступ, резервируют действия при необходимости и возвращают `202`; отдельный контейнер `ai-worker` повторно проверяет доступ непосредственно перед OpenAI-вызовом, отправляет Background Response и обновляет canonical readback.
 
