@@ -166,7 +166,7 @@ interface AiProviderPort {
 }
 ```
 
-Реализационный статус на 16 ноября 2026 года: neutral types/strict schemas, dispatch guard и независимые user-quota/provider-budget effects реализованы. Schema v41 сохраняет один submit claim, immutable provider ID, normalized read outcomes, conservative RUB hold и CAS/lease fencing; expiry reconciliation не вызывает provider. Internal `culinary_question/answer`, backend-first `substitution/candidates|explain`, `storage_advice/rule|explain` и minimal `ingredient_extraction/extract` проходят strict safety/minimal-contract path только через simulator, включая quota capture/release/hold и локальную историю. Изолированный Yandex adapter нормализует HTTP/transport outcomes, не повторяет submit и после accepted допускает только readback, но ещё не подключён к model task routes.
+Реализационный статус на 16 ноября 2026 года: neutral types/strict schemas, dispatch guard и независимые user-quota/provider-budget effects реализованы. Schema v41 сохраняет один submit claim, immutable provider ID, normalized read outcomes, conservative RUB hold и CAS/lease fencing; expiry reconciliation не вызывает provider. Internal `culinary_question/answer`, backend-first `substitution/candidates|explain`, `storage_advice/rule|explain`, minimal `ingredient_extraction/extract` и `product_classification/candidates|classify` проходят strict safety/minimal-contract path только через simulator, включая quota capture/release/hold и локальную историю. Изолированный Yandex adapter нормализует HTTP/transport outcomes, не повторяет submit и после accepted допускает только readback, но ещё не подключён к model task routes.
 
 ## 6. Provider profiles и routing
 

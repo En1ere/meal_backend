@@ -4,7 +4,7 @@
 
 ## 1. Где остановились
 
-9 ноября 2026 года владелец согласовал все девять блоков: продуктовые сценарии, тарифы, backend-first routing, минимальные контракты, кэш, предварительный Yandex provider/model choice, launch-экономику, provider-neutral adapter/reconciliation, safety/eval и admin control plane. Реализованы одиннадцать совместимых срезов: runtime-neutral `ai-task-policy-v4`/v2 contracts, schema v39 frozen identity, backend-only executor со schema v40, public backend-only v2 boundary, provider-neutral port с выключенным Yandex adapter, durable provider-dispatch persistence/reconciliation schema v41, internal simulator-only `culinary_question/answer`, его fail-closed public activation boundary, internal simulator-only `substitution/candidates|explain`, backend-first `storage_advice/rule|explain` и minimal `ingredient_extraction/extract`. Публично разрешён только cost-0 `shopping_list_generation/from_meal_plan`; Yandex adapter не подключён к task routes/worker и не может активироваться одним key. OpenAI/Luna остаётся выключенным legacy baseline.
+9 ноября 2026 года владелец согласовал все девять блоков: продуктовые сценарии, тарифы, backend-first routing, минимальные контракты, кэш, предварительный Yandex provider/model choice, launch-экономику, provider-neutral adapter/reconciliation, safety/eval и admin control plane. Реализованы двенадцать совместимых срезов: runtime-neutral `ai-task-policy-v4`/v2 contracts, schema v39 frozen identity, backend-only executor со schema v40, public backend-only v2 boundary, provider-neutral port с выключенным Yandex adapter, durable provider-dispatch persistence/reconciliation schema v41, internal simulator-only `culinary_question/answer`, его fail-closed public activation boundary, internal simulator-only `substitution/candidates|explain`, backend-first `storage_advice/rule|explain`, minimal `ingredient_extraction/extract` и backend-first `product_classification/candidates|classify`. Публично разрешён только cost-0 `shopping_list_generation/from_meal_plan`; Yandex adapter не подключён к task routes/worker и не может активироваться одним key. OpenAI/Luna остаётся выключенным legacy baseline.
 
 Целевая формулировка следующего этапа: подготовить AI-контур до состояния, в котором после всех согласований, реализации и проверок для controlled activation останется только безопасно добавить provider API key и выполнить ограниченный activation smoke/eval.
 
@@ -18,7 +18,7 @@
 
 | Репозиторий     | Ветка  | Зафиксированная версия/ревизия на момент handoff                     | Назначение                                                           |
 | --------------- | ------ | -------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `meal_backend`  | `main` | workspace `0.0.291`; точный SHA — `git rev-parse HEAD`               | API, PostgreSQL migrations, workers, deployment и общая документация |
+| `meal_backend`  | `main` | workspace `0.0.292`; точный SHA — `git rev-parse HEAD`               | API, PostgreSQL migrations, workers, deployment и общая документация |
 | `meal_admin`    | `main` | workspace `0.0.167`; точный SHA — `git rev-parse HEAD`               | операторская админка                                                 |
 | `meal_frontend` | `main` | workspace `0.0.51`, app `0.0.268`; точный SHA — `git rev-parse HEAD` | пользовательское приложение и design system                          |
 
@@ -133,19 +133,19 @@ Manual test sources:
 - Не раскрывать provider payload, prompt/context/result, request identity, ключи или PII в telemetry, логах и admin UI.
 - Если внешний provider/key/budget/evidence отсутствует, состояние остаётся disabled/unconfigured, а не условно успешным.
 
-Текущий статус AI-подготовки: **решения A–I согласованы; policy/contracts, schema-v39/v40 backend foundation, public backend-only v2 boundary, provider-neutral/Yandex adapter, schema-v41 persistence, internal simulator-only `culinary_question/answer`, его activation gate, `substitution/candidates|explain`, `storage_advice/rule|explain` и `ingredient_extraction/extract` реализованы без включения model runtime**. Наличие одного API key само по себе не включает provider call: нужны точные endpoint/folder/service-account/profile/budget, `store:false` evidence, явный enable и task-specific eval.
+Текущий статус AI-подготовки: **решения A–I согласованы; policy/contracts, schema-v39/v40 backend foundation, public backend-only v2 boundary, provider-neutral/Yandex adapter, schema-v41 persistence, internal simulator-only `culinary_question/answer`, его activation gate, `substitution/candidates|explain`, `storage_advice/rule|explain`, `ingredient_extraction/extract` и `product_classification/candidates|classify` реализованы без включения model runtime**. Наличие одного API key само по себе не включает provider call: нужны точные endpoint/folder/service-account/profile/budget, `store:false` evidence, явный enable и task-specific eval.
 
 ## 10. Точный checkpoint и очередь продолжения
 
-Текущий завершённый шаг: internal `ingredient_extraction/extract` замкнут на minimal simulator-only economy pipeline. Input принимает только plain text до 8000 символов; backend выполняет NFKC/control-character/whitespace normalization и до reserve блокирует URL и prompt injection. Provider получает только sanitized text и strict schema, максимум 700 output tokens. Ответ повторно нормализуется backend, URL/слишком длинные кандидаты отбрасываются, case-insensitive дубли удаляются, выдача ограничивается 20 строками с bounded confidence/warning/recovery. Результат является только preview для подтверждения и не создаёт catalog/domain entities. Schema-v41 quota/dispatch/readback/history переиспользованы. Public route, Yandex binding, OpenAPI и schema БД не изменены.
+Текущий завершённый шаг: internal `product_classification/candidates|classify` замкнут на backend-first simulator pipeline. Cost-0 candidates выполняет SQL exact name/alias → prefix → contains по активным ingredients и фиксирует owner-scoped shortlist до восьми versioned ingredient/category refs. Пустой shortlist и единственное exact совпадение завершаются backend без quota/provider. Только неоднозначный/fuzzy shortlist попадает в economy: provider получает query и короткие ordinal key/name без UUID/versions, максимум 250 output tokens, и может выбрать только один frozen key либо null. Backend повторно проверяет owner/expiry/ingredient/category versions и преобразует key в catalog ID; catalog writes отсутствуют. Schema-v41 quota/dispatch/readback/history переиспользованы. Public route, Yandex binding, OpenAPI и schema БД не изменены.
 
 Внешний gate текущего шага: отдельный Yandex sandbox spike должен доказать background GET/readback при `store:false`. Официальная документация указывает, что `store:false` не сохраняет response; поэтому до реального evidence `YANDEX_AI_STORE_FALSE_READBACK_VERIFIED` нельзя выставлять в deployment. `store:true` требует нового owner decision.
 
-Следующий внутренний шаг: **`product_classification/candidates|classify` через backend-first simulator-only pipeline**.
+Следующий внутренний шаг: **`recipe_from_stock/select_existing|generate_new` через backend-first shortlist и balanced simulator pipeline**.
 
-1. `candidates` выполняет SQL-поиск по catalog name/aliases и возвращает короткоживущий owner-scoped shortlist без модели и cost 0.
-2. `classify` принимает только shortlist ID; provider получает минимальные query/candidate names и не создаёт/не изменяет catalog entities.
-3. Backend до reserve повторно проверяет ownership, expiry и версии кандидатов, а после provider принимает только один ID из frozen shortlist либо no-match.
+1. `select_existing` использует существующую inventory/recipe SQL-доступность, возвращает versioned shortlist и всегда остаётся cost-0 backend route.
+2. `generate_new` разрешён только если backend shortlist не покрывает запрос; provider получает минимальный агрегированный stock snapshot без batch/location/history IDs.
+3. Balanced result является только recipe preview с bounded ingredients/steps; применение требует отдельной подтверждаемой доменной команды и повторной проверки stock/catalog versions.
 4. Переиспользовать schema-v41 dispatch, quota settlement и simulator failures; public route оставить закрытым.
 
-Не смешивать следующий срез с production enable, реальным ключом, `store:true`, массовым переводом legacy endpoints или deferred backlog. Checkpoint versions: backend `0.0.291`, frontend root/app `0.0.51/0.0.268`, admin `0.0.167`; точный backend SHA проверить после push через `git rev-parse HEAD`.
+Не смешивать следующий срез с production enable, реальным ключом, `store:true`, массовым переводом legacy endpoints или deferred backlog. Checkpoint versions: backend `0.0.292`, frontend root/app `0.0.51/0.0.268`, admin `0.0.167`; точный backend SHA проверить после push через `git rev-parse HEAD`.

@@ -1,5 +1,16 @@
 # Полная программа ручной приёмки Meal Planner
 
+## Internal product-classification economy slice — backend 0.0.292 — 16.11.2026
+
+1. `candidates` принимает только короткий query, нормализует его и блокирует URL/prompt injection. SQL ищет только active/approved/published ingredients по name/aliases.
+2. Shortlist ранжируется exact name, exact alias, name/alias prefix, contains; максимум восемь candidates с frozen ingredient/category versions и десятиминутным owner scope.
+3. Empty shortlist возвращает backend `no_match`, а единственное exact совпадение — backend high-confidence result без quota/provider.
+4. `classify` model path принимает только shortlist ID. Чужой/истёкший ID и изменение ingredient/category version блокируются до reserve/provider.
+5. Provider видит только query и ordinal key/name; UUID, versions, history/profile/context отсутствуют. Ceiling — 250 output tokens.
+6. Provider может вернуть только frozen key либо null. Неизвестный key, extra fields, invalid schema и overflow дают failed/release.
+7. Result содержит только backend-resolved catalog ID/name, confidence и review/refine recovery; catalog rows не создаются и не изменяются.
+8. Simulator использует schema-v41 quota/dispatch/readback; public controller, Yandex binding, OpenAPI и schema БД не меняются.
+
 ## Internal ingredient-extraction economy slice — backend 0.0.291 — 16.11.2026
 
 1. Input принимает только `{text}` длиной 3–8000 символов. File/OCR/URL/profile/history/context/model fields отклоняются strict schema или backend boundary.

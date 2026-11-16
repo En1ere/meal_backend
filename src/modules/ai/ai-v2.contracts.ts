@@ -21,7 +21,7 @@ const inputSchemas = {
     'storage_advice/explain': z.strictObject({ verdictId: z.uuid() }),
     'ingredient_extraction/extract': z.strictObject({ text: z.string().trim().min(3).max(8_000) }),
     'product_classification/candidates': z.strictObject({ query: shortText }),
-    'product_classification/classify': z.strictObject({ query: shortText }),
+    'product_classification/classify': z.strictObject({ shortlistId: z.uuid() }),
     'recipe_from_stock/select_existing': z.strictObject({
         inventoryScope: z.enum(['personal', 'family']),
         maxResults: z.number().int().min(1).max(10).default(5),
@@ -226,6 +226,15 @@ export const aiV2IngredientExtractionResultSchema = z.strictObject({
     recoveryCode: z.enum(['review_candidates', 'provide_plain_ingredient_text']).nullable(),
 });
 
+export const aiV2ProductClassificationResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:product_classification:classify'),
+    selectedCandidateId: z.uuid().nullable(),
+    selectedName: z.string().trim().min(1).max(200).nullable(),
+    confidence: z.enum(['high', 'medium', 'low']),
+    warningCodes: z.array(z.enum(['no_match', 'low_confidence'])).max(1),
+    recoveryCode: z.enum(['review_selection', 'refine_query']),
+});
+
 export const aiV2BackendOperationSchema = z.strictObject({
     item: z.strictObject({
         id: z.uuid(),
@@ -272,6 +281,7 @@ export type AiV2CulinaryAnswerResult = z.infer<typeof aiV2CulinaryAnswerResultSc
 export type AiV2SubstitutionExplainResult = z.infer<typeof aiV2SubstitutionExplainResultSchema>;
 export type AiV2StorageExplainResult = z.infer<typeof aiV2StorageExplainResultSchema>;
 export type AiV2IngredientExtractionResult = z.infer<typeof aiV2IngredientExtractionResultSchema>;
+export type AiV2ProductClassificationResult = z.infer<typeof aiV2ProductClassificationResultSchema>;
 export type AiV2FrozenPreview = z.infer<typeof aiV2FrozenPreviewSchema>;
 export type AiV2ShoppingListFromMealPlanInput = z.infer<typeof aiV2ShoppingListFromMealPlanInputSchema>;
 export type AiV2BackendOperation = z.infer<typeof aiV2BackendOperationSchema>;

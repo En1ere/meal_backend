@@ -62,6 +62,16 @@ export { AiV2StorageAdviceExecutor } from './ai-storage-advice-executor.js';
 export { AiV2StorageAdviceInternalService } from './ai-storage-advice-internal.service.js';
 export { AiV2IngredientExtractionExecutor } from './ai-ingredient-extraction-executor.js';
 export { AiV2IngredientExtractionInternalService } from './ai-ingredient-extraction-internal.service.js';
+export { AiV2ProductClassificationExecutor } from './ai-product-classification-executor.js';
+export { AiV2ProductClassificationInternalService } from './ai-product-classification-internal.service.js';
+export {
+    AI_V2_PRODUCT_CLASSIFICATION_MAX_OUTPUT_TOKENS,
+    aiV2ProductClassificationCandidateSchema,
+    aiV2ProductClassificationShortlistSchema,
+    productClassificationProviderRequest,
+    validateProductClassificationProviderResult,
+    type AiV2ProductClassificationShortlist,
+} from './ai-product-classification.js';
 export {
     AI_V2_INGREDIENT_EXTRACTION_MAX_OUTPUT_TOKENS,
     classifyIngredientExtractionText,
@@ -205,6 +215,7 @@ export {
     aiV2IngredientExtractionCandidateSchema,
     aiV2IngredientExtractionResultSchema,
     aiV2IngredientExtractionWarningCodeSchema,
+    aiV2ProductClassificationResultSchema,
     aiV2ContextSelectionSchema,
     aiV2BackendOperationSchema,
     aiV2FrozenPreviewSchema,
@@ -226,6 +237,7 @@ export {
     type AiV2SubstitutionExplainResult,
     type AiV2StorageExplainResult,
     type AiV2IngredientExtractionResult,
+    type AiV2ProductClassificationResult,
     type AiV2RunRequest,
     type AiV2ShoppingListFromMealPlanInput,
 } from './ai-v2.contracts.js';
