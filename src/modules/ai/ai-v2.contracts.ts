@@ -24,12 +24,12 @@ const inputSchemas = {
     'product_classification/classify': z.strictObject({ shortlistId: z.uuid() }),
     'recipe_from_stock/select_existing': z.strictObject({
         inventoryScope: z.enum(['personal', 'family']),
+        goal: shortText.optional(),
         maxResults: z.number().int().min(1).max(10).default(5),
     }),
     'recipe_from_stock/generate_new': z.strictObject({
-        inventoryScope: z.enum(['personal', 'family']),
-        servings: z.number().int().min(1).max(20).optional(),
-        goal: shortText.optional(),
+        shortlistId: z.uuid(),
+        servings: z.number().int().min(1).max(20).default(2),
     }),
     'personal_recommendation/weekly': z.strictObject({ weekStartsOn: z.iso.date() }),
     'beverage_pairing/catalog': z.strictObject({ recipeId: z.uuid() }),
@@ -235,6 +235,26 @@ export const aiV2ProductClassificationResultSchema = z.strictObject({
     recoveryCode: z.enum(['review_selection', 'refine_query']),
 });
 
+export const aiV2RecipeFromStockIngredientSchema = z.strictObject({
+    stockKey: z.number().int().min(1).max(40),
+    name: z.string().trim().min(1).max(160),
+    quantity: z.number().positive().max(1_000_000),
+    unit: z.string().trim().min(1).max(20).nullable(),
+});
+
+export const aiV2RecipeFromStockResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:recipe_from_stock:generate_new'),
+    title: z.string().trim().min(1).max(160),
+    servings: z.number().int().min(1).max(20),
+    ingredients: z.array(aiV2RecipeFromStockIngredientSchema).min(1).max(16),
+    steps: z.array(z.string().trim().min(1).max(500)).min(1).max(10),
+    warningCodes: z
+        .array(z.enum(['allergen_review_required', 'stock_quantity_unknown']))
+        .min(1)
+        .max(2),
+    recoveryCode: z.literal('review_recipe'),
+});
+
 export const aiV2BackendOperationSchema = z.strictObject({
     item: z.strictObject({
         id: z.uuid(),
@@ -282,6 +302,7 @@ export type AiV2SubstitutionExplainResult = z.infer<typeof aiV2SubstitutionExpla
 export type AiV2StorageExplainResult = z.infer<typeof aiV2StorageExplainResultSchema>;
 export type AiV2IngredientExtractionResult = z.infer<typeof aiV2IngredientExtractionResultSchema>;
 export type AiV2ProductClassificationResult = z.infer<typeof aiV2ProductClassificationResultSchema>;
+export type AiV2RecipeFromStockResult = z.infer<typeof aiV2RecipeFromStockResultSchema>;
 export type AiV2FrozenPreview = z.infer<typeof aiV2FrozenPreviewSchema>;
 export type AiV2ShoppingListFromMealPlanInput = z.infer<typeof aiV2ShoppingListFromMealPlanInputSchema>;
 export type AiV2BackendOperation = z.infer<typeof aiV2BackendOperationSchema>;

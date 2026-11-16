@@ -64,6 +64,18 @@ export { AiV2IngredientExtractionExecutor } from './ai-ingredient-extraction-exe
 export { AiV2IngredientExtractionInternalService } from './ai-ingredient-extraction-internal.service.js';
 export { AiV2ProductClassificationExecutor } from './ai-product-classification-executor.js';
 export { AiV2ProductClassificationInternalService } from './ai-product-classification-internal.service.js';
+export { AiV2RecipeFromStockExecutor } from './ai-recipe-from-stock-executor.js';
+export { AiV2RecipeFromStockInternalService } from './ai-recipe-from-stock-internal.service.js';
+export {
+    AI_V2_RECIPE_FROM_STOCK_MAX_OUTPUT_TOKENS,
+    aiV2RecipeCandidateSchema,
+    aiV2RecipeFromStockShortlistSchema,
+    aiV2RecipeStockItemSchema,
+    aiV2RecipeStockRefSchema,
+    recipeFromStockProviderRequest,
+    validateRecipeFromStockProviderResult,
+    type AiV2RecipeFromStockShortlist,
+} from './ai-recipe-from-stock.js';
 export {
     AI_V2_PRODUCT_CLASSIFICATION_MAX_OUTPUT_TOKENS,
     aiV2ProductClassificationCandidateSchema,
@@ -216,6 +228,8 @@ export {
     aiV2IngredientExtractionResultSchema,
     aiV2IngredientExtractionWarningCodeSchema,
     aiV2ProductClassificationResultSchema,
+    aiV2RecipeFromStockIngredientSchema,
+    aiV2RecipeFromStockResultSchema,
     aiV2ContextSelectionSchema,
     aiV2BackendOperationSchema,
     aiV2FrozenPreviewSchema,
@@ -238,6 +252,7 @@ export {
     type AiV2StorageExplainResult,
     type AiV2IngredientExtractionResult,
     type AiV2ProductClassificationResult,
+    type AiV2RecipeFromStockResult,
     type AiV2RunRequest,
     type AiV2ShoppingListFromMealPlanInput,
 } from './ai-v2.contracts.js';

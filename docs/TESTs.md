@@ -1,5 +1,17 @@
 # Полная программа ручной приёмки Meal Planner
 
+## Internal recipe-from-stock balanced slice — backend 0.0.293 — 16.11.2026
+
+1. `select_existing` принимает только inventory scope, необязательную короткую цель и `maxResults` 1–10. URL/prompt injection в цели блокируются до сохранения snapshot.
+2. Personal scope принадлежит пользователю; family scope требует активную membership, активную family и effective family capability. Sanction/account guards выполняются внутри транзакции.
+3. SQL использует только опубликованные актуальные recipe revisions, считает required/matched ingredients по активным inventory batches и ранжирует полное покрытие выше частичного. Маршрут cost 0 и не вызывает provider/quota.
+4. Shortlist фиксирует recipe/revision, stock batch и ingredient versions. Перед generation повторно проверяются owner, expiry, scope, batch count/versions, catalog versions и публикации.
+5. `generate_new` принимает только `shortlistId` и 1–20 порций. Если SQL shortlist содержит полностью покрытый рецепт или в запасах нет подходящих позиций, provider call запрещён.
+6. Balanced provider получает максимум 40 агрегированных `{key,name,quantity,unit}` без batch/location/history/scope/catalog IDs. Output ограничен 1200 tokens, 16 stock ingredients и 10 steps.
+7. Backend разрешает только уникальные frozen stock keys, отклоняет неизвестные/повторные keys и количество выше известного остатка, добавляет обязательный allergen review warning.
+8. Результат является только recipe preview: recipes, recipe revisions, inventory movements и reservations не создаются. Применение требует отдельного будущего confirm-контракта с повторной проверкой версий.
+9. Reserve списывает 2 AI-действия и держит provider ceiling 6 ₽ через schema-v41 dispatch/readback. Public controller, Yandex binding, OpenAPI и schema БД не меняются.
+
 ## Internal product-classification economy slice — backend 0.0.292 — 16.11.2026
 
 1. `candidates` принимает только короткий query, нормализует его и блокирует URL/prompt injection. SQL ищет только active/approved/published ingredients по name/aliases.
