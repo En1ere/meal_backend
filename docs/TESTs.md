@@ -1,5 +1,16 @@
 # Полная программа ручной приёмки Meal Planner
 
+## Internal registry-analysis economy slice — backend 0.0.297 — 18.11.2026
+
+1. `facts` принимает только короткий query, нормализует его и до работы с данными блокирует URL, prompt injection и запросы вне кулинарной области.
+2. Backend использует только личный inventory scope текущего пользователя и фиксирует owner, scope ID/version и дату по часовому поясу `Europe/Moscow`.
+3. SQL считает ровно семь allowlisted aggregates: active batches, distinct items, expired, expiring within seven days, unknown quantity, unknown expiry и opened batches.
+4. Количества с разными units не суммируются; provider не участвует в вычислении числовых фактов.
+5. Frozen source hash включает scope ID/version, Moscow date и упорядоченные ID/version всех active batches. Более 5000 batches блокируют сценарий fail closed.
+6. `explain` принимает только owner-scoped `factsId` и optional safe question; expiry, scope version, полный source hash и exact facts повторно проверяются до reserve.
+7. Economy provider получает только query, семь aggregate key/value/unit, warning codes и optional question без raw rows, entity IDs, history/profile. Output ограничен 600 tokens; explanation не может содержать цифры или записанные словами числа, а referenced fact keys должны быть уникальны и входить в frozen allowlist.
+8. Model path списывает одно AI-действие, держит ceiling 1 ₽ и использует schema-v41 dispatch/readback/history. Result сохраняет исходные backend facts/warnings; inventory writes, public controller, Yandex binding, OpenAPI и schema БД не меняются.
+
 ## Internal recipe-adaptation balanced slice — backend 0.0.296 — 18.11.2026
 
 1. `scale` принимает только exact `recipeId`, current published `revisionId` и target servings 1–50; extra/model/provider fields отклоняются.

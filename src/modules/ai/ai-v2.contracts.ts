@@ -334,6 +334,44 @@ export const aiV2RecipeAdaptationResultSchema = z.strictObject({
     recoveryCode: z.literal('review_recipe'),
 });
 
+export const aiV2RegistryFactKeySchema = z.enum([
+    'active_batches',
+    'distinct_items',
+    'expired_batches',
+    'expiring_7d_batches',
+    'unknown_quantity_batches',
+    'unknown_expiry_batches',
+    'opened_batches',
+]);
+
+export const aiV2RegistryFactSchema = z.strictObject({
+    key: aiV2RegistryFactKeySchema,
+    value: z.number().int().nonnegative(),
+    unit: z.enum(['batches', 'items']),
+});
+
+export const aiV2RegistryFactsResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:registry_analysis:facts'),
+    factsId: z.uuid(),
+    scope: z.literal('personal'),
+    asOfDate: z.iso.date(),
+    facts: z.array(aiV2RegistryFactSchema).length(7),
+    warningCodes: z
+        .array(z.enum(['expired_items_present', 'unknown_quantity_present', 'unknown_expiry_present']))
+        .max(3),
+});
+
+export const aiV2RegistryExplainResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:registry_analysis:explain'),
+    facts: z.array(aiV2RegistryFactSchema).length(7),
+    explanation: z.string().trim().min(1).max(800),
+    referencedFactKeys: z.array(aiV2RegistryFactKeySchema).min(1).max(7),
+    warningCodes: z
+        .array(z.enum(['expired_items_present', 'unknown_quantity_present', 'unknown_expiry_present']))
+        .max(3),
+    recoveryCode: z.literal('review_registry'),
+});
+
 export const aiV2BackendOperationSchema = z.strictObject({
     item: z.strictObject({
         id: z.uuid(),
@@ -386,6 +424,9 @@ export type AiV2PersonalRecommendationResult = z.infer<typeof aiV2PersonalRecomm
 export type AiV2BeveragePairingResult = z.infer<typeof aiV2BeveragePairingResultSchema>;
 export type AiV2RecipeAdaptationResult = z.infer<typeof aiV2RecipeAdaptationResultSchema>;
 export type AiV2RecipeScaleResult = z.infer<typeof aiV2RecipeScaleResultSchema>;
+export type AiV2RegistryFact = z.infer<typeof aiV2RegistryFactSchema>;
+export type AiV2RegistryFactsResult = z.infer<typeof aiV2RegistryFactsResultSchema>;
+export type AiV2RegistryExplainResult = z.infer<typeof aiV2RegistryExplainResultSchema>;
 export type AiV2FrozenPreview = z.infer<typeof aiV2FrozenPreviewSchema>;
 export type AiV2ShoppingListFromMealPlanInput = z.infer<typeof aiV2ShoppingListFromMealPlanInputSchema>;
 export type AiV2BackendOperation = z.infer<typeof aiV2BackendOperationSchema>;

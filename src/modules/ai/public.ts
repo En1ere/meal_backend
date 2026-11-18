@@ -80,6 +80,16 @@ export {
     validateRecipeAdaptationProviderResult,
     type AiV2RecipeAdaptationSnapshot,
 } from './ai-recipe-adaptation.js';
+export { AiV2RegistryAnalysisExecutor } from './ai-registry-analysis-executor.js';
+export { AiV2RegistryAnalysisInternalService } from './ai-registry-analysis-internal.service.js';
+export {
+    AI_V2_REGISTRY_ANALYSIS_MAX_OUTPUT_TOKENS,
+    aiV2RegistryFactsSnapshotSchema,
+    registryAnalysisProviderRequest,
+    registryWarningCodes,
+    validateRegistryAnalysisProviderResult,
+    type AiV2RegistryFactsSnapshot,
+} from './ai-registry-analysis.js';
 export { AiV2SubstitutionExecutor } from './ai-substitution-executor.js';
 export { AiV2SubstitutionInternalService } from './ai-substitution-internal.service.js';
 export { AiV2StorageAdviceExecutor } from './ai-storage-advice-executor.js';
@@ -253,6 +263,10 @@ export {
     aiV2RecipeAdaptationIngredientSchema,
     aiV2RecipeAdaptationResultSchema,
     aiV2RecipeScaleResultSchema,
+    aiV2RegistryExplainResultSchema,
+    aiV2RegistryFactKeySchema,
+    aiV2RegistryFactSchema,
+    aiV2RegistryFactsResultSchema,
     aiV2CulinaryRecoveryCodeSchema,
     aiV2CulinaryWarningCodeSchema,
     aiV2SubstitutionExplainResultSchema,
@@ -290,6 +304,9 @@ export {
     type AiV2BeveragePairingResult,
     type AiV2RecipeAdaptationResult,
     type AiV2RecipeScaleResult,
+    type AiV2RegistryExplainResult,
+    type AiV2RegistryFact,
+    type AiV2RegistryFactsResult,
     type AiV2SubstitutionExplainResult,
     type AiV2StorageExplainResult,
     type AiV2IngredientExtractionResult,
