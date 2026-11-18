@@ -36,7 +36,7 @@ const inputSchemas = {
         inventoryScope: z.enum(['personal', 'family']).default('personal'),
     }),
     'beverage_pairing/catalog': z.strictObject({ recipeId: z.uuid() }),
-    'beverage_pairing/custom': z.strictObject({ recipeId: z.uuid(), preferences: shortText.optional() }),
+    'beverage_pairing/custom': z.strictObject({ shortlistId: z.uuid(), preferences: shortText.optional() }),
     'recipe_adaptation/scale': z.strictObject({
         recipeId: z.uuid(),
         servings: z.number().int().min(1).max(50),
@@ -285,6 +285,15 @@ export const aiV2PersonalRecommendationResultSchema = z.strictObject({
     warningCodes: z.array(z.literal('allergen_profile_not_applied')).max(1),
 });
 
+export const aiV2BeveragePairingResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:beverage_pairing:custom'),
+    selectedCandidateId: z.uuid().nullable(),
+    selectedName: z.string().trim().min(1).max(160).nullable(),
+    explanation: z.string().trim().min(1).max(800).nullable(),
+    warningCodes: z.array(z.enum(['no_match', 'alcohol_mode_disabled'])).max(1),
+    recoveryCode: z.enum(['review_pairing', 'refine_preferences']),
+});
+
 export const aiV2BackendOperationSchema = z.strictObject({
     item: z.strictObject({
         id: z.uuid(),
@@ -334,6 +343,7 @@ export type AiV2IngredientExtractionResult = z.infer<typeof aiV2IngredientExtrac
 export type AiV2ProductClassificationResult = z.infer<typeof aiV2ProductClassificationResultSchema>;
 export type AiV2RecipeFromStockResult = z.infer<typeof aiV2RecipeFromStockResultSchema>;
 export type AiV2PersonalRecommendationResult = z.infer<typeof aiV2PersonalRecommendationResultSchema>;
+export type AiV2BeveragePairingResult = z.infer<typeof aiV2BeveragePairingResultSchema>;
 export type AiV2FrozenPreview = z.infer<typeof aiV2FrozenPreviewSchema>;
 export type AiV2ShoppingListFromMealPlanInput = z.infer<typeof aiV2ShoppingListFromMealPlanInputSchema>;
 export type AiV2BackendOperation = z.infer<typeof aiV2BackendOperationSchema>;

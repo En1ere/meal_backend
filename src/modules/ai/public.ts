@@ -56,6 +56,18 @@ export {
 export { AiV2ProviderDispatchConflict, AiV2ProviderOperationStore } from './ai-provider-operation.store.js';
 export { AiV2CulinaryExecutor } from './ai-culinary-executor.js';
 export { AiV2CulinaryInternalService } from './ai-culinary-internal.service.js';
+export { AiV2BeveragePairingExecutor } from './ai-beverage-pairing-executor.js';
+export { AiV2BeveragePairingInternalService } from './ai-beverage-pairing-internal.service.js';
+export {
+    AI_V2_BEVERAGE_PAIRING_MAX_OUTPUT_TOKENS,
+    aiV2BeverageCandidateSchema,
+    aiV2BeveragePairingShortlistSchema,
+    beveragePairingBoundaryResult,
+    beveragePairingProviderRequest,
+    containsAlcoholMarker,
+    validateBeveragePairingProviderResult,
+    type AiV2BeveragePairingShortlist,
+} from './ai-beverage-pairing.js';
 export { AiV2SubstitutionExecutor } from './ai-substitution-executor.js';
 export { AiV2SubstitutionInternalService } from './ai-substitution-internal.service.js';
 export { AiV2StorageAdviceExecutor } from './ai-storage-advice-executor.js';
@@ -225,6 +237,7 @@ export {
 } from './ai-policy-v4.js';
 export {
     aiV2CulinaryAnswerResultSchema,
+    aiV2BeveragePairingResultSchema,
     aiV2CulinaryRecoveryCodeSchema,
     aiV2CulinaryWarningCodeSchema,
     aiV2SubstitutionExplainResultSchema,
@@ -259,6 +272,7 @@ export {
     type AiV2PreviewRequest,
     type AiV2ResultEnvelope,
     type AiV2CulinaryAnswerResult,
+    type AiV2BeveragePairingResult,
     type AiV2SubstitutionExplainResult,
     type AiV2StorageExplainResult,
     type AiV2IngredientExtractionResult,

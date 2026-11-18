@@ -1,5 +1,16 @@
 # Полная программа ручной приёмки Meal Planner
 
+## Internal beverage-pairing economy slice — backend 0.0.295 — 18.11.2026
+
+1. `catalog` принимает только recipe ID, проверяет current published recipe/revision/publication и фиксирует owner-scoped shortlist с expiry.
+2. SQL/backend допускает только active variants с явными attributes `beverage=true`, `alcoholFree=true` и нулевым/отсутствующим ABV. Без полной маркировки shortlist пуст и provider не вызывается.
+3. Recipe title/ingredients и candidate names с alcohol markers fail closed. Alcohol mode выдаёт `alcohol_mode_disabled` без reserve/provider.
+4. `custom` принимает только `shortlistId` и optional sanitized preferences. Owner, expiry, recipe/revision/publication и variant/ingredient/category versions повторно проверяются до reserve.
+5. Empty shortlist возвращает backend `no_match`; один candidate без preferences выбирается backend. Эти paths не тратят AI quota.
+6. Economy provider получает только recipe facts, ordinal candidate key/name и optional preferences. UUID, versions, history/profile и catalog identity в payload не попадают; output ограничен 400 tokens.
+7. Provider может вернуть только frozen ordinal key либо null. Backend разрешает key в catalog ID/name и отклоняет alcohol markers в candidate/explanation.
+8. Model path списывает одно AI-действие, держит ceiling 1 ₽ и использует schema-v41 dispatch/readback/history. Result — preview; catalog/domain writes, public controller, Yandex binding, OpenAPI и schema БД не меняются.
+
 ## Internal weekly recommendation backend artifact — backend 0.0.294 — 16.11.2026
 
 1. Strict input принимает только Monday `weekStartsOn` и `inventoryScope=personal|family`; arbitrary prompt, model/provider fields и дополнительные параметры отклоняются.

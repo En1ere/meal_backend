@@ -3,6 +3,8 @@ import {
     AiController,
     AiReconciliationService,
     AiService,
+    AiV2BeveragePairingExecutor,
+    AiV2BeveragePairingInternalService,
     AiV2CulinaryExecutor,
     AiV2CulinaryInternalService,
     AiV2IngredientExtractionExecutor,
@@ -35,6 +37,8 @@ import { AiProviderCapabilityModule } from './ai-provider-capability.module.js';
     providers: [
         AiService,
         AiReconciliationService,
+        AiV2BeveragePairingExecutor,
+        AiV2BeveragePairingInternalService,
         AiV2ProviderOperationStore,
         AiV2CulinaryExecutor,
         AiV2CulinaryInternalService,
