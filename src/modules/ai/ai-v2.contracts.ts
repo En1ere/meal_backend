@@ -39,9 +39,10 @@ const inputSchemas = {
     'beverage_pairing/custom': z.strictObject({ shortlistId: z.uuid(), preferences: shortText.optional() }),
     'recipe_adaptation/scale': z.strictObject({
         recipeId: z.uuid(),
+        revisionId: z.uuid(),
         servings: z.number().int().min(1).max(50),
     }),
-    'recipe_adaptation/adapt': z.strictObject({ recipeId: z.uuid(), instruction: question }),
+    'recipe_adaptation/adapt': z.strictObject({ snapshotId: z.uuid(), instruction: question }),
     'registry_analysis/facts': z.strictObject({ query: question }),
     'registry_analysis/explain': z.strictObject({ factsId: z.uuid(), question: shortText.optional() }),
     'review_summary/public_summary': z.strictObject({
@@ -294,6 +295,45 @@ export const aiV2BeveragePairingResultSchema = z.strictObject({
     recoveryCode: z.enum(['review_pairing', 'refine_preferences']),
 });
 
+export const aiV2RecipeAdaptationIngredientSchema = z.strictObject({
+    ingredientKey: z.number().int().min(1).max(40),
+    name: z.string().trim().min(1).max(160),
+    quantity: z
+        .string()
+        .regex(/^(0|[1-9]\d{0,15})(\.\d{1,8})?$/u)
+        .nullable(),
+    unit: z.string().trim().min(1).max(20).nullable(),
+    optional: z.boolean(),
+});
+
+export const aiV2RecipeScaleResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:recipe_adaptation:scale'),
+    snapshotId: z.uuid(),
+    sourceRecipeId: z.uuid(),
+    sourceRevisionId: z.uuid(),
+    title: z.string().trim().min(1).max(200),
+    servings: z.number().int().min(1).max(50),
+    ingredients: z.array(aiV2RecipeAdaptationIngredientSchema).min(1).max(40),
+    steps: z.array(z.string().trim().min(1).max(1_000)).min(1).max(20),
+    adaptationAllowed: z.boolean(),
+    warningCodes: z.array(z.enum(['allergen_evidence_incomplete', 'source_quantity_unknown'])).max(2),
+});
+
+export const aiV2RecipeAdaptationResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:recipe_adaptation:adapt'),
+    sourceRecipeId: z.uuid(),
+    sourceRevisionId: z.uuid(),
+    title: z.string().trim().min(1).max(160),
+    servings: z.number().int().min(1).max(50),
+    ingredients: z.array(aiV2RecipeAdaptationIngredientSchema).min(1).max(40),
+    steps: z.array(z.string().trim().min(1).max(500)).min(1).max(20),
+    warningCodes: z
+        .array(z.enum(['allergen_review_required', 'source_quantity_unknown']))
+        .min(1)
+        .max(2),
+    recoveryCode: z.literal('review_recipe'),
+});
+
 export const aiV2BackendOperationSchema = z.strictObject({
     item: z.strictObject({
         id: z.uuid(),
@@ -344,6 +384,8 @@ export type AiV2ProductClassificationResult = z.infer<typeof aiV2ProductClassifi
 export type AiV2RecipeFromStockResult = z.infer<typeof aiV2RecipeFromStockResultSchema>;
 export type AiV2PersonalRecommendationResult = z.infer<typeof aiV2PersonalRecommendationResultSchema>;
 export type AiV2BeveragePairingResult = z.infer<typeof aiV2BeveragePairingResultSchema>;
+export type AiV2RecipeAdaptationResult = z.infer<typeof aiV2RecipeAdaptationResultSchema>;
+export type AiV2RecipeScaleResult = z.infer<typeof aiV2RecipeScaleResultSchema>;
 export type AiV2FrozenPreview = z.infer<typeof aiV2FrozenPreviewSchema>;
 export type AiV2ShoppingListFromMealPlanInput = z.infer<typeof aiV2ShoppingListFromMealPlanInputSchema>;
 export type AiV2BackendOperation = z.infer<typeof aiV2BackendOperationSchema>;

@@ -68,6 +68,18 @@ export {
     validateBeveragePairingProviderResult,
     type AiV2BeveragePairingShortlist,
 } from './ai-beverage-pairing.js';
+export { AiV2RecipeAdaptationExecutor } from './ai-recipe-adaptation-executor.js';
+export { AiV2RecipeAdaptationInternalService } from './ai-recipe-adaptation-internal.service.js';
+export {
+    AI_V2_RECIPE_ADAPTATION_MAX_OUTPUT_TOKENS,
+    aiV2RecipeAdaptationSourceIngredientSchema,
+    aiV2RecipeAdaptationSnapshotSchema,
+    aiV2RecipeAdaptationStepSchema,
+    recipeAdaptationProviderRequest,
+    scaleRecipeAdaptationIngredients,
+    validateRecipeAdaptationProviderResult,
+    type AiV2RecipeAdaptationSnapshot,
+} from './ai-recipe-adaptation.js';
 export { AiV2SubstitutionExecutor } from './ai-substitution-executor.js';
 export { AiV2SubstitutionInternalService } from './ai-substitution-internal.service.js';
 export { AiV2StorageAdviceExecutor } from './ai-storage-advice-executor.js';
@@ -238,6 +250,9 @@ export {
 export {
     aiV2CulinaryAnswerResultSchema,
     aiV2BeveragePairingResultSchema,
+    aiV2RecipeAdaptationIngredientSchema,
+    aiV2RecipeAdaptationResultSchema,
+    aiV2RecipeScaleResultSchema,
     aiV2CulinaryRecoveryCodeSchema,
     aiV2CulinaryWarningCodeSchema,
     aiV2SubstitutionExplainResultSchema,
@@ -273,6 +288,8 @@ export {
     type AiV2ResultEnvelope,
     type AiV2CulinaryAnswerResult,
     type AiV2BeveragePairingResult,
+    type AiV2RecipeAdaptationResult,
+    type AiV2RecipeScaleResult,
     type AiV2SubstitutionExplainResult,
     type AiV2StorageExplainResult,
     type AiV2IngredientExtractionResult,

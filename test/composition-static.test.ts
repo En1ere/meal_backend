@@ -142,6 +142,8 @@ import {
     AiController,
     AiV2BeveragePairingExecutor,
     AiV2BeveragePairingInternalService,
+    AiV2RecipeAdaptationExecutor,
+    AiV2RecipeAdaptationInternalService,
     AiProvider,
     AiProviderSimulator,
     AiReconciliationService,
@@ -1432,6 +1434,8 @@ void test('root composition delegates pilot and core providers without duplicate
         AiV2ProductClassificationInternalService,
         AiV2RecipeFromStockExecutor,
         AiV2RecipeFromStockInternalService,
+        AiV2RecipeAdaptationExecutor,
+        AiV2RecipeAdaptationInternalService,
         AiV2SubstitutionExecutor,
         AiV2SubstitutionInternalService,
         AiV2StorageAdviceExecutor,
@@ -1989,7 +1993,7 @@ void test('HTTP composition has exact root ownership and a unique reachable modu
     visit(root);
 
     assert.equal(controllerOwners.size, 70);
-    assert.equal(providerOwners.size, 144);
+    assert.equal(providerOwners.size, 146);
     for (const [controller, owners] of controllerOwners)
         assert.equal(owners.length, 1, `duplicate controller ${String(controller)}: ${owners.join(', ')}`);
     for (const [provider, owners] of providerOwners) {

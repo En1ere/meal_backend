@@ -1,5 +1,16 @@
 # Полная программа ручной приёмки Meal Planner
 
+## Internal recipe-adaptation balanced slice — backend 0.0.296 — 18.11.2026
+
+1. `scale` принимает только exact `recipeId`, current published `revisionId` и target servings 1–50; extra/model/provider fields отклоняются.
+2. Backend фиксирует recipe/revision/publication, ingredient-line и step versions, не допускает stale/non-current revision и ограничивает snapshot 40 ingredients/20 steps.
+3. Quantities пересчитываются exact fixed-point integer arithmetic без float; unit, optional и unknown quantity сохраняются. `scale` имеет cost 0 и не вызывает provider/quota.
+4. `adapt` принимает только owner-scoped `snapshotId` и sanitized instruction 3–500. Expiry и все frozen versions повторно проверяются до preview и reserve.
+5. Неполный `allergensComplete`, medical/allergen/food-safety request и prompt injection блокируют model path до списания AI-действий.
+6. Balanced provider получает title/servings, ordinal key/name/quantity/unit/optional, steps и instruction. UUID, versions, catalog identity, history/profile и raw user data в payload не попадают; output ограничен 1200 tokens.
+7. Provider обязан вернуть каждый frozen ingredient key ровно один раз. Backend отклоняет missing/new/duplicate keys и invented quantity для unknown source; names/units/optional берутся только из snapshot.
+8. Model path списывает 2 AI-действия, держит ceiling 6 ₽ и использует schema-v41 dispatch/readback/history. Result — preview; recipe/domain writes, public controller, Yandex binding, OpenAPI и schema БД не меняются.
+
 ## Internal beverage-pairing economy slice — backend 0.0.295 — 18.11.2026
 
 1. `catalog` принимает только recipe ID, проверяет current published recipe/revision/publication и фиксирует owner-scoped shortlist с expiry.
