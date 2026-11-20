@@ -6,6 +6,25 @@ import { AI_TASK_POLICY_V4, aiTaskModeKey, aiTaskModeV4 } from './ai-policy-v4.j
 const shortText = z.string().trim().min(1).max(500);
 const question = z.string().trim().min(3).max(500);
 const boundedIdList = z.array(z.uuid()).min(1).max(20);
+const recipeDecimalResultSchema = z.string().regex(/^(?:0|[1-9]\d{0,15})(?:\.\d{1,8})?$/u);
+const servingsNumber = z
+    .number()
+    .positive()
+    .max(50)
+    .refine((value) => /^(?:0|[1-9]\d{0,15})(?:\.\d{1,8})?$/u.test(String(value)), 'Некорректное число порций');
+
+export const aiV2ShoppingListFromRecipesInputSchema = z
+    .strictObject({ recipeIds: boundedIdList })
+    .superRefine((value, context) => {
+        if (new Set(value.recipeIds).size !== value.recipeIds.length)
+            context.addIssue({ code: 'custom', path: ['recipeIds'], message: 'Рецепт указан дважды' });
+    });
+
+export const aiV2ReviewSummarySourceReleaseSchema = z
+    .string()
+    .trim()
+    .max(100)
+    .regex(/^recipe-publication:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}:v[1-9]\d*$/iu);
 
 export const aiV2ShoppingListFromMealPlanInputSchema = z.strictObject({
     mealPlanId: z.uuid(),
@@ -47,9 +66,9 @@ const inputSchemas = {
     'registry_analysis/explain': z.strictObject({ factsId: z.uuid(), question: shortText.optional() }),
     'review_summary/public_summary': z.strictObject({
         subjectId: z.uuid(),
-        sourceRelease: z.string().trim().min(1).max(100),
+        sourceRelease: aiV2ReviewSummarySourceReleaseSchema,
     }),
-    'shopping_list_generation/from_recipes': z.strictObject({ recipeIds: boundedIdList }),
+    'shopping_list_generation/from_recipes': aiV2ShoppingListFromRecipesInputSchema,
     'shopping_list_generation/from_meal_plan': aiV2ShoppingListFromMealPlanInputSchema,
     'meal_plan_generation/generate': z.strictObject({
         weekStartsOn: z.iso.date(),
@@ -68,12 +87,12 @@ const inputSchemas = {
     }),
     'nutrition_calculation/calculate': z.strictObject({
         recipeId: z.uuid(),
-        servings: z.number().positive().max(50).default(1),
+        servings: servingsNumber.default(1),
     }),
     'nutrition_calculation/explain': z.strictObject({ calculationId: z.uuid(), question: shortText.optional() }),
     'portion_cost_calculation/calculate': z.strictObject({
         recipeId: z.uuid(),
-        servings: z.number().positive().max(50).default(1),
+        servings: servingsNumber.default(1),
         currency: z.literal('RUB').default('RUB'),
     }),
     'portion_cost_calculation/explain': z.strictObject({ calculationId: z.uuid(), question: shortText.optional() }),
@@ -372,6 +391,172 @@ export const aiV2RegistryExplainResultSchema = z.strictObject({
     recoveryCode: z.literal('review_registry'),
 });
 
+export const aiV2NutritionFactKeySchema = z.enum(['energy_kcal', 'protein_g', 'fat_g', 'carbohydrate_g']);
+
+export const aiV2NutritionValuesSchema = z.strictObject({
+    energyKcal: recipeDecimalResultSchema.nullable(),
+    proteinG: recipeDecimalResultSchema.nullable(),
+    fatG: recipeDecimalResultSchema.nullable(),
+    carbohydrateG: recipeDecimalResultSchema.nullable(),
+});
+
+export const aiV2NutritionCalculationResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:nutrition_calculation:calculate'),
+    calculationId: z.uuid(),
+    recipeId: z.uuid(),
+    revisionId: z.uuid(),
+    servings: servingsNumber,
+    values: aiV2NutritionValuesSchema,
+    completeness: z.enum(['complete', 'partial', 'unavailable']),
+    warningCodes: z.array(z.enum(['nutrition_partially_known', 'nutrition_unavailable'])).max(1),
+    recoveryCode: z.literal('review_nutrition'),
+});
+
+export const aiV2NutritionExplainResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:nutrition_calculation:explain'),
+    calculationId: z.uuid(),
+    values: aiV2NutritionValuesSchema,
+    completeness: z.enum(['complete', 'partial']),
+    explanation: z.string().trim().min(1).max(800),
+    referencedFactKeys: z.array(aiV2NutritionFactKeySchema).min(1).max(4),
+    warningCodes: z.array(z.literal('nutrition_partially_known')).max(1),
+    recoveryCode: z.literal('review_nutrition'),
+});
+
+export const aiV2PortionCostReasonCountsSchema = z.strictObject({
+    unknownIngredient: z.number().int().nonnegative(),
+    unknownQuantity: z.number().int().nonnegative(),
+    unknownUnit: z.number().int().nonnegative(),
+    priceUnavailable: z.number().int().nonnegative(),
+});
+
+export const aiV2PortionCostCalculationResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:portion_cost_calculation:calculate'),
+    calculationId: z.uuid(),
+    recipeId: z.uuid(),
+    revisionId: z.uuid(),
+    servings: servingsNumber,
+    currency: z.literal('RUB'),
+    approximate: z.literal(true),
+    knownLineCount: z.number().int().nonnegative(),
+    totalLineCount: z.number().int().nonnegative(),
+    knownSubtotalMinor: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    estimatedTotalMinor: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).nullable(),
+    reasonCounts: aiV2PortionCostReasonCountsSchema,
+    completeness: z.enum(['complete', 'partial', 'unavailable']),
+    warningCodes: z.array(z.enum(['prices_partially_known', 'prices_unavailable'])).max(1),
+    recoveryCode: z.literal('review_cost'),
+});
+
+export const aiV2PortionCostExplainResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:portion_cost_calculation:explain'),
+    calculationId: z.uuid(),
+    currency: z.literal('RUB'),
+    approximate: z.literal(true),
+    knownLineCount: z.number().int().nonnegative(),
+    totalLineCount: z.number().int().positive(),
+    knownSubtotalMinor: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    estimatedTotalMinor: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).nullable(),
+    reasonCounts: aiV2PortionCostReasonCountsSchema,
+    completeness: z.enum(['complete', 'partial']),
+    explanation: z.string().trim().min(1).max(800),
+    referencedFactKeys: z
+        .array(z.enum(['coverage', 'approximation', 'missing_prices']))
+        .min(1)
+        .max(3),
+    warningCodes: z.array(z.literal('prices_partially_known')).max(1),
+    recoveryCode: z.literal('review_cost'),
+});
+
+export const aiV2ReviewSummaryFactsSchema = z.strictObject({
+    averageRating: z.number().min(1).max(5).nullable(),
+    ratingCount: z.number().int().nonnegative(),
+    publicReviewCount: z.number().int().nonnegative(),
+});
+
+export const aiV2ReviewSummaryWarningCodeSchema = z.enum([
+    'no_ratings',
+    'no_public_reviews',
+    'insufficient_safe_reviews',
+    'reviews_sampled',
+    'unsafe_reviews_excluded',
+]);
+
+export const aiV2ReviewSummaryResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:review_summary:public_summary'),
+    subjectId: z.uuid(),
+    sourceRelease: aiV2ReviewSummarySourceReleaseSchema,
+    facts: aiV2ReviewSummaryFactsSchema,
+    summary: z.string().trim().min(1).max(1_600).nullable(),
+    warningCodes: z.array(aiV2ReviewSummaryWarningCodeSchema).max(5),
+});
+
+export const aiV2MealPlanSlotSchema = z.strictObject({
+    slotId: z.uuid(),
+    date: z.iso.date(),
+    meal: z.enum(['breakfast', 'lunch', 'dinner']),
+    portions: z.number().int().min(1).max(20),
+    recipeId: z.uuid(),
+    revisionId: z.uuid(),
+    title: z.string().trim().min(1).max(200),
+});
+
+export const aiV2MealPlanGenerationResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:meal_plan_generation:generate'),
+    mealPlanId: z.uuid(),
+    snapshotVersion: z.literal(1),
+    weekStartsOn: z.iso.date(),
+    people: z.number().int().min(1).max(20),
+    slots: z.array(aiV2MealPlanSlotSchema).length(21),
+    warningCodes: z
+        .array(z.enum(['allergen_profile_not_applied', 'nutrition_targets_not_applied', 'inventory_not_applied']))
+        .length(3),
+    recoveryCode: z.literal('review_meal_plan'),
+});
+
+export const aiV2MealPlanReplaceSlotResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:meal_plan_generation:replace_slot'),
+    mealPlanId: z.uuid(),
+    snapshotVersion: z.number().int().min(2).max(3),
+    slot: aiV2MealPlanSlotSchema,
+    warningCodes: z
+        .array(z.enum(['allergen_profile_not_applied', 'nutrition_targets_not_applied', 'inventory_not_applied']))
+        .length(3),
+    recoveryCode: z.literal('review_meal_plan'),
+});
+
+export const aiV2EventMenuItemSchema = z.strictObject({
+    slotId: z.uuid(),
+    role: z.enum(['starter', 'salad', 'main', 'dessert']),
+    portions: z.number().int().min(1).max(100),
+    recipeId: z.uuid(),
+    revisionId: z.uuid(),
+    title: z.string().trim().min(1).max(200),
+});
+
+export const aiV2EventMenuGenerationResultSchema = z.strictObject({
+    schemaVersion: z.literal('ai-result-contract-v2:event_menu:generate'),
+    eventMenuId: z.uuid(),
+    snapshotVersion: z.literal(1),
+    eventType: z.string().trim().min(1).max(500),
+    guests: z.number().int().min(1).max(100),
+    items: z.array(aiV2EventMenuItemSchema).length(4),
+    warningCodes: z.union([
+        z.tuple([
+            z.literal('allergen_profile_not_applied'),
+            z.literal('nutrition_not_calculated'),
+            z.literal('shopping_not_generated'),
+        ]),
+        z.tuple([
+            z.literal('allergen_profile_not_applied'),
+            z.literal('nutrition_not_calculated'),
+            z.literal('shopping_not_generated'),
+            z.literal('constraints_require_review'),
+        ]),
+    ]),
+    recoveryCode: z.literal('review_event_menu'),
+});
+
 export const aiV2BackendOperationSchema = z.strictObject({
     item: z.strictObject({
         id: z.uuid(),
@@ -427,6 +612,20 @@ export type AiV2RecipeScaleResult = z.infer<typeof aiV2RecipeScaleResultSchema>;
 export type AiV2RegistryFact = z.infer<typeof aiV2RegistryFactSchema>;
 export type AiV2RegistryFactsResult = z.infer<typeof aiV2RegistryFactsResultSchema>;
 export type AiV2RegistryExplainResult = z.infer<typeof aiV2RegistryExplainResultSchema>;
+export type AiV2NutritionValues = z.infer<typeof aiV2NutritionValuesSchema>;
+export type AiV2NutritionCalculationResult = z.infer<typeof aiV2NutritionCalculationResultSchema>;
+export type AiV2NutritionExplainResult = z.infer<typeof aiV2NutritionExplainResultSchema>;
+export type AiV2PortionCostReasonCounts = z.infer<typeof aiV2PortionCostReasonCountsSchema>;
+export type AiV2PortionCostCalculationResult = z.infer<typeof aiV2PortionCostCalculationResultSchema>;
+export type AiV2PortionCostExplainResult = z.infer<typeof aiV2PortionCostExplainResultSchema>;
+export type AiV2ReviewSummaryFacts = z.infer<typeof aiV2ReviewSummaryFactsSchema>;
+export type AiV2ReviewSummaryResult = z.infer<typeof aiV2ReviewSummaryResultSchema>;
+export type AiV2MealPlanSlot = z.infer<typeof aiV2MealPlanSlotSchema>;
+export type AiV2MealPlanGenerationResult = z.infer<typeof aiV2MealPlanGenerationResultSchema>;
+export type AiV2MealPlanReplaceSlotResult = z.infer<typeof aiV2MealPlanReplaceSlotResultSchema>;
+export type AiV2EventMenuItem = z.infer<typeof aiV2EventMenuItemSchema>;
+export type AiV2EventMenuGenerationResult = z.infer<typeof aiV2EventMenuGenerationResultSchema>;
 export type AiV2FrozenPreview = z.infer<typeof aiV2FrozenPreviewSchema>;
+export type AiV2ShoppingListFromRecipesInput = z.infer<typeof aiV2ShoppingListFromRecipesInputSchema>;
 export type AiV2ShoppingListFromMealPlanInput = z.infer<typeof aiV2ShoppingListFromMealPlanInputSchema>;
 export type AiV2BackendOperation = z.infer<typeof aiV2BackendOperationSchema>;

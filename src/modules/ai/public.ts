@@ -82,6 +82,38 @@ export {
 } from './ai-recipe-adaptation.js';
 export { AiV2RegistryAnalysisExecutor } from './ai-registry-analysis-executor.js';
 export { AiV2RegistryAnalysisInternalService } from './ai-registry-analysis-internal.service.js';
+export { AiV2NutritionCalculationExecutor } from './ai-nutrition-calculation-executor.js';
+export { AiV2NutritionCalculationInternalService } from './ai-nutrition-calculation-internal.service.js';
+export { AiV2PortionCostCalculationExecutor } from './ai-portion-cost-calculation-executor.js';
+export { AiV2PortionCostCalculationInternalService } from './ai-portion-cost-calculation-internal.service.js';
+export {
+    AI_V2_PORTION_COST_ALGORITHM_VERSION,
+    AI_V2_PORTION_COST_LINE_LIMIT,
+    AI_V2_PORTION_COST_MAX_INPUT_BYTES,
+    AI_V2_PORTION_COST_MAX_OUTPUT_TOKENS,
+    aiV2PortionCostLineSchema,
+    aiV2PortionCostPriceSchema,
+    aiV2PortionCostSnapshotSchema,
+    calculatePortionCostResult,
+    estimatePortionCostMinor,
+    portionCostProviderRequest,
+    scalePortionCostQuantity,
+    validatePortionCostProviderResult,
+    type AiV2PortionCostSnapshot,
+} from './ai-portion-cost-calculation.js';
+export {
+    AI_V2_NUTRITION_ALGORITHM_VERSION,
+    AI_V2_NUTRITION_MAX_INPUT_BYTES,
+    AI_V2_NUTRITION_MAX_OUTPUT_TOKENS,
+    aiV2NutritionSnapshotSchema,
+    aiV2NutritionSourceSchema,
+    calculateNutritionValues,
+    canonicalNutritionSnapshot,
+    nutritionProviderRequest,
+    scaleNutritionDecimal,
+    validateNutritionProviderResult,
+    type AiV2NutritionSnapshot,
+} from './ai-nutrition-calculation.js';
 export {
     AI_V2_REGISTRY_ANALYSIS_MAX_OUTPUT_TOKENS,
     aiV2RegistryFactsSnapshotSchema,
@@ -90,6 +122,64 @@ export {
     validateRegistryAnalysisProviderResult,
     type AiV2RegistryFactsSnapshot,
 } from './ai-registry-analysis.js';
+export { AiV2ReviewSummaryExecutor } from './ai-review-summary-executor.js';
+export { AiV2ReviewSummaryInternalService } from './ai-review-summary-internal.service.js';
+export { AiV2MealPlanGenerationExecutor } from './ai-meal-plan-generation-executor.js';
+export { AiV2MealPlanGenerationInternalService } from './ai-meal-plan-generation-internal.service.js';
+export { AiV2EventMenuGenerationExecutor } from './ai-event-menu-generation-executor.js';
+export { AiV2EventMenuGenerationInternalService } from './ai-event-menu-generation-internal.service.js';
+export {
+    AI_V2_EVENT_MENU_CANDIDATE_LIMIT,
+    AI_V2_EVENT_MENU_MAX_INPUT_BYTES,
+    AI_V2_EVENT_MENU_MAX_OUTPUT_TOKENS,
+    aiV2EventMenuCandidateSchema,
+    aiV2EventMenuRoleSchema,
+    aiV2EventMenuShortlistSchema,
+    aiV2EventMenuSlotSchema,
+    buildEventMenuSlots,
+    eventMenuCandidateRole,
+    eventMenuProviderRequest,
+    sanitizeEventMenuText,
+    validateEventMenuProviderResult,
+    type AiV2EventMenuCandidate,
+    type AiV2EventMenuShortlist,
+} from './ai-event-menu-generation.js';
+export {
+    AI_V2_MEAL_PLAN_CANDIDATE_LIMIT,
+    AI_V2_MEAL_PLAN_GENERATE_MAX_OUTPUT_TOKENS,
+    AI_V2_MEAL_PLAN_REPEAT_LIMIT,
+    AI_V2_MEAL_PLAN_REPLACE_MAX_OUTPUT_TOKENS,
+    aiV2MealPlanCandidateSchema,
+    aiV2MealPlanFrozenSlotSchema,
+    aiV2MealPlanReplaceSnapshotSchema,
+    aiV2MealPlanShortlistSchema,
+    assertMealPlanMonday,
+    buildMealPlanSlots,
+    mealPlanCandidateMeals,
+    mealPlanGenerateProviderRequest,
+    mealPlanReplaceProviderRequest,
+    sanitizeMealPlanText,
+    validateMealPlanGenerateProviderResult,
+    validateMealPlanReplaceProviderResult,
+    type AiV2MealPlanCandidate,
+    type AiV2MealPlanReplaceSnapshot,
+    type AiV2MealPlanShortlist,
+} from './ai-meal-plan-generation.js';
+export {
+    AI_V2_REVIEW_SUMMARY_MAX_EXCERPTS,
+    AI_V2_REVIEW_SUMMARY_MAX_OUTPUT_TOKENS,
+    AI_V2_REVIEW_SUMMARY_MIN_EXCERPTS,
+    aiV2ReviewSummaryExcerptSchema,
+    aiV2ReviewSummarySnapshotSchema,
+    deterministicReviewSummarySample,
+    parseReviewSummarySourceRelease,
+    reviewSummaryProviderRequest,
+    reviewSummaryWarningCodes,
+    reviewSummaryWithoutModel,
+    sanitizePublicReviewExcerpt,
+    validateReviewSummaryProviderResult,
+    type AiV2ReviewSummarySnapshot,
+} from './ai-review-summary.js';
 export { AiV2SubstitutionExecutor } from './ai-substitution-executor.js';
 export { AiV2SubstitutionInternalService } from './ai-substitution-internal.service.js';
 export { AiV2StorageAdviceExecutor } from './ai-storage-advice-executor.js';
@@ -267,6 +357,22 @@ export {
     aiV2RegistryFactKeySchema,
     aiV2RegistryFactSchema,
     aiV2RegistryFactsResultSchema,
+    aiV2NutritionFactKeySchema,
+    aiV2NutritionValuesSchema,
+    aiV2NutritionCalculationResultSchema,
+    aiV2NutritionExplainResultSchema,
+    aiV2PortionCostReasonCountsSchema,
+    aiV2PortionCostCalculationResultSchema,
+    aiV2PortionCostExplainResultSchema,
+    aiV2ReviewSummaryFactsSchema,
+    aiV2ReviewSummaryResultSchema,
+    aiV2ReviewSummarySourceReleaseSchema,
+    aiV2ReviewSummaryWarningCodeSchema,
+    aiV2MealPlanSlotSchema,
+    aiV2MealPlanGenerationResultSchema,
+    aiV2MealPlanReplaceSlotResultSchema,
+    aiV2EventMenuItemSchema,
+    aiV2EventMenuGenerationResultSchema,
     aiV2CulinaryRecoveryCodeSchema,
     aiV2CulinaryWarningCodeSchema,
     aiV2SubstitutionExplainResultSchema,
@@ -293,6 +399,7 @@ export {
     aiV2RunRequestSchema,
     aiV2WarningCodeSchema,
     aiV2ShoppingListFromMealPlanInputSchema,
+    aiV2ShoppingListFromRecipesInputSchema,
     parseAiV2PreviewRequest,
     type AiV2ExecutableTaskModeKey,
     type AiV2BackendOperation,
@@ -307,6 +414,19 @@ export {
     type AiV2RegistryExplainResult,
     type AiV2RegistryFact,
     type AiV2RegistryFactsResult,
+    type AiV2NutritionValues,
+    type AiV2NutritionCalculationResult,
+    type AiV2NutritionExplainResult,
+    type AiV2PortionCostReasonCounts,
+    type AiV2PortionCostCalculationResult,
+    type AiV2PortionCostExplainResult,
+    type AiV2ReviewSummaryFacts,
+    type AiV2ReviewSummaryResult,
+    type AiV2MealPlanSlot,
+    type AiV2MealPlanGenerationResult,
+    type AiV2MealPlanReplaceSlotResult,
+    type AiV2EventMenuItem,
+    type AiV2EventMenuGenerationResult,
     type AiV2SubstitutionExplainResult,
     type AiV2StorageExplainResult,
     type AiV2IngredientExtractionResult,
@@ -315,6 +435,7 @@ export {
     type AiV2RecipeFromStockResult,
     type AiV2RunRequest,
     type AiV2ShoppingListFromMealPlanInput,
+    type AiV2ShoppingListFromRecipesInput,
 } from './ai-v2.contracts.js';
 export {
     AI_V2_CULINARY_MAX_OUTPUT_TOKENS,

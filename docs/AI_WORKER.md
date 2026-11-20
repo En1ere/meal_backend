@@ -1,6 +1,6 @@
 # AI worker: настройка и эксплуатация
 
-> Реализационное состояние на 18 ноября 2026 года: основной runbook ниже описывает существующий выключенный OpenAI/Luna legacy baseline. Provider-neutral port, schema-v41 store и internal `culinary_question/answer`/`substitution/explain`/`storage_advice/explain`/`ingredient_extraction/extract`/`product_classification/classify`/`recipe_from_stock/generate_new`/`beverage_pairing/custom`/`recipe_adaptation/adapt`/`registry_analysis/explain` simulator paths, а также providerless `personal_recommendation/weekly`, реализованы, но Yandex adapter не подключён к worker/task routes. Команды legacy-раздела нельзя использовать для условной активации Yandex.
+> Реализационное состояние на 20 ноября 2026 года: основной runbook ниже описывает существующий выключенный OpenAI/Luna legacy baseline. Provider-neutral port, schema-v41 dispatch + schema-v42 zero-cost unknown projection и internal `culinary_question/answer`/`substitution/explain`/`storage_advice/explain`/`ingredient_extraction/extract`/`product_classification/classify`/`recipe_from_stock/generate_new`/`beverage_pairing/custom`/`recipe_adaptation/adapt`/`registry_analysis/explain`/`review_summary/public_summary`/`meal_plan_generation/generate|replace_slot`/`event_menu/generate`/`nutrition_calculation/explain`/`portion_cost_calculation/explain` simulator paths, а также providerless `personal_recommendation/weekly`, `shopping_list_generation/from_recipes`, `nutrition_calculation/calculate` и `portion_cost_calculation/calculate`, реализованы, но Yandex adapter не подключён к worker/task routes. Команды legacy-раздела нельзя использовать для условной активации Yandex.
 
 AI-выполнение изолировано от HTTP и общего scheduler. Первичный `POST /api/v1/ai/operations` и continuation `POST /api/v1/ai/tasks/{id}/operations` атомарно проверяют доступ, резервируют действия при необходимости и возвращают `202`; отдельный контейнер `ai-worker` повторно проверяет доступ непосредственно перед OpenAI-вызовом, отправляет Background Response и обновляет canonical readback.
 
@@ -47,7 +47,7 @@ AI_WORKER_LEASE_SECONDS=180
 
 1. Создать token-файл с указанными owner/mode; не печатать значение в shell history.
 2. Добавить non-secret настройки и `AI_WORKER_ENABLED=true` в root-owned `deploy.env`.
-3. Выполнить обычный backend rollout. Он применит schema v41, вызовет `provision-ai-worker-runtime.sh`, поднимет legacy `ai-worker` и дождётся healthcheck. Этот шаг сам по себе не подключает Yandex adapter.
+3. Выполнить обычный backend rollout. Он применит schema v42, вызовет `provision-ai-worker-runtime.sh`, поднимет legacy `ai-worker` и дождётся healthcheck. Этот шаг сам по себе не подключает Yandex adapter.
 4. Проверить `docker compose ... ps ai-worker`, отсутствие host ports и сети `meal-db, meal-egress`.
 5. Выполнить первичный и continuation запросы: каждый POST должен дать `202/queued`; polling — `queued → running → succeeded`; платный интервал меняет баланс `reserved → captured`, включённое уточнение сохраняет `financialState=none`.
 

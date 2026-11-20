@@ -138,6 +138,7 @@
         { "from": "ai-meal-plan", "to": "auth" },
         { "from": "ai-meal-plan", "to": "entitlements" },
         { "from": "ai-meal-plan", "to": "meal-plan" },
+        { "from": "ai-meal-plan", "to": "shopping" },
         { "from": "allergen-intelligence", "to": "admin-auth" },
         { "from": "allergen-intelligence", "to": "auth" },
         { "from": "community", "to": "recipes" },

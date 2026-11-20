@@ -62,7 +62,7 @@ void test('cross-module dependency baseline exactly matches the current graph', 
     assert.equal(new Set(baseline).size, baseline.length, 'baseline edges must be unique');
     assert.deepEqual(baseline, [...baseline].sort(), 'baseline edges must be canonical');
     assert.deepEqual(baseline, [...currentEdges].sort());
-    assert.equal(baseline.length, 155);
+    assert.equal(baseline.length, 156);
 });
 
 void test('architecture checker keeps fail-closed ownership and edge diagnostics', () => {
@@ -120,5 +120,5 @@ void test('architecture checker accepts the complete capability and public-bound
     const result = spawnSync(process.execPath, ['scripts/check-architecture.mjs'], { encoding: 'utf8', shell: false });
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     assert.match(result.stdout, /81 context modules/);
-    assert.match(result.stdout, /155 approved cross-module edges/);
+    assert.match(result.stdout, /156 approved cross-module edges/);
 });

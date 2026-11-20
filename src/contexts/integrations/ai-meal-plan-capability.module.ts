@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import {
     AiMealPlanBackendService,
+    AiShoppingRecipesBackendService,
     AiV2Controller,
     AiV2OrchestratorService,
 } from '../../modules/ai-meal-plan/public.js';
@@ -10,7 +11,7 @@ import { MealPlanCapabilityModule } from '../planning-health/meal-plan-capabilit
 @Module({
     imports: [EntitlementsCapabilityModule, MealPlanCapabilityModule],
     controllers: [AiV2Controller],
-    providers: [AiMealPlanBackendService, AiV2OrchestratorService],
+    providers: [AiMealPlanBackendService, AiShoppingRecipesBackendService, AiV2OrchestratorService],
     exports: [AiV2OrchestratorService],
 })
 export class AiMealPlanCapabilityModule {}

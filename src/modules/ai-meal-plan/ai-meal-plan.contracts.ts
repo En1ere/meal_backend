@@ -1,6 +1,12 @@
 import { z } from 'zod';
-import { aiV2RunRequestSchema, aiV2ShoppingListFromMealPlanInputSchema, type AiV2RunRequest } from '../ai/public.js';
+import {
+    aiV2RunRequestSchema,
+    aiV2ShoppingListFromMealPlanInputSchema,
+    aiV2ShoppingListFromRecipesInputSchema,
+    type AiV2RunRequest,
+} from '../ai/public.js';
 import { planQuerySchema, planShoppingPreviewResultSchema } from '../meal-plan/public.js';
+import { shoppingFieldsSchema } from '../shopping/public.js';
 
 export const aiV2MealPlanPreviewRequestSchema = z.strictObject({
     task: z.literal('shopping_list_generation'),
@@ -29,6 +35,20 @@ export const aiV2ShoppingListFromMealPlanResultSchema = z.strictObject({
     warningCodes: z.array(z.enum(['price_incomplete', 'quantity_check_required'])).max(2),
 });
 
+export const aiV2ShoppingListFromRecipesResultSchema = z
+    .strictObject({
+        schemaVersion: z.literal('ai-result-contract-v2:shopping_list_generation:from_recipes'),
+        data: z.strictObject({
+            recipeIds: aiV2ShoppingListFromRecipesInputSchema.shape.recipeIds,
+            items: z.array(shoppingFieldsSchema.extend({ needsQuantityCheck: z.boolean() })).max(200),
+        }),
+        warningCodes: z.array(z.enum(['quantity_check_required', 'incompatible_units_preserved'])).max(2),
+    })
+    .superRefine((value, context) => {
+        if (new Set(value.data.recipeIds).size !== value.data.recipeIds.length)
+            context.addIssue({ code: 'custom', path: ['data', 'recipeIds'], message: 'Рецепт указан дважды' });
+    });
+
 export const aiV2MealPlanOperationSchema = z.strictObject({
     item: z.strictObject({
         id: z.uuid(),
@@ -48,5 +68,6 @@ export { aiV2RunRequestSchema };
 export type AiV2MealPlanPreviewRequest = z.infer<typeof aiV2MealPlanPreviewRequestSchema>;
 export type AiV2MealPlanPreview = z.infer<typeof aiV2MealPlanPreviewSchema>;
 export type AiV2ShoppingListFromMealPlanResult = z.infer<typeof aiV2ShoppingListFromMealPlanResultSchema>;
+export type AiV2ShoppingListFromRecipesResult = z.infer<typeof aiV2ShoppingListFromRecipesResultSchema>;
 export type AiV2MealPlanOperation = z.infer<typeof aiV2MealPlanOperationSchema>;
 export type AiV2MealPlanRunRequest = AiV2RunRequest;

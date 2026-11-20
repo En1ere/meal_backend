@@ -210,6 +210,11 @@
             "version": 41,
             "file": "041_ai_provider_dispatch.sql",
             "sha256": "ad0707ba27d73a024c622ad6145501995f82d6a148828886c0a3e9b49b402e89"
+        },
+        {
+            "version": 42,
+            "file": "042_ai_zero_cost_provider_unknown.sql",
+            "sha256": "f3a97f3a485b0c774613f32586b2f33f026908db4547e663dd9db85dc1802324"
         }
     ]
 }

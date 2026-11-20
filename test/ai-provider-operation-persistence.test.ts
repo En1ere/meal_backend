@@ -105,9 +105,12 @@ void test('schema v41 manifest hash and counts bind the additive migration', asy
     assert.equal(manifest.domainTables, 224);
     assert.equal(manifest.totalTables, 229);
     assert.equal(manifest.foreignKeys, 523);
-    assert.deepEqual(manifest.migrations.at(-1), {
-        version: 41,
-        file: '041_ai_provider_dispatch.sql',
-        sha256: createHash('sha256').update(migration).digest('hex'),
-    });
+    assert.deepEqual(
+        manifest.migrations.find((migration) => migration.version === 41),
+        {
+            version: 41,
+            file: '041_ai_provider_dispatch.sql',
+            sha256: createHash('sha256').update(migration).digest('hex'),
+        },
+    );
 });
