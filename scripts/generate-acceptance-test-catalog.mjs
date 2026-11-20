@@ -145,17 +145,27 @@ const plain = (line) =>
         .replace(/\*\*([^*]+)\*\*/g, '$1')
         .trim();
 
-function sections(markdown) {
+function sections(markdown, limit) {
     const matches = [...normalize(markdown).matchAll(/^##\s+(.+)$/gm)];
-    return matches.map((match, index) => ({
-        heading: match[1].trim(),
-        body: normalize(markdown.slice(match.index + match[0].length, matches[index + 1]?.index ?? markdown.length)),
-    }));
+    return matches
+        .map((match, index) => ({
+            heading: match[1].trim(),
+            body: normalize(
+                markdown.slice(match.index + match[0].length, matches[index + 1]?.index ?? markdown.length),
+            ),
+        }))
+        .filter((section) => !/(?:финальный reliability checkpoint|актуальный release gate)/iu.test(section.heading))
+        .slice(0, limit);
 }
 
 function steps(section) {
-    const values = section.body
-        .split('\n')
+    const lines = section.body.split('\n');
+    const selected = lines.filter(
+        (line) =>
+            /^\s*(?:[-*+] |\d+\.\s+)/u.test(line) ||
+            /^\s*(?:Ожидается|Ожидаемый результат|Критерий завершения)[:.\s]/iu.test(line),
+    );
+    const values = (selected.length ? selected : lines.filter((line) => !/^\s*#{3,6}\s+/u.test(line)))
         .map((line) => plain(line))
         .filter(Boolean);
     if (!values.length) throw new Error(`Section has no assertions: ${section.heading}`);
@@ -175,7 +185,7 @@ const expectedResult = (values) => {
 const cases = [];
 for (const source of sources) {
     const markdown = await readFile(source.file, 'utf8');
-    const parsed = sections(markdown);
+    const parsed = sections(markdown, caseIds[source.group].length);
     parsed.forEach((section, index) => {
         const values = steps(section);
         const explicitExpected = values.find((value) =>
@@ -208,8 +218,8 @@ if (cases.length !== 83) throw new Error(`Expected 83 cases, got ${cases.length}
 
 const catalog = {
     schemaVersion: 1,
-    catalogVersion: `2026-10-29.${digest(JSON.stringify(cases)).slice(0, 12)}`,
-    publishedOn: '2026-10-29',
+    catalogVersion: `2026-11-20.${digest(JSON.stringify(cases)).slice(0, 12)}`,
+    publishedOn: '2026-11-20',
     groups: [
         { id: 'database', title: 'База данных', order: 1 },
         { id: 'backend', title: 'Backend/API', order: 2 },
@@ -219,11 +229,12 @@ const catalog = {
     cases,
 };
 
-await writeFile(
-    resolve(root, 'resources/acceptance-test-catalog.json'),
-    `${JSON.stringify(catalog, null, 4)}\n`,
-    'utf8',
-);
+const target = resolve(root, 'resources/acceptance-test-catalog.json');
+const serialized = `${JSON.stringify(catalog, null, 4)}\n`;
+if (process.argv.includes('--check')) {
+    const current = await readFile(target, 'utf8');
+    if (current !== serialized) throw new Error('Acceptance catalog is stale; run npm run acceptance:generate');
+} else await writeFile(target, serialized, 'utf8');
 console.log(
     `Generated ${catalog.catalogVersion}: ${cases.length} cases, ${cases.reduce((sum, item) => sum + item.steps.length, 0)} assertions`,
 );

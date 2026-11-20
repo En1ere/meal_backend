@@ -15,3 +15,11 @@ export {
 } from './admin-mfa-recovery.js';
 export { AdminNetworkGuard } from './admin-network.guard.js';
 export { AdminReadBoundary } from './admin-read-boundary.service.js';
+export {
+    AdminBootstrapError,
+    bootstrapFirstAdmin,
+    parseAdminBootstrapArgs,
+    type AdminBootstrapInput,
+    type AdminBootstrapMode,
+    type AdminBootstrapResult,
+} from './admin-bootstrap.js';

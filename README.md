@@ -4,6 +4,8 @@ NestJS/Fastify API с PostgreSQL/Kysely, OpenAPI, серверными сесс�
 
 ## Запуск и проверки
 
+Пошаговый запуск всего проекта для человека без знания внутренней архитектуры: [`docs/LOCAL_DEVELOPMENT.md`](docs/LOCAL_DEVELOPMENT.md). Создание первого администратора: [`docs/FIRST_ADMIN.md`](docs/FIRST_ADMIN.md).
+
 ```powershell
 npm install
 npm run build
