@@ -73,6 +73,9 @@ void test('v2 store uses serializable CAS and separates no-id unknown from ID re
         migration39,
         /provider_request_id IS NULL AND financial_state='released' AND provider_cost_state='estimated_hold'/u,
     );
+    assert.match(migration39, /CREATE TRIGGER zz_prepare_contract_v2 BEFORE INSERT OR UPDATE ON meal\.ai_operations/u);
+    assert.match(migration41, /DROP TRIGGER zz_prepare_contract_v2 ON meal\.ai_operations/u);
+    assert.doesNotMatch(migration41, /DROP TRIGGER prepare_contract_v2 ON meal\.ai_operations/u);
     assert.match(migration41, /CREATE TRIGGER zz_prepare_contract_v2/u);
 });
 

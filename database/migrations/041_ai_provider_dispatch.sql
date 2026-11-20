@@ -136,7 +136,7 @@ CREATE TRIGGER require_serializable BEFORE INSERT OR UPDATE OR DELETE ON meal.ai
 
 -- PostgreSQL runs same-timing triggers by name. Apply the v2 unknown-without-identity
 -- financial override after the generic lifecycle projection.
-DROP TRIGGER prepare_contract_v2 ON meal.ai_operations;
+DROP TRIGGER zz_prepare_contract_v2 ON meal.ai_operations;
 CREATE TRIGGER zz_prepare_contract_v2 BEFORE INSERT OR UPDATE ON meal.ai_operations
   FOR EACH ROW EXECUTE FUNCTION meal.prepare_ai_operation_contract_v2();
 

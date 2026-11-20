@@ -18,7 +18,7 @@
 
 | Репозиторий     | Ветка  | Зафиксированная версия/ревизия на момент handoff                     | Назначение                                                           |
 | --------------- | ------ | -------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `meal_backend`  | `main` | workspace `0.0.303`; точный SHA — `git rev-parse HEAD`               | API, PostgreSQL migrations, workers, deployment и общая документация |
+| `meal_backend`  | `main` | workspace `0.0.304`; точный SHA — `git rev-parse HEAD`               | API, PostgreSQL migrations, workers, deployment и общая документация |
 | `meal_admin`    | `main` | workspace `0.0.167`; точный SHA — `git rev-parse HEAD`               | операторская админка                                                 |
 | `meal_frontend` | `main` | workspace `0.0.51`, app `0.0.268`; точный SHA — `git rev-parse HEAD` | пользовательское приложение и design system                          |
 
@@ -149,4 +149,4 @@ Manual test sources:
 
 Логических продуктовых AI-срезов в согласованной очереди не осталось. Остаётся activation evidence: Yandex `store:false` spike, real eval/pricing/legal evidence и controlled enable. Deferred backlog в это число не входит.
 
-Не смешивать activation evidence с production enable, реальным ключом, `store:true`, массовым переводом legacy endpoints или deferred backlog. Checkpoint versions: backend `0.0.303`, frontend root/app `0.0.51/0.0.268`, admin `0.0.167`; точный backend SHA проверить после текущего push/deploy через `git rev-parse HEAD` и deployment state.
+Не смешивать activation evidence с production enable, реальным ключом, `store:true`, массовым переводом legacy endpoints или deferred backlog. Checkpoint versions: backend `0.0.304`, frontend root/app `0.0.51/0.0.268`, admin `0.0.167`; точный backend SHA проверить после текущего push/deploy через `git rev-parse HEAD` и deployment state.
